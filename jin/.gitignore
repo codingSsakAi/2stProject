@@ -1,0 +1,7 @@
+.env
+policy_documents/
+.venv/
+venv/
+develop_workflow.md
+env_template.txt
+insurance_project_ppt_v2.md
