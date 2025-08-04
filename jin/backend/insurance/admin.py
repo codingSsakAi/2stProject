@@ -5,9 +5,13 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import fitz
 from docx import Document
 import os
+import json
 from .models import (
     InsuranceCompany,
     PolicyDocument,
@@ -15,6 +19,7 @@ from .models import (
     ChatSession,
     ChatMessage,
 )
+from .services import rag_service
 
 
 @admin.register(InsuranceCompany)
@@ -45,7 +50,7 @@ class PolicyDocumentAdmin(admin.ModelAdmin):
     list_filter = ("company", "document_type", "is_active", "upload_date")
     search_fields = ("company__name", "file_path")
     readonly_fields = ("upload_date", "file_size", "page_count", "pinecone_index_id")
-    actions = ["convert_pdf_to_docx", "update_pinecone_index"]
+    actions = ["convert_pdf_to_docx", "upload_to_pinecone", "search_documents", "get_index_stats"]
 
     fieldsets = (
         ("기본 정보", {"fields": ("company", "document_type", "version", "is_active")}),
@@ -152,7 +157,51 @@ class PolicyDocumentAdmin(admin.ModelAdmin):
                 request, f"{updated_count}개 문서의 인덱스가 업데이트되었습니다."
             )
 
-    update_pinecone_index.short_description = "Pinecone 인덱스 업데이트"
+    def upload_to_pinecone(self, request, queryset):
+        """선택된 문서를 Pinecone에 업로드"""
+        success_count = 0
+        error_count = 0
+        
+        for document in queryset:
+            try:
+                if rag_service.upload_document(document):
+                    success_count += 1
+                    messages.success(request, f"업로드 성공: {document.get_file_name()}")
+                else:
+                    error_count += 1
+                    messages.error(request, f"업로드 실패: {document.get_file_name()}")
+            except Exception as e:
+                error_count += 1
+                messages.error(request, f"업로드 오류: {document.get_file_name()} - {str(e)}")
+        
+        if success_count > 0:
+            messages.success(request, f"{success_count}개 문서가 성공적으로 업로드되었습니다.")
+        if error_count > 0:
+            messages.warning(request, f"{error_count}개 문서 업로드에 실패했습니다.")
+    
+    upload_to_pinecone.short_description = "Pinecone에 문서 업로드"
+    
+    def search_documents(self, request, queryset):
+        """문서 검색 테스트"""
+        # 검색 기능은 별도 뷰로 구현
+        messages.info(request, "검색 기능은 별도 페이지에서 사용할 수 있습니다.")
+    
+    search_documents.short_description = "문서 검색 테스트"
+    
+    def get_index_stats(self, request, queryset):
+        """인덱스 통계 정보"""
+        try:
+            stats = rag_service.get_index_stats()
+            if stats:
+                messages.info(request, f"인덱스 통계: 총 {stats.get('total_vectors', 0)}개 벡터")
+                for company, count in stats.get('company_stats', {}).items():
+                    messages.info(request, f"- {company}: {count}개 벡터")
+            else:
+                messages.warning(request, "인덱스 통계를 가져올 수 없습니다.")
+        except Exception as e:
+            messages.error(request, f"통계 조회 실패: {str(e)}")
+    
+    get_index_stats.short_description = "인덱스 통계 조회"
 
 
 @admin.register(InsuranceQuote)
