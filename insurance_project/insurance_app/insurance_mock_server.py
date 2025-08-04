@@ -13,6 +13,7 @@ class InsuranceMockServer:
     실제 보험사들의 요율 계산 방식을 참고하여 구현
     """
     
+    
     def __init__(self):
         # 11개 보험사 기본 정보
         self.insurance_companies = {
