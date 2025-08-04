@@ -29,6 +29,7 @@ requests==2.31.0
 
 # Environment variables
 python-dotenv==1.0.0
+python-decouple==3.8
 
 # Additional utilities
 python-dateutil==2.8.2 

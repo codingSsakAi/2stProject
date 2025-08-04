@@ -12,10 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,14 +22,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    "SECRET_KEY", "django-insecure-s(=fut_i1fz@a=&ky!5i*eiu8^nzx^*-yg#%e2dnh^942oj@58"
+SECRET_KEY = config(
+    "SECRET_KEY",
+    default="django-insecure-s(=fut_i1fz@a=&ky!5i*eiu8^nzx^*-yg#%e2dnh^942oj@58",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+DEBUG = config("DEBUG", default="True", cast=bool)
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 
 
 # Application definition
@@ -139,8 +137,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # 개발 환경에서만 사용
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS", default="http://localhost:3000,http://127.0.0.1:3000"
 ).split(",")
 
 # REST Framework settings
@@ -165,29 +163,38 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # =============================================================================
 
 # Pinecone Settings (벡터 데이터베이스)
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY', '')
-PINECONE_ENVIRONMENT = os.getenv('PINECONE_ENVIRONMENT', 'gcp-starter')
-PINECONE_INDEX_NAME = os.getenv('PINECONE_INDEX_NAME', 'insurance-documents-main')
+PINECONE_API_KEY = config("PINECONE_API_KEY", "")
+PINECONE_ENVIRONMENT = config("PINECONE_ENVIRONMENT", "gcp-starter")
+PINECONE_INDEX_NAME = config("PINECONE_INDEX_NAME", "insurance-documents-main")
 
 # OpenAI Settings (LLM)
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
-OPENAI_MAX_TOKENS = int(os.getenv('OPENAI_MAX_TOKENS', '2000'))
-OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
+OPENAI_API_KEY = config("OPENAI_API_KEY", "")
+OPENAI_MODEL = config("OPENAI_MODEL", "gpt-3.5-turbo")
+OPENAI_MAX_TOKENS = int(config("OPENAI_MAX_TOKENS", "2000"))
+OPENAI_TEMPERATURE = float(config("OPENAI_TEMPERATURE", "0.7"))
 
 # RAG Settings (문서 처리)
-CHUNK_SIZE = int(os.getenv('CHUNK_SIZE', '1000'))
-CHUNK_OVERLAP = int(os.getenv('CHUNK_OVERLAP', '200'))
-EMBEDDING_DIMENSION = int(os.getenv('EMBEDDING_DIMENSION', '1536'))
-MAX_TOKENS_PER_CHUNK = int(os.getenv('MAX_TOKENS_PER_CHUNK', '4000'))
+CHUNK_SIZE = int(config("CHUNK_SIZE", "1000"))
+CHUNK_OVERLAP = int(config("CHUNK_OVERLAP", "200"))
+EMBEDDING_DIMENSION = int(config("EMBEDDING_DIMENSION", "1536"))
+MAX_TOKENS_PER_CHUNK = int(config("MAX_TOKENS_PER_CHUNK", "4000"))
 
 # Mock API Settings (보험 가격 계산)
-MOCK_API_BASE_URL = os.getenv('MOCK_API_BASE_URL', 'http://localhost:8001')
-MOCK_API_TIMEOUT = int(os.getenv('MOCK_API_TIMEOUT', '30'))
+MOCK_API_BASE_URL = config("MOCK_API_BASE_URL", "http://localhost:8001")
+MOCK_API_TIMEOUT = int(config("MOCK_API_TIMEOUT", "30"))
 
 # File Upload Settings
-MAX_UPLOAD_SIZE = int(os.getenv('MAX_UPLOAD_SIZE', '10485760'))  # 10MB
-ALLOWED_FILE_TYPES = os.getenv('ALLOWED_FILE_TYPES', 'pdf,docx').split(',')
+MAX_UPLOAD_SIZE = config("MAX_UPLOAD_SIZE", default=10485760, cast=int)  # 10MB
+ALLOWED_FILE_TYPES = config("ALLOWED_FILE_TYPES", default="pdf,docx").split(",")
 
 # Security Settings
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS", default="http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
+
+# Upstage Embedding Settings
+UPSTAGE_API_KEY = config("UPSTAGE_API_KEY", default="")
+UPSTAGE_EMBEDDING_MODEL = config(
+    "UPSTAGE_EMBEDDING_MODEL", default="solar-embedding-1-large"
+)
+UPSTAGE_EMBEDDING_DIMENSION = int(config("UPSTAGE_EMBEDDING_DIMENSION", "4096"))
