@@ -450,3 +450,219 @@ def admin_pinecone_management(request):
         'title': 'Pinecone 관리'
     }
     return render(request, 'insurance/admin_pinecone.jinja.html', context)
+
+# Pinecone 관리 API 뷰 함수들
+@admin_required
+def update_company_index(request):
+    """보험사별 인덱스 업데이트"""
+    if request.method == 'POST':
+        try:
+            import json
+            data = json.loads(request.body)
+            company = data.get('company')
+            
+            if not company:
+                return JsonResponse({'success': False, 'error': '보험사 정보가 누락되었습니다.'})
+            
+            rag_service = RAGService()
+            
+            # 해당 보험사의 승인된 문서들만 다시 업로드
+            documents = PolicyDocument.objects.filter(
+                company__name=company,
+                status='approved'
+            )
+            
+            success_count = 0
+            for document in documents:
+                if document.file_path:
+                    try:
+                        result = rag_service.upload_document_with_metadata(
+                            document.file_path,
+                            company,
+                            document.document_type,
+                            document.title,
+                            document.tags
+                        )
+                        if result['success']:
+                            success_count += 1
+                    except Exception as e:
+                        logger.error(f"문서 업로드 실패: {document.title} - {e}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{company} 인덱스 업데이트 완료: {success_count}개 문서',
+                'updated_count': success_count
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다.'})
+
+@admin_required
+def delete_company_data(request):
+    """보험사별 데이터 삭제"""
+    if request.method == 'DELETE':
+        try:
+            import json
+            data = json.loads(request.body)
+            company = data.get('company')
+            
+            if not company:
+                return JsonResponse({'success': False, 'error': '보험사 정보가 누락되었습니다.'})
+            
+            rag_service = RAGService()
+            
+            # Pinecone에서 해당 보험사 데이터 삭제
+            if rag_service.pinecone_index:
+                # 보험사별 필터로 벡터 삭제
+                rag_service.pinecone_index.delete(filter={"company": company})
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{company} 데이터 삭제 완료'
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+
+@admin_required
+def update_all_index(request):
+    """전체 인덱스 업데이트"""
+    if request.method == 'POST':
+        try:
+            rag_service = RAGService()
+            
+            # 기존 인덱스 초기화
+            if rag_service.pinecone_index:
+                rag_service.pinecone_index.delete(delete_all=True)
+            
+            # 승인된 모든 문서 다시 업로드
+            documents = PolicyDocument.objects.filter(status='approved')
+            
+            success_count = 0
+            for document in documents:
+                if document.file_path:
+                    try:
+                        result = rag_service.upload_document_with_metadata(
+                            document.file_path,
+                            document.company.name,
+                            document.document_type,
+                            document.title,
+                            document.tags
+                        )
+                        if result['success']:
+                            success_count += 1
+                    except Exception as e:
+                        logger.error(f"문서 업로드 실패: {document.title} - {e}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'전체 인덱스 업데이트 완료: {success_count}개 문서',
+                'updated_count': success_count
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다.'})
+
+@admin_required
+def clear_all_index(request):
+    """전체 인덱스 초기화"""
+    if request.method == 'DELETE':
+        try:
+            rag_service = RAGService()
+            
+            if rag_service.pinecone_index:
+                rag_service.pinecone_index.delete(delete_all=True)
+            
+            return JsonResponse({
+                'success': True,
+                'message': '전체 인덱스 초기화 완료'
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+
+@admin_required
+def get_pinecone_stats(request):
+    """Pinecone 통계 조회"""
+    try:
+        rag_service = RAGService()
+        stats = rag_service.get_company_document_stats()
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@admin_required
+def delete_document_api(request, document_id):
+    """문서 삭제 API"""
+    if request.method == 'DELETE':
+        try:
+            document = PolicyDocument.objects.get(id=document_id)
+            
+            # Pinecone에서 해당 문서 벡터 삭제
+            rag_service = RAGService()
+            if rag_service.pinecone_index:
+                rag_service.pinecone_index.delete(
+                    filter={
+                        "source": document.file_path.split("/")[-1],
+                        "company": document.company.name
+                    }
+                )
+            
+            # 데이터베이스에서 문서 삭제
+            document.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '문서 삭제 완료'
+            })
+            
+        except PolicyDocument.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+
+def search_documents_api(request):
+    """문서 검색 API"""
+    if request.method == 'GET':
+        try:
+            query = request.GET.get('query', '')
+            company = request.GET.get('company', '')
+            top_k = int(request.GET.get('top_k', 5))
+            
+            if not query:
+                return JsonResponse({'success': False, 'error': '검색어가 필요합니다.'})
+            
+            rag_service = RAGService()
+            
+            if company:
+                results = rag_service.search_documents_by_company(query, company, top_k)
+            else:
+                results = rag_service.search_documents(query, top_k)
+            
+            return JsonResponse({
+                'success': True,
+                'results': results,
+                'query': query,
+                'company': company,
+                'count': len(results)
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'GET 요청만 지원합니다.'})
