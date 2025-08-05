@@ -69,7 +69,7 @@ class RAGService:
                         try:
                             pinecone.create_index(
                                 name=index_name,
-                                dimension=settings.EMBEDDING_DIMENSION,
+                                dimension=settings.UPSTAGE_EMBEDDING_DIMENSION,
                                 metric="cosine",
                             )
                             logger.info(f"Pinecone 인덱스 생성: {index_name}")
@@ -331,7 +331,7 @@ class RAGService:
                     "total_documents": 0,
                     "total_companies": 0,
                     "index_size": 0,
-                    "embedding_dimension": settings.EMBEDDING_DIMENSION,
+                    "embedding_dimension": settings.UPSTAGE_EMBEDDING_DIMENSION,
                 }
 
             # Pinecone 인덱스 통계
@@ -341,7 +341,7 @@ class RAGService:
                 "total_documents": index_stats.get("total_vector_count", 0),
                 "total_companies": 0,  # TODO: 보험사 수 계산
                 "index_size": index_stats.get("dimension", 0),
-                "embedding_dimension": settings.EMBEDDING_DIMENSION,
+                "embedding_dimension": settings.UPSTAGE_EMBEDDING_DIMENSION,
             }
 
         except Exception as e:
@@ -350,5 +350,5 @@ class RAGService:
                 "total_documents": 0,
                 "total_companies": 0,
                 "index_size": 0,
-                "embedding_dimension": settings.EMBEDDING_DIMENSION,
+                "embedding_dimension": settings.UPSTAGE_EMBEDDING_DIMENSION,
             }

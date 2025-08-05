@@ -171,7 +171,6 @@ UPSTAGE_EMBEDDING_DIMENSION = config(
 # RAG Settings
 CHUNK_SIZE = config("CHUNK_SIZE", default=1000, cast=int)
 CHUNK_OVERLAP = config("CHUNK_OVERLAP", default=200, cast=int)
-EMBEDDING_DIMENSION = config("EMBEDDING_DIMENSION", default=1536, cast=int)
 MAX_TOKENS_PER_CHUNK = config("MAX_TOKENS_PER_CHUNK", default=4000, cast=int)
 
 # Mock API Settings
