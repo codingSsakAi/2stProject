@@ -1,0 +1,40 @@
+.knowhow-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+}
+.knowhow-card {
+    width: 340px;
+    border-radius: 18px;
+    background: #f5f8ff;
+    box-shadow: 0 6px 18px rgba(100,130,170,0.08);
+    overflow: hidden;
+    transition: transform .18s;
+}
+.knowhow-card:hover { transform: translateY(-8px) scale(1.03); }
+.knowhow-card img {
+    width: 100%; height: 185px; object-fit: cover;
+}
+.knowhow-label {
+    position: absolute; top: 16px; left: 16px;
+    background: #6bb1ff; color: #fff;
+    border-radius: 11px; padding: 4px 14px; font-size: 13px;
+}
+.knowhow-title {
+    font-size: 1.17rem; margin: 18px 14px 16px 14px;
+    font-weight: 500;
+}
+.detail-card {
+    max-width: 660px; margin: 36px auto;
+    border-radius: 24px; background: #fafdff;
+    box-shadow: 0 8px 22px rgba(80,120,160,0.10);
+    padding: 36px 42px;
+}
+.detail-label {
+    background: #6bb1ff; color: #fff;
+    border-radius: 11px; padding: 6px 16px;
+    font-size: 15px; display: inline-block; margin-bottom: 16px;
+}
+.detail-title { font-size: 2rem; margin-bottom: 22px; }
+.detail-img { width: 100%; max-width: 480px; display: block; margin-bottom: 22px; }
+.detail-content { font-size: 1.13rem; color: #26334d; }
