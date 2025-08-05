@@ -32,13 +32,13 @@ def ml_dashboard(request):
             "stats": stats,
         }
 
-        return render(request, "insurance/ml_dashboard.html", context)
+        return render(request, "insurance/ml_dashboard.jinja.html", context)
 
     except Exception as e:
         logger.error(f"ML 대시보드 로드 실패: {e}")
         return render(
             request,
-            "insurance/ml_dashboard.html",
+            "insurance/ml_dashboard.jinja.html",
             {"error": f"대시보드 로드 중 오류가 발생했습니다: {str(e)}"},
         )
 

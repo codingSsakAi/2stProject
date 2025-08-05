@@ -74,7 +74,7 @@ def rag_dashboard(request):
 
         context = {"title": "RAG 시스템 대시보드", "stats": stats}
 
-        return render(request, "insurance/rag_dashboard.html", context)
+        return render(request, "insurance/rag_dashboard.jinja.html", context)
 
     except Exception as e:
         logger.error(f"RAG 대시보드 로드 실패: {e}")
