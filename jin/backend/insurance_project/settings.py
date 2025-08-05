@@ -184,7 +184,7 @@ MOCK_API_BASE_URL = config("MOCK_API_BASE_URL", "http://localhost:8001")
 MOCK_API_TIMEOUT = int(config("MOCK_API_TIMEOUT", "30"))
 
 # File Upload Settings
-MAX_UPLOAD_SIZE = config("MAX_UPLOAD_SIZE", default=10485760, cast=int)  # 10MB
+MAX_UPLOAD_SIZE = config("MAX_UPLOAD_SIZE", default="10485760", cast=int)  # 10MB
 ALLOWED_FILE_TYPES = config("ALLOWED_FILE_TYPES", default="pdf,docx").split(",")
 
 # Security Settings
