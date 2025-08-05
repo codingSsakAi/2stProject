@@ -31,27 +31,27 @@ def main_page(request):
             'description': 'AI 기반 맞춤형 자동차 보험 추천 서비스',
             'features': [
                 {
-                    'title': '🤖 AI 상담사',
+                    'title': 'AI 상담사',
+                    'icon': '🤖',
                     'description': 'LangChain 기반 지능형 보험 상담',
-                    'icon': 'chat-bubble',
                     'url': '/insurance/langchain-dashboard/'
                 },
                 {
-                    'title': '🎯 ML 추천',
+                    'title': 'ML 추천',
+                    'icon': '🎯',
                     'description': '머신러닝 기반 맞춤형 보험 추천',
-                    'icon': 'target',
                     'url': '/insurance/ml-dashboard/'
                 },
                 {
-                    'title': '📊 RAG 시스템',
+                    'title': 'RAG 시스템',
+                    'icon': '📊',
                     'description': '보험 약관 검색 및 분석',
-                    'icon': 'search',
                     'url': '/insurance/rag-dashboard/'
                 },
                 {
-                    'title': '📋 보험 비교',
+                    'title': '보험 비교',
+                    'icon': '📋',
                     'description': '다양한 보험 상품 비교 분석',
-                    'icon': 'compare',
                     'url': '/insurance/compare/'
                 }
             ]

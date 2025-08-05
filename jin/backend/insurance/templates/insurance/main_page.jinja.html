@@ -281,8 +281,8 @@
                 {% for feature in features %}
                 <div class="col-lg-6 col-md-6 mb-4">
                     <a href="{{ feature.url }}" class="feature-card">
-                        <div class="feature-icon">{{ feature.title.split(' ')[0] }}</div>
-                        <h3 class="feature-title">{{ feature.title.split(' ', 1)[1] if ' ' in feature.title else feature.title }}</h3>
+                        <div class="feature-icon">{{ feature.icon }}</div>
+                        <h3 class="feature-title">{{ feature.title }}</h3>
                         <p class="feature-description">{{ feature.description }}</p>
                     </a>
                 </div>
