@@ -30,16 +30,16 @@
                     </div>
                     
                     <div class="d-grid gap-3">
-                        <a href="{% url 'personalized_chat' %}" class="btn btn-primary btn-lg">
+                        <a href="{% url 'insurance:personalized_chat' %}" class="btn btn-primary btn-lg">
                             <i class="fas fa-comments me-2"></i>AI 챗봇 시작하기
                         </a>
                         
                         {% if user.is_authenticated %}
-                        <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'users:profile' %}" class="btn btn-outline-secondary">
                             <i class="fas fa-user me-2"></i>내 프로필 보기
                         </a>
                         {% else %}
-                        <a href="{% url 'login' %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'users:login' %}" class="btn btn-outline-secondary">
                             <i class="fas fa-sign-in-alt me-2"></i>로그인
                         </a>
                         {% endif %}
@@ -67,7 +67,7 @@
                                     <i class="fas fa-upload fa-2x text-primary mb-3"></i>
                                     <h5>문서 업로드</h5>
                                     <p class="text-muted">PDF 문서를 업로드하고 Pinecone에 저장</p>
-                                    <a href="{% url 'admin_upload_document' %}" class="btn btn-primary">
+                                    <a href="{% url 'insurance:admin_upload_document' %}" class="btn btn-primary">
                                         업로드하기
                                     </a>
                                 </div>
@@ -79,7 +79,7 @@
                                     <i class="fas fa-file-alt fa-2x text-info mb-3"></i>
                                     <h5>문서 관리</h5>
                                     <p class="text-muted">업로드된 문서 목록 및 관리</p>
-                                    <a href="{% url 'admin_document_list' %}" class="btn btn-info">
+                                    <a href="{% url 'insurance:admin_document_list' %}" class="btn btn-info">
                                         문서 관리
                                     </a>
                                 </div>
@@ -91,7 +91,7 @@
                                     <i class="fas fa-database fa-2x text-success mb-3"></i>
                                     <h5>Pinecone 관리</h5>
                                     <p class="text-muted">벡터 데이터베이스 상태 및 관리</p>
-                                    <a href="{% url 'admin_pinecone_management' %}" class="btn btn-success">
+                                    <a href="{% url 'insurance:admin_pinecone_management' %}" class="btn btn-success">
                                         Pinecone 관리
                                     </a>
                                 </div>
