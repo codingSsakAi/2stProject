@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.contrib import messages
@@ -47,6 +47,19 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'insurance_app/login.html', {'form': form})
+
+def logout_view(request):
+    """로그아웃 시 메시지 삭제 후 로그아웃 처리"""
+    if request.method == 'POST':
+        # 기존 메시지들을 모두 삭제
+        storage = messages.get_messages(request)
+        for message in storage:
+            pass  # 메시지를 순회하면서 삭제
+        storage.used = True  # 메시지 스토리지를 비움
+        
+        logout(request)
+        return redirect('login')
+    return redirect('home')
 
 @login_required
 def recommend_insurance(request):
