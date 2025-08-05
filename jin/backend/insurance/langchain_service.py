@@ -18,6 +18,7 @@ from django.conf import settings
 
 from .models import PolicyDocument, InsuranceCompany
 from .services import RAGService
+from .ml_service import MLRecommendationService
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class LangChainService:
         self._initialize_tools()
         self._initialize_agent()
         self.rag_service = RAGService()
+        self.ml_service = MLRecommendationService()
 
     def _initialize_llm(self):
         """LLM 초기화"""
@@ -90,6 +92,16 @@ class LangChainService:
                     name="보험_비교_분석",
                     description="여러 보험 상품을 비교 분석합니다.",
                     func=self._compare_insurance_products
+                ),
+                Tool(
+                    name="ML_추천_시스템",
+                    description="머신러닝 기반 보험 상품 추천 시스템을 사용합니다.",
+                    func=self._ml_recommendation_system
+                ),
+                Tool(
+                    name="사용자_프로필_분석",
+                    description="사용자 프로필을 분석하여 맞춤형 추천을 생성합니다.",
+                    func=self._analyze_user_profile
                 )
             ]
             logger.info("도구(Tools) 초기화 완료")
@@ -209,6 +221,140 @@ class LangChainService:
             logger.error(f"보험 상품 비교 분석 실패: {e}")
             return f"비교 분석 중 오류가 발생했습니다: {str(e)}"
 
+    def _ml_recommendation_system(self, user_input: str) -> str:
+        """ML 추천 시스템 도구"""
+        try:
+            # 사용자 정보 파싱
+            user_profile = self._parse_user_info(user_input)
+            
+            # 샘플 사용자 ID (실제로는 인증된 사용자 ID 사용)
+            sample_user_id = 1
+            
+            # ML 추천 생성
+            recommendations = self.ml_service.generate_recommendations(sample_user_id, user_profile)
+            
+            if not recommendations.get('recommended_products'):
+                return "ML 추천 시스템에서 추천할 상품을 찾을 수 없습니다."
+            
+            response = "🤖 ML 추천 시스템 결과:\n\n"
+            response += f"📊 ML 점수:\n"
+            response += f"  - 협업 필터링: {recommendations['ml_scores'].get('collaborative_score', 0):.2f}\n"
+            response += f"  - 콘텐츠 기반: {recommendations['ml_scores'].get('content_score', 0):.2f}\n"
+            response += f"  - 하이브리드: {recommendations['ml_scores'].get('hybrid_score', 0):.2f}\n\n"
+            
+            response += "🎯 추천 상품:\n"
+            for i, product in enumerate(recommendations['recommended_products'][:5], 1):
+                response += f"{i}. {product.get('product_name', '알 수 없는 상품')}\n"
+                response += f"   하이브리드 점수: {product.get('hybrid_score', 0):.2f}\n"
+                response += f"   협업 필터링: {product.get('collaborative_score', 0):.2f}\n"
+                response += f"   콘텐츠 기반: {product.get('content_score', 0):.2f}\n\n"
+            
+            if recommendations.get('similar_users'):
+                response += "👥 유사 사용자:\n"
+                for i, similar_user in enumerate(recommendations['similar_users'][:3], 1):
+                    response += f"{i}. 사용자 ID: {similar_user.get('user_id')}\n"
+                    response += f"   나이: {similar_user.get('age')}세\n"
+                    response += f"   운전 경력: {similar_user.get('driving_experience')}년\n"
+                    response += f"   유사도: {similar_user.get('similarity_score', 0):.2f}\n\n"
+            
+            return response
+
+        except Exception as e:
+            logger.error(f"ML 추천 시스템 실패: {e}")
+            return f"ML 추천 시스템 오류: {str(e)}"
+
+    def _analyze_user_profile(self, user_info: str) -> str:
+        """사용자 프로필 분석 도구"""
+        try:
+            # 사용자 정보 파싱
+            user_profile = self._parse_user_info(user_info)
+            
+            response = "📊 사용자 프로필 분석:\n\n"
+            response += f"나이: {user_profile.get('age', '알 수 없음')}세\n"
+            response += f"성별: {user_profile.get('gender', '알 수 없음')}\n"
+            response += f"운전 경력: {user_profile.get('driving_experience', '알 수 없음')}년\n"
+            response += f"연간 주행거리: {user_profile.get('annual_mileage', '알 수 없음')}km\n"
+            response += f"사고 이력: {user_profile.get('accident_history', '알 수 없음')}회\n\n"
+            
+            # 프로필 기반 분석
+            analysis = self._analyze_profile_characteristics(user_profile)
+            response += "🎯 프로필 특성 분석:\n"
+            response += analysis
+            
+            return response
+
+        except Exception as e:
+            logger.error(f"사용자 프로필 분석 실패: {e}")
+            return f"프로필 분석 중 오류가 발생했습니다: {str(e)}"
+
+    def _analyze_profile_characteristics(self, user_profile: Dict[str, Any]) -> str:
+        """프로필 특성 분석"""
+        analysis = ""
+        
+        age = user_profile.get('age', 30)
+        gender = user_profile.get('gender', '알 수 없음')
+        driving_exp = user_profile.get('driving_experience', 5)
+        mileage = user_profile.get('annual_mileage', 12000)
+        accidents = user_profile.get('accident_history', 0)
+        
+        # 나이 분석
+        if age < 25:
+            analysis += "• 젊은 운전자 (25세 미만)\n"
+            analysis += "  - 학생 할인 혜택 가능\n"
+            analysis += "  - 초보 운전자 특별 보장\n"
+        elif age < 40:
+            analysis += "• 중년 운전자 (25-40세)\n"
+            analysis += "  - 안정적인 보험료\n"
+            analysis += "  - 다양한 보장 옵션\n"
+        else:
+            analysis += "• 성숙한 운전자 (40세 이상)\n"
+            analysis += "  - 경험자 할인 혜택\n"
+            analysis += "  - 종합 보장 추천\n"
+        
+        # 운전 경력 분석
+        if driving_exp < 3:
+            analysis += "• 초보 운전자\n"
+            analysis += "  - 기본 보장 강화\n"
+            analysis += "  - 사고 시 특별 보장\n"
+        elif driving_exp < 10:
+            analysis += "• 중급 운전자\n"
+            analysis += "  - 균형잡힌 보장\n"
+            analysis += "  - 합리적인 보험료\n"
+        else:
+            analysis += "• 숙련된 운전자\n"
+            analysis += "  - 할인 혜택 적용\n"
+            analysis += "  - 선택적 보장\n"
+        
+        # 주행거리 분석
+        if mileage < 8000:
+            analysis += "• 저주행 운전자\n"
+            analysis += "  - 저렴한 보험료\n"
+            analysis += "  - 기본 보장\n"
+        elif mileage < 15000:
+            analysis += "• 일반 주행 운전자\n"
+            analysis += "  - 표준 보장\n"
+            analysis += "  - 적정 보험료\n"
+        else:
+            analysis += "• 고주행 운전자\n"
+            analysis += "  - 확장 보장\n"
+            analysis += "  - 사고 위험 고려\n"
+        
+        # 사고 이력 분석
+        if accidents == 0:
+            analysis += "• 무사고 운전자\n"
+            analysis += "  - 할인 혜택 적용\n"
+            analysis += "  - 우량 운전자 보장\n"
+        elif accidents == 1:
+            analysis += "• 경미한 사고 이력\n"
+            analysis += "  - 기본 보장 유지\n"
+            analysis += "  - 보험료 조정 필요\n"
+        else:
+            analysis += "• 다중 사고 이력\n"
+            analysis += "  - 종합 보장 필요\n"
+            analysis += "  - 높은 보험료\n"
+        
+        return analysis
+
     def _parse_user_info(self, user_info: str) -> Dict[str, Any]:
         """사용자 정보 파싱"""
         profile = {
@@ -218,7 +364,9 @@ class LangChainService:
             "income_level": None,
             "family_status": None,
             "health_condition": None,
-            "driving_experience": None
+            "driving_experience": None,
+            "annual_mileage": None,
+            "accident_history": None
         }
 
         # 간단한 키워드 기반 파싱
@@ -243,6 +391,27 @@ class LangChainService:
         elif "저소득" in user_info_lower:
             profile["income_level"] = "저소득"
 
+        # 나이 파싱
+        import re
+        age_match = re.search(r'(\d+)세', user_info)
+        if age_match:
+            profile["age"] = int(age_match.group(1))
+
+        # 운전 경력 파싱
+        exp_match = re.search(r'(\d+)년', user_info)
+        if exp_match:
+            profile["driving_experience"] = int(exp_match.group(1))
+
+        # 주행거리 파싱
+        mileage_match = re.search(r'(\d+)km', user_info)
+        if mileage_match:
+            profile["annual_mileage"] = int(mileage_match.group(1))
+
+        # 사고 이력 파싱
+        accident_match = re.search(r'사고.*?(\d+)', user_info)
+        if accident_match:
+            profile["accident_history"] = int(accident_match.group(1))
+
         return profile
 
     def _create_recommendation(self, user_profile: Dict[str, Any]) -> str:
@@ -262,6 +431,20 @@ class LangChainService:
         
         if user_profile["gender"] == "여성":
             recommendations.append("👩 여성 전용 자동차보험 (특별 혜택)")
+        
+        # 나이 기반 추천
+        age = user_profile.get("age", 30)
+        if age < 25:
+            recommendations.append("🚗 초보 운전자 보험 (사고 시 특별 보장)")
+        elif age > 50:
+            recommendations.append("👴 시니어 운전자 보험 (경험자 할인)")
+        
+        # 운전 경력 기반 추천
+        driving_exp = user_profile.get("driving_experience", 5)
+        if driving_exp < 3:
+            recommendations.append("🆕 신규 운전자 보험 (기본 보장 강화)")
+        elif driving_exp > 10:
+            recommendations.append("🏆 숙련 운전자 보험 (할인 혜택)")
         
         # 기본 추천
         recommendations.append("🚗 기본 자동차보험 (필수 보장)")
@@ -285,7 +468,8 @@ class LangChainService:
             # 시스템 메시지 추가
             system_message = """당신은 자동차 보험 전문 상담사입니다. 
             사용자의 질문에 대해 친절하고 전문적으로 답변해주세요.
-            보험 관련 정보를 제공할 때는 정확하고 이해하기 쉽게 설명해주세요."""
+            보험 관련 정보를 제공할 때는 정확하고 이해하기 쉽게 설명해주세요.
+            ML 추천 시스템과 RAG 시스템을 활용하여 정확한 정보를 제공하세요."""
 
             # 에이전트 실행
             response = self.agent.run(
@@ -336,5 +520,6 @@ class LangChainService:
             "memory_initialized": self.memory is not None,
             "tools_count": len(self.tools),
             "agent_initialized": self.agent is not None,
-            "rag_service_available": self.rag_service is not None
+            "rag_service_available": self.rag_service is not None,
+            "ml_service_available": self.ml_service is not None
         } 
