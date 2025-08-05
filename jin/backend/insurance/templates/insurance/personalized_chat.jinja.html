@@ -1,0 +1,598 @@
+{% extends "base.jinja.html" %}
+
+{% block title %}개인화된 AI 챗봇{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 사용자 프로필 사이드바 -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>내 프로필
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="userProfile">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-user-circle fa-3x text-muted"></i>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">기본 정보</h6>
+                            <div class="border rounded p-2">
+                                <small class="text-muted">나이: <span id="userAge">-</span></small><br>
+                                <small class="text-muted">성별: <span id="userGender">-</span></small><br>
+                                <small class="text-muted">지역: <span id="userRegion">-</span></small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">운전 정보</h6>
+                            <div class="border rounded p-2">
+                                <small class="text-muted">경력: <span id="drivingExperience">-</span>년</small><br>
+                                <small class="text-muted">차종: <span id="carType">-</span></small><br>
+                                <small class="text-muted">연간 주행: <span id="annualMileage">-</span>km</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">위험도 분석</h6>
+                            <div class="border rounded p-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">위험도:</small>
+                                    <span id="riskLevel" class="badge bg-secondary">-</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 0.5rem;">
+                                    <div id="riskProgress" class="progress-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm w-100" onclick="updateProfile()">
+                            <i class="fas fa-edit me-1"></i>프로필 수정
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 추천 보험사 -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-star me-2"></i>추천 보험사
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="recommendedCompanies">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> 분석 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 챗봇 영역 -->
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>개인화된 AI 챗봇
+                    </h5>
+                    <small class="text-muted">당신의 프로필을 기반으로 맞춤형 보험 상담을 제공합니다</small>
+                </div>
+                <div class="card-body">
+                    <!-- 챗봇 메시지 영역 -->
+                    <div id="chatContainer" class="chat-container mb-3">
+                        <div class="chat-message bot-message">
+                            <div class="message-content">
+                                안녕하세요! 당신의 프로필을 기반으로 개인화된 보험 상담을 도와드리겠습니다. 
+                                어떤 보험에 대해 궁금하신가요?
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 입력 영역 -->
+                    <div class="input-group">
+                        <textarea class="form-control" id="messageInput" rows="3" 
+                                  placeholder="보험 관련 질문을 입력하세요..."></textarea>
+                        <button class="btn btn-warning" type="button" id="sendButton">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+
+                    <!-- 빠른 질문 버튼들 -->
+                    <div class="mt-3">
+                        <h6 class="text-muted">빠른 질문:</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-secondary btn-sm quick-question" 
+                                    data-question="나에게 맞는 보험은 무엇인가요?">
+                                맞춤 보험 추천
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question" 
+                                    data-question="보험료를 낮출 수 있는 방법이 있나요?">
+                                보험료 절약법
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question" 
+                                    data-question="사고가 났을 때 어떻게 해야 하나요?">
+                                사고처리절차
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question" 
+                                    data-question="보험금 청구 방법을 알려주세요">
+                                보험금 청구
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 개인화된 추천 결과 -->
+            <div class="card shadow-sm mt-3" id="recommendationCard" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>개인화된 추천
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="recommendationContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 프로필 수정 모달 -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">프로필 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="profileForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>기본 정보</h6>
+                            <div class="mb-3">
+                                <label class="form-label">생년월일</label>
+                                <input type="date" class="form-control" id="birthDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">성별</label>
+                                <select class="form-select" id="gender" required>
+                                    <option value="">선택하세요</option>
+                                    <option value="M">남성</option>
+                                    <option value="F">여성</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">거주지역</label>
+                                <select class="form-select" id="region" required>
+                                    <option value="">선택하세요</option>
+                                    <option value="서울">서울</option>
+                                    <option value="부산">부산</option>
+                                    <option value="대구">대구</option>
+                                    <option value="기타">기타</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>운전 정보</h6>
+                            <div class="mb-3">
+                                <label class="form-label">운전경력 (년)</label>
+                                <input type="number" class="form-control" id="experience" min="0" max="50" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">차종</label>
+                                <select class="form-select" id="carTypeSelect" required>
+                                    <option value="">선택하세요</option>
+                                    <option value="경차">경차</option>
+                                    <option value="소형">소형</option>
+                                    <option value="준중형">준중형</option>
+                                    <option value="중형">중형</option>
+                                    <option value="대형">대형</option>
+                                    <option value="SUV">SUV</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">연간 주행거리 (km)</label>
+                                <input type="number" class="form-control" id="mileage" min="0" max="100000" required>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="saveProfile()">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-container {
+    height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+}
+
+.chat-message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    max-width: 80%;
+}
+
+.user-message {
+    background-color: #e3f2fd;
+    margin-left: auto;
+    text-align: right;
+}
+
+.bot-message {
+    background-color: #f5f5f5;
+    margin-right: auto;
+}
+
+.message-content {
+    margin: 0;
+}
+
+.quick-question {
+    font-size: 0.8rem;
+}
+
+.progress {
+    height: 0.5rem;
+}
+
+.company-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background-color: #f8f9fa;
+}
+
+.company-card h6 {
+    margin-bottom: 0.25rem;
+    color: #0d6efd;
+}
+
+.company-card small {
+    color: #6c757d;
+}
+</style>
+
+<script>
+let userProfile = {};
+let chatHistory = [];
+
+// 페이지 로드 시 프로필 로드
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserProfile();
+    loadRecommendedCompanies();
+});
+
+// 사용자 프로필 로드
+function loadUserProfile() {
+    // 실제로는 서버에서 사용자 프로필을 가져옴
+    userProfile = {
+        birth_date: '1990-01-01',
+        gender: 'M',
+        residence_area: '서울',
+        driving_experience: 5,
+        car_info: { type: '준중형' },
+        annual_mileage: 12000,
+        accident_history: 0
+    };
+    
+    updateProfileDisplay();
+}
+
+// 프로필 표시 업데이트
+function updateProfileDisplay() {
+    const age = calculateAge(userProfile.birth_date);
+    document.getElementById('userAge').textContent = age + '세';
+    document.getElementById('userGender').textContent = userProfile.gender === 'M' ? '남성' : '여성';
+    document.getElementById('userRegion').textContent = userProfile.residence_area;
+    document.getElementById('drivingExperience').textContent = userProfile.driving_experience;
+    document.getElementById('carType').textContent = userProfile.car_info.type;
+    document.getElementById('annualMileage').textContent = userProfile.annual_mileage.toLocaleString();
+    
+    // 위험도 분석
+    analyzeRiskLevel();
+}
+
+// 나이 계산
+function calculateAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
+// 위험도 분석
+function analyzeRiskLevel() {
+    let riskScore = 0;
+    const age = calculateAge(userProfile.birth_date);
+    
+    // 나이별 위험도
+    if (age < 26) riskScore += 3;
+    else if (age > 50) riskScore += 1;
+    
+    // 운전경력
+    if (userProfile.driving_experience < 3) riskScore += 2;
+    else if (userProfile.driving_experience > 10) riskScore -= 1;
+    
+    // 사고이력
+    riskScore += userProfile.accident_history * 2;
+    
+    // 주행거리
+    if (userProfile.annual_mileage > 20000) riskScore += 2;
+    else if (userProfile.annual_mileage < 5000) riskScore -= 1;
+    
+    // 위험도 분류
+    let riskLevel, riskClass, progressWidth;
+    if (riskScore <= 1) {
+        riskLevel = '낮음';
+        riskClass = 'bg-success';
+        progressWidth = 25;
+    } else if (riskScore <= 4) {
+        riskLevel = '보통';
+        riskClass = 'bg-warning';
+        progressWidth = 50;
+    } else {
+        riskLevel = '높음';
+        riskClass = 'bg-danger';
+        progressWidth = 75;
+    }
+    
+    document.getElementById('riskLevel').textContent = riskLevel;
+    document.getElementById('riskLevel').className = `badge ${riskClass}`;
+    document.getElementById('riskProgress').className = `progress-bar ${riskClass}`;
+    document.getElementById('riskProgress').style.width = progressWidth + '%';
+}
+
+// 추천 보험사 로드
+async function loadRecommendedCompanies() {
+    try {
+        const response = await fetch('/api/langchain/personalized-recommendation/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                user_profile: userProfile,
+                user_preferences: {},
+                chat_history: chatHistory
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayRecommendedCompanies(result.personalized_recommendation);
+        } else {
+            document.getElementById('recommendedCompanies').innerHTML = 
+                '<div class="text-center text-muted">추천 정보를 불러올 수 없습니다.</div>';
+        }
+    } catch (error) {
+        console.error('추천 보험사 로드 실패:', error);
+        document.getElementById('recommendedCompanies').innerHTML = 
+            '<div class="text-center text-muted">추천 정보를 불러올 수 없습니다.</div>';
+    }
+}
+
+// 추천 보험사 표시
+function displayRecommendedCompanies(recommendation) {
+    const container = document.getElementById('recommendedCompanies');
+    
+    if (recommendation && recommendation.recommended_companies) {
+        let html = '';
+        recommendation.recommended_companies.slice(0, 3).forEach((company, index) => {
+            html += `
+                <div class="company-card">
+                    <h6>${index + 1}. ${company.name}</h6>
+                    <small>예상 보험료: ${company.estimated_premium?.toLocaleString() || '계산 중'}원</small><br>
+                    <small>추천 이유: ${company.reason || '개인화된 추천'}</small>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = '<div class="text-center text-muted">추천 정보가 없습니다.</div>';
+    }
+}
+
+// 메시지 전송
+document.getElementById('sendButton').addEventListener('click', sendMessage);
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// 빠른 질문 버튼들
+document.querySelectorAll('.quick-question').forEach(button => {
+    button.addEventListener('click', function() {
+        const question = this.getAttribute('data-question');
+        document.getElementById('messageInput').value = question;
+        sendMessage();
+    });
+});
+
+async function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    // 사용자 메시지 추가
+    addMessage(message, 'user');
+    messageInput.value = '';
+    
+    // 로딩 메시지
+    const loadingId = addMessage('답변 생성 중...', 'bot', true);
+    
+    try {
+        const response = await fetch('/api/langchain/chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                message: message,
+                user_profile: userProfile
+            })
+        });
+        
+        const result = await response.json();
+        
+        // 로딩 메시지 제거
+        removeMessage(loadingId);
+        
+        if (result.success) {
+            addMessage(result.response, 'bot');
+            chatHistory.push({ role: 'user', content: message });
+            chatHistory.push({ role: 'assistant', content: result.response });
+            
+            // 개인화된 추천이 포함된 경우 표시
+            if (result.personalized_recommendation) {
+                showPersonalizedRecommendation(result.personalized_recommendation);
+            }
+        } else {
+            addMessage('죄송합니다. 답변 생성 중 오류가 발생했습니다.', 'bot');
+        }
+    } catch (error) {
+        console.error('메시지 전송 실패:', error);
+        removeMessage(loadingId);
+        addMessage('죄송합니다. 서버 연결에 문제가 있습니다.', 'bot');
+    }
+}
+
+// 메시지 추가
+function addMessage(content, sender, isTemporary = false) {
+    const chatContainer = document.getElementById('chatContainer');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${sender}-message`;
+    
+    if (isTemporary) {
+        messageDiv.id = 'temp-message';
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                <i class="fas fa-spinner fa-spin"></i> ${content}
+            </div>
+        `;
+    } else {
+        messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+    }
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    return messageDiv.id;
+}
+
+// 임시 메시지 제거
+function removeMessage(messageId) {
+    const message = document.getElementById(messageId);
+    if (message) {
+        message.remove();
+    }
+}
+
+// 개인화된 추천 표시
+function showPersonalizedRecommendation(recommendation) {
+    const card = document.getElementById('recommendationCard');
+    const content = document.getElementById('recommendationContent');
+    
+    let html = '<h6>맞춤형 추천</h6>';
+    
+    if (recommendation.recommended_companies) {
+        recommendation.recommended_companies.forEach((company, index) => {
+            html += `
+                <div class="company-card">
+                    <h6>${index + 1}. ${company.name}</h6>
+                    <p class="mb-1">${company.description || ''}</p>
+                    <small class="text-muted">예상 보험료: ${company.estimated_premium?.toLocaleString() || '계산 중'}원</small>
+                </div>
+            `;
+        });
+    }
+    
+    content.innerHTML = html;
+    card.style.display = 'block';
+}
+
+// 프로필 수정 모달 열기
+function updateProfile() {
+    // 현재 프로필로 폼 채우기
+    document.getElementById('birthDate').value = userProfile.birth_date;
+    document.getElementById('gender').value = userProfile.gender;
+    document.getElementById('region').value = userProfile.residence_area;
+    document.getElementById('experience').value = userProfile.driving_experience;
+    document.getElementById('carTypeSelect').value = userProfile.car_info.type;
+    document.getElementById('mileage').value = userProfile.annual_mileage;
+    
+    // 모달 열기
+    new bootstrap.Modal(document.getElementById('profileModal')).show();
+}
+
+// 프로필 저장
+function saveProfile() {
+    const form = document.getElementById('profileForm');
+    
+    if (form.checkValidity()) {
+        userProfile = {
+            birth_date: document.getElementById('birthDate').value,
+            gender: document.getElementById('gender').value,
+            residence_area: document.getElementById('region').value,
+            driving_experience: parseInt(document.getElementById('experience').value),
+            car_info: { type: document.getElementById('carTypeSelect').value },
+            annual_mileage: parseInt(document.getElementById('mileage').value),
+            accident_history: userProfile.accident_history || 0
+        };
+        
+        updateProfileDisplay();
+        loadRecommendedCompanies();
+        
+        // 모달 닫기
+        bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
+        
+        // 성공 메시지
+        addMessage('프로필이 업데이트되었습니다. 이제 더 정확한 추천을 받을 수 있습니다!', 'bot');
+    } else {
+        form.reportValidity();
+    }
+}
+
+// CSRF 토큰 가져오기
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %} 
