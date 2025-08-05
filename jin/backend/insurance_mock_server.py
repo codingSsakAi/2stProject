@@ -14,7 +14,7 @@ class InsuranceMockServer:
     """
     
     def __init__(self):
-        # 11개 보험사 기본 정보
+        # 12개 보험사 기본 정보
         self.insurance_companies = {
             '삼성화재': {
                 'base_rate': 850000,
@@ -136,6 +136,17 @@ class InsuranceMockServer:
                 'car_type_multiplier': {'경차': 0.76, '소형': 0.86, '준중형': 1.0, '중형': 1.18, '대형': 1.36, 'SUV': 1.24},
                 'coverage_options': ['기본', '표준', '고급', '프리미엄'],
                 'special_discount': '텔레매틱스 할인 30%'
+            },
+            '한화손해보험': {
+                'base_rate': 800000,
+                'age_multiplier': {'young': 1.30, 'middle': 1.0, 'senior': 0.87},
+                'gender_multiplier': {'M': 1.0, 'F': 0.93},
+                'region_multiplier': {'서울': 1.10, '부산': 0.95, '대구': 0.90, '기타': 0.88},
+                'experience_bonus': 0.045,
+                'accident_penalty': 0.24,
+                'car_type_multiplier': {'경차': 0.80, '소형': 0.90, '준중형': 1.0, '중형': 1.14, '대형': 1.31, 'SUV': 1.20},
+                'coverage_options': ['기본', '표준', '고급', '프리미엄'],
+                'special_discount': '한화카드 할인 15%'
             }
         }
         
