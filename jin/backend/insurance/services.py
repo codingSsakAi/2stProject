@@ -1,77 +1,94 @@
 """
-RAG (Retrieval-Augmented Generation) 서비스
-보험 약관 문서의 벡터화, 검색, 생성 기능을 제공합니다.
+RAG 시스템 서비스
+문서 검색 및 응답 생성을 위한 RAG 시스템
 """
 
-import os
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
-import json
-import hashlib
-
-import pinecone
-import openai
+import os
+from typing import List, Dict, Any, Optional
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-
-# Upstage 임베딩 추가
+import pinecone
+from openai import OpenAI
 from langchain_upstage import UpstageEmbeddings
-
-from .models import PolicyDocument, InsuranceCompany
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Pinecone
+from langchain.chains import RetrievalQA
+from langchain_community.llms import OpenAI as LangChainOpenAI
+import PyPDF2
+from docx import Document
+import io
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
 
 class RAGService:
-    """통합 RAG 서비스 클래스"""
+    """RAG 시스템 서비스 클래스"""
 
     def __init__(self):
         """RAG 서비스 초기화"""
-        self.index_name = settings.PINECONE_INDEX_NAME
-        self.chunk_size = settings.CHUNK_SIZE
-        self.chunk_overlap = settings.CHUNK_OVERLAP
-        # Upstage 임베딩 모델명 및 차원 환경변수에서 읽기
-        self.embedding_model = getattr(
-            settings, "UPSTAGE_EMBEDDING_MODEL", "solar-embedding-1-large"
-        )
-        self.embedding_dimension = int(
-            getattr(settings, "UPSTAGE_EMBEDDING_DIMENSION", 4096)
-        )
-        # UpstageEmbeddings 인스턴스 생성
-        self.embedding_client = UpstageEmbeddings(
-            model=self.embedding_model, api_key=settings.UPSTAGE_API_KEY
-        )
-        # Pinecone 초기화
         self._initialize_pinecone()
-        # OpenAI 초기화 (LLM용)
         self._initialize_openai()
+        self._initialize_embeddings()
+        self._initialize_vectorstore()
 
     def _initialize_pinecone(self):
         """Pinecone 초기화"""
         try:
-            if not settings.PINECONE_API_KEY:
+            api_key = settings.PINECONE_API_KEY
+            environment = settings.PINECONE_ENVIRONMENT
+            index_name = settings.PINECONE_INDEX_NAME
+
+            if not api_key:
                 logger.warning("Pinecone API 키가 설정되지 않았습니다.")
+                self.pinecone_index = None
                 return
 
-            pinecone.init(
-                api_key=settings.PINECONE_API_KEY,
-                environment=settings.PINECONE_ENVIRONMENT,
-            )
+            # 여러 환경 시도
+            environments_to_try = [
+                environment,
+                "us-east-1-aws",
+                "us-west1-gcp",
+                "gcp-starter",
+            ]
 
-            # 인덱스가 존재하지 않으면 생성
-            if self.index_name not in pinecone.list_indexes():
-                pinecone.create_index(
-                    name=self.index_name,
-                    dimension=self.embedding_dimension,
-                    metric="cosine",
-                )
-                logger.info(f"Pinecone 인덱스 '{self.index_name}' 생성됨")
+            pinecone_initialized = False
+            for env in environments_to_try:
+                try:
+                    logger.info(f"Pinecone 환경 시도: {env}")
+                    pinecone.init(api_key=api_key, environment=env)
 
-            self.pinecone_index = pinecone.Index(self.index_name)
-            logger.info("Pinecone 초기화 완료")
+                    # 인덱스 목록 확인
+                    available_indexes = pinecone.list_indexes()
+                    logger.info(f"사용 가능한 Pinecone 인덱스: {available_indexes}")
+
+                    # 인덱스가 존재하지 않으면 생성
+                    if index_name not in available_indexes:
+                        try:
+                            pinecone.create_index(
+                                name=index_name,
+                                dimension=settings.EMBEDDING_DIMENSION,
+                                metric="cosine",
+                            )
+                            logger.info(f"Pinecone 인덱스 생성: {index_name}")
+                        except Exception as create_error:
+                            logger.error(f"Pinecone 인덱스 생성 실패: {create_error}")
+                            continue
+
+                    self.pinecone_index = pinecone.Index(index_name)
+                    logger.info(f"Pinecone 초기화 완료 (환경: {env})")
+                    pinecone_initialized = True
+                    break
+
+                except Exception as e:
+                    logger.warning(f"Pinecone 환경 {env} 연결 실패: {e}")
+                    continue
+
+            if not pinecone_initialized:
+                logger.error("모든 Pinecone 환경 연결 실패")
+                self.pinecone_index = None
 
         except Exception as e:
             logger.error(f"Pinecone 초기화 실패: {e}")
@@ -80,251 +97,200 @@ class RAGService:
     def _initialize_openai(self):
         """OpenAI 초기화"""
         try:
-            if not settings.OPENAI_API_KEY:
+            api_key = settings.OPENAI_API_KEY
+            if not api_key:
                 logger.warning("OpenAI API 키가 설정되지 않았습니다.")
+                self.openai_client = None
                 return
 
-            openai.api_key = settings.OPENAI_API_KEY
+            self.openai_client = OpenAI(api_key=api_key)
             logger.info("OpenAI 초기화 완료")
 
         except Exception as e:
             logger.error(f"OpenAI 초기화 실패: {e}")
+            self.openai_client = None
 
-    def chunk_text(self, text: str) -> List[str]:
-        """텍스트를 청크로 분할"""
-        if not text:
-            return []
-
-        chunks = []
-        start = 0
-
-        while start < len(text):
-            end = start + self.chunk_size
-
-            # 청크 끝에서 문장 경계 찾기
-            if end < len(text):
-                # 마침표, 느낌표, 물음표로 문장 경계 찾기
-                sentence_end = text.rfind(".", start, end)
-                if sentence_end == -1:
-                    sentence_end = text.rfind("!", start, end)
-                if sentence_end == -1:
-                    sentence_end = text.rfind("?", start, end)
-
-                if sentence_end > start:
-                    end = sentence_end + 1
-
-            chunk = text[start:end].strip()
-            if chunk:
-                chunks.append(chunk)
-
-            # 오버랩을 고려한 다음 시작점
-            start = end - self.chunk_overlap
-            if start >= len(text):
-                break
-
-        return chunks
-
-    def get_embedding(self, text: str) -> List[float]:
-        """텍스트의 임베딩 벡터 생성 (Upstage)"""
+    def _initialize_embeddings(self):
+        """임베딩 모델 초기화"""
         try:
-            # Upstage 임베딩 사용
-            embedding = self.embedding_client.embed_query(text)
-            return embedding
-        except Exception as e:
-            logger.error(f"임베딩 생성 실패(Upstage): {e}")
-            return []
+            api_key = settings.UPSTAGE_API_KEY
+            model_name = settings.UPSTAGE_EMBEDDING_MODEL
 
-    def upload_document(self, document: PolicyDocument) -> bool:
-        """문서를 Pinecone에 업로드"""
-        try:
-            if not self.pinecone_index:
-                logger.error("Pinecone 인덱스가 초기화되지 않았습니다.")
-                return False
+            if not api_key:
+                logger.warning("Upstage API 키가 설정되지 않았습니다.")
+                self.embeddings = None
+                return
 
-            # 문서 텍스트 읽기
-            text = self._read_document_text(document)
-            if not text:
-                logger.error(f"문서 텍스트를 읽을 수 없습니다: {document.id}")
-                return False
-
-            # 텍스트 청킹
-            chunks = self.chunk_text(text)
-            if not chunks:
-                logger.warning(f"문서에서 청크를 생성할 수 없습니다: {document.id}")
-                return False
-
-            # 벡터 생성 및 업로드
-            vectors = []
-            for i, chunk in enumerate(chunks):
-                # 임베딩 생성
-                embedding = self.get_embedding(chunk)
-                if not embedding:
-                    continue
-
-                # 벡터 ID 생성 (고유성 보장)
-                vector_id = f"{document.company.code}_{document.version}_{i}_{hashlib.md5(chunk.encode()).hexdigest()[:8]}"
-
-                # 메타데이터
-                metadata = {
-                    "company_code": document.company.code,
-                    "company_name": document.company.name,
-                    "document_type": document.document_type,
-                    "version": document.version,
-                    "chunk_index": i,
-                    "total_chunks": len(chunks),
-                    "text": chunk[:500],  # 검색용 텍스트 미리보기
-                    "document_id": str(document.id),
-                    "upload_date": (
-                        document.upload_date.isoformat()
-                        if document.upload_date
-                        else None
-                    ),
-                }
-
-                vectors.append((vector_id, embedding, metadata))
-
-            # Pinecone에 업로드
-            if vectors:
-                self.pinecone_index.upsert(vectors=vectors)
-                logger.info(f"문서 업로드 완료: {document.id}, {len(vectors)}개 벡터")
-
-                # 문서 상태 업데이트
-                document.pinecone_index_id = self.index_name
-                document.save(update_fields=["pinecone_index_id"])
-
-                return True
-
-            return False
+            self.embeddings = UpstageEmbeddings(model=model_name, api_key=api_key)
+            logger.info("Upstage 임베딩 초기화 완료")
 
         except Exception as e:
-            logger.error(f"문서 업로드 실패: {e}")
-            return False
+            logger.error(f"임베딩 초기화 실패: {e}")
+            self.embeddings = None
 
-    def _read_document_text(self, document: PolicyDocument) -> str:
-        """문서 텍스트 읽기"""
+    def _initialize_vectorstore(self):
+        """벡터 스토어 초기화"""
         try:
-            if document.document_path:
-                file_path = Path(settings.MEDIA_ROOT) / document.document_path
-                if file_path.exists():
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        return f.read()
+            if self.pinecone_index is None or self.embeddings is None:
+                logger.warning(
+                    "Pinecone 또는 임베딩이 초기화되지 않아 벡터 스토어를 생성할 수 없습니다."
+                )
+                self.vectorstore = None
+                return
 
-            # DOCX 파일이 없는 경우 PDF에서 텍스트 추출 시도
-            if hasattr(document, "pdf_path") and document.pdf_path:
-                return self._extract_pdf_text(document.pdf_path)
-
-            return ""
+            self.vectorstore = Pinecone.from_existing_index(
+                index_name=settings.PINECONE_INDEX_NAME, embedding=self.embeddings
+            )
+            logger.info("벡터 스토어 초기화 완료")
 
         except Exception as e:
-            logger.error(f"문서 텍스트 읽기 실패: {e}")
-            return ""
+            logger.error(f"벡터 스토어 초기화 실패: {e}")
+            self.vectorstore = None
 
-    def _extract_pdf_text(self, pdf_path: str) -> str:
-        """PDF에서 텍스트 추출"""
+    def _extract_text_from_pdf(self, file) -> str:
+        """PDF 파일에서 텍스트 추출"""
         try:
-            import fitz  # PyMuPDF
-
-            file_path = Path(settings.MEDIA_ROOT) / pdf_path
-            if not file_path.exists():
-                return ""
-
-            doc = fitz.open(str(file_path))
+            pdf_reader = PyPDF2.PdfReader(file)
             text = ""
-
-            for page in doc:
-                text += page.get_text()
-
-            doc.close()
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
             return text
-
         except Exception as e:
             logger.error(f"PDF 텍스트 추출 실패: {e}")
             return ""
 
-    def search_documents(
-        self, query: str, company_filter: str = None, top_k: int = 10
-    ) -> List[Dict[str, Any]]:
+    def _extract_text_from_docx(self, file) -> str:
+        """DOCX 파일에서 텍스트 추출"""
+        try:
+            doc = Document(file)
+            text = ""
+            for paragraph in doc.paragraphs:
+                text += paragraph.text + "\n"
+            return text
+        except Exception as e:
+            logger.error(f"DOCX 텍스트 추출 실패: {e}")
+            return ""
+
+    def _split_text(self, text: str) -> List[str]:
+        """텍스트를 청크로 분할"""
+        try:
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=settings.CHUNK_SIZE,
+                chunk_overlap=settings.CHUNK_OVERLAP,
+                length_function=len,
+            )
+            chunks = splitter.split_text(text)
+            return chunks
+        except Exception as e:
+            logger.error(f"텍스트 분할 실패: {e}")
+            return [text]
+
+    def upload_document(self, file) -> Dict[str, Any]:
+        """문서 업로드 및 벡터화"""
+        try:
+            if self.vectorstore is None:
+                return {
+                    "success": False,
+                    "error": "벡터 스토어가 초기화되지 않았습니다.",
+                }
+
+            # 파일 확장자 확인
+            file_extension = file.name.split(".")[-1].lower()
+
+            # 텍스트 추출
+            if file_extension == "pdf":
+                text = self._extract_text_from_pdf(file)
+            elif file_extension == "docx":
+                text = self._extract_text_from_docx(file)
+            else:
+                return {"success": False, "error": "지원하지 않는 파일 형식입니다."}
+
+            if not text.strip():
+                return {
+                    "success": False,
+                    "error": "파일에서 텍스트를 추출할 수 없습니다.",
+                }
+
+            # 텍스트 분할
+            chunks = self._split_text(text)
+
+            # 벡터 스토어에 추가
+            metadatas = [{"source": file.name, "chunk": i} for i in range(len(chunks))]
+            self.vectorstore.add_texts(texts=chunks, metadatas=metadatas)
+
+            return {
+                "success": True,
+                "filename": file.name,
+                "chunks_count": len(chunks),
+                "text_length": len(text),
+            }
+
+        except Exception as e:
+            logger.error(f"문서 업로드 실패: {e}")
+            return {"success": False, "error": str(e)}
+
+    def search_documents(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """문서 검색"""
         try:
-            if not self.pinecone_index:
-                logger.error("Pinecone 인덱스가 초기화되지 않았습니다.")
+            if self.vectorstore is None:
+                logger.warning(
+                    "벡터 스토어가 초기화되지 않아 검색을 수행할 수 없습니다."
+                )
                 return []
 
-            # 쿼리 임베딩 생성
-            query_embedding = self.get_embedding(query)
-            if not query_embedding:
-                return []
+            # 유사도 검색
+            docs = self.vectorstore.similarity_search(query, k=top_k)
 
-            # 필터 설정
-            filter_dict = {}
-            if company_filter:
-                filter_dict["company_code"] = company_filter
-
-            # Pinecone 검색
-            results = self.pinecone_index.query(
-                vector=query_embedding,
-                top_k=top_k,
-                include_metadata=True,
-                filter=filter_dict if filter_dict else None,
-            )
-
-            # 결과 정리
-            search_results = []
-            for match in results.matches:
-                search_results.append(
+            results = []
+            for doc in docs:
+                results.append(
                     {
-                        "id": match.id,
-                        "score": match.score,
-                        "metadata": match.metadata,
-                        "text": match.metadata.get("text", ""),
-                        "company_name": match.metadata.get("company_name", ""),
-                        "document_type": match.metadata.get("document_type", ""),
-                        "version": match.metadata.get("version", ""),
+                        "content": doc.page_content,
+                        "metadata": doc.metadata,
+                        "score": getattr(doc, "score", 0.0),
                     }
                 )
 
-            return search_results
+            return results
 
         except Exception as e:
             logger.error(f"문서 검색 실패: {e}")
             return []
 
-    def generate_response(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
-        """RAG 기반 응답 생성"""
+    def generate_response(self, query: str) -> str:
+        """응답 생성"""
         try:
-            if not openai.api_key:
-                return "OpenAI API 키가 설정되지 않았습니다."
+            if self.openai_client is None:
+                return "OpenAI 서비스가 초기화되지 않았습니다."
+
+            # 관련 문서 검색
+            relevant_docs = self.search_documents(query, top_k=3)
+
+            if not relevant_docs:
+                return "관련 문서를 찾을 수 없습니다."
 
             # 컨텍스트 구성
-            context_text = ""
-            for doc in context_docs:
-                context_text += f"문서: {doc['metadata'].get('company_name', '')}\n"
-                context_text += f"내용: {doc['metadata'].get('text', '')}\n\n"
+            context = "\n\n".join([doc["content"] for doc in relevant_docs])
 
             # 프롬프트 구성
             prompt = f"""
-당신은 자동차 보험 전문 상담사입니다. 다음 정보를 바탕으로 사용자의 질문에 답변해주세요.
-
-참고 문서:
-{context_text}
-
-사용자 질문: {query}
-
-답변은 다음 형식으로 작성해주세요:
-1. 질문에 대한 명확한 답변
-2. 관련 보험 약관 정보
-3. 추가 고려사항이나 주의사항
-
-답변:
-"""
+            다음 컨텍스트를 바탕으로 질문에 답변해주세요.
+            
+            컨텍스트:
+            {context}
+            
+            질문: {query}
+            
+            답변:
+            """
 
             # OpenAI API 호출
-            response = openai.ChatCompletion.create(
+            response = self.openai_client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
-                        "content": "당신은 자동차 보험 전문 상담사입니다. 정확하고 도움이 되는 답변을 제공하세요.",
+                        "content": "당신은 자동차 보험 전문 상담사입니다. 정확하고 도움이 되는 답변을 제공해주세요.",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -332,70 +298,57 @@ class RAGService:
                 temperature=settings.OPENAI_TEMPERATURE,
             )
 
-            return response.choices[0].message.content.strip()
+            return response.choices[0].message.content
 
         except Exception as e:
             logger.error(f"응답 생성 실패: {e}")
             return f"응답 생성 중 오류가 발생했습니다: {str(e)}"
 
-    def delete_document(self, document: PolicyDocument) -> bool:
+    def chat(self, message: str) -> str:
+        """채팅 응답"""
+        return self.generate_response(message)
+
+    def delete_document(self, document_id: str) -> Dict[str, Any]:
         """문서 삭제"""
         try:
-            if not self.pinecone_index:
-                return False
+            if self.pinecone_index is None:
+                return {"success": False, "error": "Pinecone이 초기화되지 않았습니다."}
 
-            # 해당 문서의 모든 벡터 삭제
-            filter_dict = {"document_id": str(document.id)}
+            # Pinecone에서 문서 삭제
+            self.pinecone_index.delete(ids=[document_id])
 
-            # 삭제할 벡터 ID 찾기
-            results = self.pinecone_index.query(
-                vector=[0] * self.embedding_dimension,  # 더미 벡터
-                top_k=1000,
-                include_metadata=True,
-                filter=filter_dict,
-            )
-
-            # 벡터 삭제
-            if results.matches:
-                vector_ids = [match.id for match in results.matches]
-                self.pinecone_index.delete(ids=vector_ids)
-                logger.info(f"문서 삭제 완료: {document.id}, {len(vector_ids)}개 벡터")
-
-            # 문서 상태 업데이트
-            document.pinecone_index_id = ""
-            document.save(update_fields=["pinecone_index_id"])
-
-            return True
+            return {"success": True, "message": "문서가 삭제되었습니다."}
 
         except Exception as e:
             logger.error(f"문서 삭제 실패: {e}")
-            return False
+            return {"success": False, "error": str(e)}
 
     def get_index_stats(self) -> Dict[str, Any]:
-        """인덱스 통계 정보"""
+        """인덱스 통계 조회"""
         try:
-            if not self.pinecone_index:
-                return {}
+            if self.pinecone_index is None:
+                return {
+                    "total_documents": 0,
+                    "total_companies": 0,
+                    "index_size": 0,
+                    "embedding_dimension": settings.EMBEDDING_DIMENSION,
+                }
 
-            stats = self.pinecone_index.describe_index_stats()
-
-            # 보험사별 문서 수 계산
-            company_stats = {}
-            if "namespaces" in stats:
-                for namespace, data in stats["namespaces"].items():
-                    company_stats[namespace] = data["vector_count"]
+            # Pinecone 인덱스 통계
+            index_stats = self.pinecone_index.describe_index_stats()
 
             return {
-                "total_vectors": stats.get("total_vector_count", 0),
-                "dimension": stats.get("dimension", 0),
-                "company_stats": company_stats,
-                "index_name": self.index_name,
+                "total_documents": index_stats.get("total_vector_count", 0),
+                "total_companies": 0,  # TODO: 보험사 수 계산
+                "index_size": index_stats.get("dimension", 0),
+                "embedding_dimension": settings.EMBEDDING_DIMENSION,
             }
 
         except Exception as e:
             logger.error(f"인덱스 통계 조회 실패: {e}")
-            return {}
-
-
-# 싱글톤 인스턴스
-rag_service = RAGService()
+            return {
+                "total_documents": 0,
+                "total_companies": 0,
+                "index_size": 0,
+                "embedding_dimension": settings.EMBEDDING_DIMENSION,
+            }

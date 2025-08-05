@@ -19,7 +19,7 @@ from .models import (
     ChatSession,
     ChatMessage,
 )
-from .services import rag_service
+# from .services import rag_service  # 임시로 주석 처리
 
 
 @admin.register(InsuranceCompany)
@@ -159,25 +159,7 @@ class PolicyDocumentAdmin(admin.ModelAdmin):
 
     def upload_to_pinecone(self, request, queryset):
         """선택된 문서를 Pinecone에 업로드"""
-        success_count = 0
-        error_count = 0
-        
-        for document in queryset:
-            try:
-                if rag_service.upload_document(document):
-                    success_count += 1
-                    messages.success(request, f"업로드 성공: {document.get_file_name()}")
-                else:
-                    error_count += 1
-                    messages.error(request, f"업로드 실패: {document.get_file_name()}")
-            except Exception as e:
-                error_count += 1
-                messages.error(request, f"업로드 오류: {document.get_file_name()} - {str(e)}")
-        
-        if success_count > 0:
-            messages.success(request, f"{success_count}개 문서가 성공적으로 업로드되었습니다.")
-        if error_count > 0:
-            messages.warning(request, f"{error_count}개 문서 업로드에 실패했습니다.")
+        messages.info(request, "Pinecone 업로드 기능은 현재 비활성화되어 있습니다.")
     
     upload_to_pinecone.short_description = "Pinecone에 문서 업로드"
     
@@ -190,16 +172,7 @@ class PolicyDocumentAdmin(admin.ModelAdmin):
     
     def get_index_stats(self, request, queryset):
         """인덱스 통계 정보"""
-        try:
-            stats = rag_service.get_index_stats()
-            if stats:
-                messages.info(request, f"인덱스 통계: 총 {stats.get('total_vectors', 0)}개 벡터")
-                for company, count in stats.get('company_stats', {}).items():
-                    messages.info(request, f"- {company}: {count}개 벡터")
-            else:
-                messages.warning(request, "인덱스 통계를 가져올 수 없습니다.")
-        except Exception as e:
-            messages.error(request, f"통계 조회 실패: {str(e)}")
+        messages.info(request, "인덱스 통계 기능은 현재 비활성화되어 있습니다.")
     
     get_index_stats.short_description = "인덱스 통계 조회"
 
