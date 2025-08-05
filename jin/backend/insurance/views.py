@@ -19,6 +19,14 @@ from rest_framework import status
 from .services import RAGService
 from .models import PolicyDocument, InsuranceCompany
 
+from django.contrib.auth.decorators import user_passes_test
+import os
+from pathlib import Path
+from django.conf import settings
+import PyPDF2
+from docx import Document
+from werkzeug.utils import secure_filename
+
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
@@ -293,3 +301,152 @@ def delete_document_api(request):
             {"error": f"문서 삭제 중 오류가 발생했습니다: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+def admin_required(view_func):
+    """관리자 권한 확인 데코레이터"""
+    return user_passes_test(lambda u: u.is_staff)(view_func)
+
+
+@admin_required
+def admin_upload_document(request):
+    """관리자 문서 업로드 페이지"""
+    if request.method == "POST":
+        try:
+            company = request.POST.get("company")
+            document_file = request.FILES.get("document")
+            title = request.POST.get("title")
+            document_type = request.POST.get("document_type")
+            description = request.POST.get("description", "")
+            tags = request.POST.get("tags", "")
+
+            if not all([company, document_file, title, document_type]):
+                return JsonResponse(
+                    {"success": False, "error": "필수 정보가 누락되었습니다."}
+                )
+
+            # 파일 저장 및 처리
+            result = process_document_upload(
+                company, document_file, title, document_type, description, tags
+            )
+
+            return JsonResponse(result)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    # GET 요청: 업로드 페이지 표시
+    insurance_companies = [
+        "삼성화재",
+        "현대해상",
+        "KB손해보험",
+        "메리츠화재",
+        "DB손해보험",
+        "롯데손해보험",
+        "하나손해보험",
+        "흥국화재",
+        "AXA손해보험",
+        "MG손해보험",
+        "캐롯손해보험",
+        "한화손해보험",
+    ]
+
+    context = {"insurance_companies": insurance_companies, "title": "문서 업로드"}
+
+    return render(request, "insurance/admin_upload.jinja.html", context)
+
+
+def process_document_upload(company, file, title, document_type, description, tags):
+    """문서 업로드 처리"""
+    try:
+        # 1. PDF 폴더에 파일 저장
+        pdf_dir = Path(settings.BASE_DIR) / "policy_documents" / "pdf" / company
+        pdf_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = secure_filename(file.name)
+        pdf_path = pdf_dir / filename
+
+        with open(pdf_path, "wb") as f:
+            for chunk in file.chunks():
+                f.write(chunk)
+
+        # 2. PDF → DOCX 변환
+        docx_dir = Path(settings.BASE_DIR) / "policy_documents" / "docx" / company
+        docx_dir.mkdir(parents=True, exist_ok=True)
+
+        docx_filename = filename.replace(".pdf", ".docx")
+        docx_path = docx_dir / docx_filename
+
+        # PDF → DOCX 변환
+        convert_pdf_to_docx(pdf_path, docx_path)
+
+        # 3. 데이터베이스에 문서 정보 저장
+        document = PolicyDocument.objects.create(
+            title=title,
+            company=InsuranceCompany.objects.get(name=company),
+            document_type=document_type,
+            description=description,
+            tags=tags,
+            file_path=str(docx_path),
+            status="approved",
+        )
+
+        # 4. Pinecone에 업로드
+        rag_service = RAGService()
+        upload_result = rag_service.upload_document_with_metadata(
+            docx_path, company, document_type, title, tags
+        )
+
+        return {
+            "success": True,
+            "message": f"문서 업로드 완료: {title}",
+            "document_id": document.id,
+            "pinecone_result": upload_result,
+        }
+
+    except Exception as e:
+        logger.error(f"문서 업로드 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def convert_pdf_to_docx(pdf_path, docx_path):
+    """PDF를 DOCX로 변환"""
+    try:
+        # PDF 텍스트 추출
+        pdf_reader = PyPDF2.PdfReader(pdf_path)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+
+        # DOCX 생성
+        doc = Document()
+        doc.add_paragraph(text)
+        doc.save(docx_path)
+
+        logger.info(f"PDF → DOCX 변환 완료: {pdf_path} → {docx_path}")
+
+    except Exception as e:
+        logger.error(f"PDF → DOCX 변환 실패: {e}")
+        raise e
+
+@admin_required
+def admin_document_list(request):
+    """관리자 문서 목록 페이지"""
+    documents = PolicyDocument.objects.all().order_by('-upload_date')
+    context = {
+        'documents': documents,
+        'title': '문서 관리'
+    }
+    return render(request, 'insurance/admin_documents.jinja.html', context)
+
+@admin_required
+def admin_pinecone_management(request):
+    """관리자 Pinecone 관리 페이지"""
+    rag_service = RAGService()
+    stats = rag_service.get_company_document_stats()
+    
+    context = {
+        'stats': stats,
+        'title': 'Pinecone 관리'
+    }
+    return render(request, 'insurance/admin_pinecone.jinja.html', context)

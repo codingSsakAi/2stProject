@@ -1,0 +1,64 @@
+{% extends "base.jinja.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-upload me-2"></i>문서 업로드
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- 보험사 선택 -->
+                        <div class="mb-3">
+                            <label for="company" class="form-label">보험사 선택 *</label>
+                            <select class="form-select" id="company" name="company" required>
+                                <option value="">보험사를 선택하세요</option>
+                                {% for company in insurance_companies %}
+                                <option value="{{ company }}">{{ company }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- 파일 업로드 -->
+                        <div class="mb-3">
+                            <label for="document" class="form-label">파일 선택 *</label>
+                            <input type="file" class="form-control" id="document" name="document" 
+                                   accept=".pdf,.docx" required>
+                            <div class="form-text">PDF 또는 DOCX 파일을 선택하세요</div>
+                        </div>
+                        
+                        <!-- 문서 제목 -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">문서 제목 *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        
+                        <!-- 문서 타입 -->
+                        <div class="mb-3">
+                            <label for="document_type" class="form-label">문서 타입 *</label>
+                            <select class="form-select" id="document_type" name="document_type" required>
+                                <option value="">문서 타입을 선택하세요</option>
+                                <option value="약관">약관</option>
+                                <option value="안내서">안내서</option>
+                                <option value="특별약관">특별약관</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 설명 -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">설명</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        
+                        <!-- 태그 -->
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">태그 (쉼표로 구분)</label>
+                            <input type="text" class="form-control" id="tags" name="tags" 

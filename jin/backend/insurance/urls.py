@@ -202,4 +202,9 @@ urlpatterns = [
     path("compare/", views.compare_insurance, name="compare_insurance"),
     path("about/", views.about_page, name="about_page"),
     path("personalized-chat/", views.personalized_chat, name="personalized_chat"),
+
+    # 관리자 전용 URL 패턴
+    path('admin/upload/', views.admin_upload_document, name='admin_upload_document'),
+    path('admin/documents/', views.admin_document_list, name='admin_document_list'),
+    path('admin/pinecone/', views.admin_pinecone_management, name='admin_pinecone_management'),
 ]
