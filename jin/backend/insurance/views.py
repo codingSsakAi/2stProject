@@ -24,46 +24,22 @@ logger = logging.getLogger(__name__)
 
 
 def main_page(request):
-    """메인 페이지 - 보험 추천 시스템 홈"""
+    """메인 페이지 - AI 챗봇 중심 보험 추천 시스템 홈"""
     try:
         context = {
-            'title': '자동차 보험 추천 시스템',
-            'description': 'AI 기반 맞춤형 자동차 보험 추천 서비스',
-            'features': [
-                {
-                    'title': 'AI 상담사',
-                    'icon': '🤖',
-                    'description': 'LangChain 기반 지능형 보험 상담',
-                    'url': '/insurance/langchain-dashboard/'
-                },
-                {
-                    'title': 'ML 추천',
-                    'icon': '🎯',
-                    'description': '머신러닝 기반 맞춤형 보험 추천',
-                    'url': '/insurance/ml-dashboard/'
-                },
-                {
-                    'title': 'RAG 시스템',
-                    'icon': '📊',
-                    'description': '보험 약관 검색 및 분석',
-                    'url': '/insurance/rag-dashboard/'
-                },
-                {
-                    'title': '보험 비교',
-                    'icon': '📋',
-                    'description': '다양한 보험 상품 비교 분석',
-                    'url': '/insurance/compare/'
-                }
-            ]
+            "title": "AI 챗봇 자동차 보험 추천",
+            "description": "개인화된 AI 챗봇으로 최적의 자동차 보험을 찾아보세요",
         }
-        
-        return render(request, 'insurance/main_page.jinja.html', context)
-        
+
+        return render(request, "insurance/main_page.jinja.html", context)
+
     except Exception as e:
         logger.error(f"메인 페이지 로드 실패: {e}")
-        return render(request, 'insurance/main_page.jinja.html', {
-            'error': f'페이지 로드 중 오류가 발생했습니다: {str(e)}'
-        })
+        return render(
+            request,
+            "insurance/main_page.jinja.html",
+            {"error": f"페이지 로드 중 오류가 발생했습니다: {str(e)}"},
+        )
 
 
 def rag_dashboard(request):
@@ -87,34 +63,38 @@ def compare_insurance(request):
     """보험 비교 페이지"""
     try:
         context = {
-            'title': '보험 상품 비교',
-            'description': '다양한 자동차 보험 상품을 비교해보세요'
+            "title": "보험 상품 비교",
+            "description": "다양한 자동차 보험 상품을 비교해보세요",
         }
-        
-        return render(request, 'insurance/compare.jinja.html', context)
-        
+
+        return render(request, "insurance/compare.jinja.html", context)
+
     except Exception as e:
         logger.error(f"보험 비교 페이지 로드 실패: {e}")
-        return render(request, 'insurance/compare.jinja.html', {
-            'error': f'페이지 로드 중 오류가 발생했습니다: {str(e)}'
-        })
+        return render(
+            request,
+            "insurance/compare.jinja.html",
+            {"error": f"페이지 로드 중 오류가 발생했습니다: {str(e)}"},
+        )
 
 
 def about_page(request):
     """소개 페이지"""
     try:
         context = {
-            'title': '서비스 소개',
-            'description': 'AI 기반 자동차 보험 추천 시스템에 대해 알아보세요'
+            "title": "서비스 소개",
+            "description": "AI 기반 자동차 보험 추천 시스템에 대해 알아보세요",
         }
-        
-        return render(request, 'insurance/about.jinja.html', context)
-        
+
+        return render(request, "insurance/about.jinja.html", context)
+
     except Exception as e:
         logger.error(f"소개 페이지 로드 실패: {e}")
-        return render(request, 'insurance/about.jinja.html', {
-            'error': f'페이지 로드 중 오류가 발생했습니다: {str(e)}'
-        })
+        return render(
+            request,
+            "insurance/about.jinja.html",
+            {"error": f"페이지 로드 중 오류가 발생했습니다: {str(e)}"},
+        )
 
 
 @api_view(["POST"])

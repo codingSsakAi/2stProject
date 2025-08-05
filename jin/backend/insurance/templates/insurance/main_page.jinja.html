@@ -70,15 +70,15 @@
             opacity: 0.9;
         }
 
-        .features-section {
+        .chat-section {
             padding: 80px 0;
             background: white;
         }
 
-        .feature-card {
+        .chat-card {
             background: white;
             border-radius: 15px;
-            padding: 30px;
+            padding: 40px;
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -86,17 +86,18 @@
             text-decoration: none;
             color: var(--text-color);
             display: block;
+            text-align: center;
         }
 
-        .feature-card:hover {
+        .chat-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 20px 40px rgba(0,0,0,0.15);
             color: var(--text-color);
             text-decoration: none;
         }
 
-        .feature-icon {
-            font-size: 3rem;
+        .chat-icon {
+            font-size: 4rem;
             margin-bottom: 20px;
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             -webkit-background-clip: text;
@@ -104,16 +105,38 @@
             background-clip: text;
         }
 
-        .feature-title {
-            font-size: 1.5rem;
+        .chat-title {
+            font-size: 2rem;
             font-weight: bold;
             margin-bottom: 15px;
             color: var(--text-color);
         }
 
-        .feature-description {
+        .chat-description {
             color: #666;
             line-height: 1.6;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+
+        .btn-chat {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-chat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            color: white;
+            text-decoration: none;
         }
 
         .cta-section {
@@ -162,24 +185,23 @@
             text-align: center;
         }
 
-        .stats-section {
+        .features-section {
             padding: 60px 0;
             background: var(--light-bg);
         }
 
-        .stat-item {
+        .feature-item {
             text-align: center;
             padding: 20px;
         }
 
-        .stat-number {
+        .feature-icon {
             font-size: 2.5rem;
-            font-weight: bold;
             color: var(--primary-color);
             margin-bottom: 10px;
         }
 
-        .stat-label {
+        .feature-label {
             color: #666;
             font-size: 1.1rem;
         }
@@ -215,13 +237,7 @@
                         <a class="nav-link" href="/insurance/"><i class="fas fa-home me-1"></i>홈</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/insurance/langchain-dashboard/"><i class="fas fa-robot me-1"></i>AI 상담</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/insurance/ml-dashboard/"><i class="fas fa-chart-line me-1"></i>ML 추천</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/insurance/compare/"><i class="fas fa-balance-scale me-1"></i>보험 비교</a>
+                        <a class="nav-link" href="/insurance/langchain-dashboard/"><i class="fas fa-robot me-1"></i>AI 챗봇</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/insurance/about/"><i class="fas fa-info-circle me-1"></i>소개</a>
@@ -236,57 +252,55 @@
         <div class="container">
             <h1 class="hero-title">{{ title }}</h1>
             <p class="hero-subtitle">{{ description }}</p>
-            <a href="#features" class="btn-custom">
-                <i class="fas fa-rocket me-2"></i>시작하기
+            <a href="#chat" class="btn-custom">
+                <i class="fas fa-rocket me-2"></i>AI 챗봇 시작하기
             </a>
         </div>
     </section>
 
-    <!-- 통계 섹션 -->
-    <section class="stats-section">
+    <!-- 기능 섹션 -->
+    <section class="features-section">
         <div class="container">
             <div class="row">
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-item">
-                        <div class="stat-number">🤖</div>
-                        <div class="stat-label">AI 상담사</div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-item">
+                        <div class="feature-icon">🤖</div>
+                        <div class="feature-label">AI 상담사</div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-item">
-                        <div class="stat-number">🎯</div>
-                        <div class="stat-label">ML 추천</div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-item">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-label">개인화 추천</div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-item">
-                        <div class="stat-number">📊</div>
-                        <div class="stat-label">RAG 시스템</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-item">
-                        <div class="stat-number">📋</div>
-                        <div class="stat-label">보험 비교</div>
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-item">
+                        <div class="feature-icon">💰</div>
+                        <div class="feature-label">12개 보험사</div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- 기능 섹션 -->
-    <section class="features-section" id="features">
+    <!-- 챗봇 섹션 -->
+    <section class="chat-section" id="chat">
         <div class="container">
-            <div class="row">
-                {% for feature in features %}
-                <div class="col-lg-6 col-md-6 mb-4">
-                    <a href="{{ feature.url }}" class="feature-card">
-                        <div class="feature-icon">{{ feature.icon }}</div>
-                        <h3 class="feature-title">{{ feature.title }}</h3>
-                        <p class="feature-description">{{ feature.description }}</p>
+            <div class="row justify-content-center">
+                <div class="col-lg-8 col-md-10">
+                    <a href="/insurance/langchain-dashboard/" class="chat-card">
+                        <div class="chat-icon">💬</div>
+                        <h3 class="chat-title">AI 챗봇 상담</h3>
+                        <p class="chat-description">
+                            개인화된 자동차 보험 추천을 받아보세요.<br>
+                            AI가 당신의 상황에 맞는 최적의 보험을 추천해드립니다.
+                        </p>
+                        <div class="btn-chat">
+                            <i class="fas fa-comments me-2"></i>챗봇 시작하기
+                        </div>
                     </a>
                 </div>
-                {% endfor %}
             </div>
         </div>
     </section>
@@ -296,12 +310,9 @@
         <div class="container">
             <h2 class="cta-title">지금 시작해보세요!</h2>
             <p class="cta-description">AI 기반 맞춤형 자동차 보험 추천으로 최적의 보험을 찾아보세요.</p>
-            <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <div class="d-flex justify-content-center">
                 <a href="/insurance/langchain-dashboard/" class="btn-custom">
-                    <i class="fas fa-robot me-2"></i>AI 상담 시작
-                </a>
-                <a href="/insurance/ml-dashboard/" class="btn-custom">
-                    <i class="fas fa-chart-line me-2"></i>ML 추천 받기
+                    <i class="fas fa-robot me-2"></i>AI 챗봇 시작
                 </a>
             </div>
         </div>
@@ -317,7 +328,7 @@
                 </div>
                 <div class="col-md-6 text-md-end">
                     <h6>기술 스택</h6>
-                    <p>Django • LangChain • ML • RAG • Bootstrap</p>
+                    <p>Django • LangChain • AI 챗봇 • Bootstrap</p>
                 </div>
             </div>
             <hr class="my-4">
