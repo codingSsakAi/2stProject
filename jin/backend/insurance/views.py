@@ -24,45 +24,46 @@ logger = logging.getLogger(__name__)
 
 
 def main_page(request):
-    """메인 페이지"""
+    """메인 페이지 - 보험 추천 시스템 홈"""
     try:
-        # 시스템 상태 정보
-        rag_service = RAGService()
-        stats = rag_service.get_index_stats()
-
         context = {
-            "title": "자동차 보험 추천 시스템",
-            "description": "LLM-RAG 기반 지능형 보험 추천 시스템",
-            "stats": stats,
-            "features": [
+            'title': '자동차 보험 추천 시스템',
+            'description': 'AI 기반 맞춤형 자동차 보험 추천 서비스',
+            'features': [
                 {
-                    "title": "🤖 AI 상담사",
-                    "description": "LangChain 기반 지능형 상담 서비스",
-                    "url": "/insurance/langchain-dashboard/",
+                    'title': '🤖 AI 상담사',
+                    'description': 'LangChain 기반 지능형 보험 상담',
+                    'icon': 'chat-bubble',
+                    'url': '/insurance/langchain-dashboard/'
                 },
                 {
-                    "title": "📊 RAG 시스템",
-                    "description": "문서 기반 질의응답 시스템",
-                    "url": "/insurance/rag-dashboard/",
+                    'title': '🎯 ML 추천',
+                    'description': '머신러닝 기반 맞춤형 보험 추천',
+                    'icon': 'target',
+                    'url': '/insurance/ml-dashboard/'
                 },
                 {
-                    "title": "🎯 ML 추천",
-                    "description": "머신러닝 기반 맞춤형 추천",
-                    "url": "/insurance/ml-dashboard/",
+                    'title': '📊 RAG 시스템',
+                    'description': '보험 약관 검색 및 분석',
+                    'icon': 'search',
+                    'url': '/insurance/rag-dashboard/'
                 },
                 {
-                    "title": "📋 관리자",
-                    "description": "시스템 관리 및 데이터 관리",
-                    "url": "/admin/",
-                },
-            ],
+                    'title': '📋 보험 비교',
+                    'description': '다양한 보험 상품 비교 분석',
+                    'icon': 'compare',
+                    'url': '/insurance/compare/'
+                }
+            ]
         }
-
-        return render(request, "insurance/main_page.html", context)
-
+        
+        return render(request, 'insurance/main_page.jinja.html', context)
+        
     except Exception as e:
         logger.error(f"메인 페이지 로드 실패: {e}")
-        return HttpResponse(f"페이지 로드 중 오류가 발생했습니다: {str(e)}", status=500)
+        return render(request, 'insurance/main_page.jinja.html', {
+            'error': f'페이지 로드 중 오류가 발생했습니다: {str(e)}'
+        })
 
 
 def rag_dashboard(request):
@@ -80,6 +81,40 @@ def rag_dashboard(request):
         return HttpResponse(
             f"대시보드 로드 중 오류가 발생했습니다: {str(e)}", status=500
         )
+
+
+def compare_insurance(request):
+    """보험 비교 페이지"""
+    try:
+        context = {
+            'title': '보험 상품 비교',
+            'description': '다양한 자동차 보험 상품을 비교해보세요'
+        }
+        
+        return render(request, 'insurance/compare.jinja.html', context)
+        
+    except Exception as e:
+        logger.error(f"보험 비교 페이지 로드 실패: {e}")
+        return render(request, 'insurance/compare.jinja.html', {
+            'error': f'페이지 로드 중 오류가 발생했습니다: {str(e)}'
+        })
+
+
+def about_page(request):
+    """소개 페이지"""
+    try:
+        context = {
+            'title': '서비스 소개',
+            'description': 'AI 기반 자동차 보험 추천 시스템에 대해 알아보세요'
+        }
+        
+        return render(request, 'insurance/about.jinja.html', context)
+        
+    except Exception as e:
+        logger.error(f"소개 페이지 로드 실패: {e}")
+        return render(request, 'insurance/about.jinja.html', {
+            'error': f'페이지 로드 중 오류가 발생했습니다: {str(e)}'
+        })
 
 
 @api_view(["POST"])

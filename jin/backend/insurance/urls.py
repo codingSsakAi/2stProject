@@ -174,4 +174,8 @@ urlpatterns = [
     ),
     # RAG 대시보드
     path("rag-dashboard/", views.rag_dashboard, name="rag_dashboard"),
+    # 프론트엔드 페이지들
+    path("", views.main_page, name="main_page"),
+    path("compare/", views.compare_insurance, name="compare_insurance"),
+    path("about/", views.about_page, name="about_page"),
 ]
