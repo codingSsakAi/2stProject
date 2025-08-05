@@ -1,300 +1,261 @@
 """
-RAG 시스템 API 뷰
-문서 검색, 응답 생성, 관리 기능을 제공합니다.
+Insurance 앱 뷰
+RAG 시스템 및 보험 추천 시스템을 위한 뷰
 """
 
+import logging
+import json
+from typing import Dict, Any, List
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
 from django.conf import settings
-import json
-import logging
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
 
-from .services import rag_service
+from .services import RAGService
 from .models import PolicyDocument, InsuranceCompany
 
+# 로깅 설정
 logger = logging.getLogger(__name__)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def search_documents_api(request):
-    """문서 검색 API"""
+def main_page(request):
+    """메인 페이지"""
     try:
-        data = json.loads(request.body)
-        query = data.get('query', '')
-        company_filter = data.get('company_filter', None)
-        top_k = data.get('top_k', 10)
-        
-        if not query:
-            return JsonResponse({
-                'success': False,
-                'error': '검색어를 입력해주세요.'
-            })
-        
-        # 문서 검색
-        results = rag_service.search_documents(
-            query=query,
-            company_filter=company_filter,
-            top_k=top_k
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'results': results,
-            'query': query,
-            'total_results': len(results)
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': '잘못된 JSON 형식입니다.'
-        })
+        # 시스템 상태 정보
+        rag_service = RAGService()
+        stats = rag_service.get_index_stats()
+
+        context = {
+            "title": "자동차 보험 추천 시스템",
+            "description": "LLM-RAG 기반 지능형 보험 추천 시스템",
+            "stats": stats,
+            "features": [
+                {
+                    "title": "🤖 AI 상담사",
+                    "description": "LangChain 기반 지능형 상담 서비스",
+                    "url": "/insurance/langchain-dashboard/",
+                },
+                {
+                    "title": "📊 RAG 시스템",
+                    "description": "문서 기반 질의응답 시스템",
+                    "url": "/insurance/rag-dashboard/",
+                },
+                {
+                    "title": "🎯 ML 추천",
+                    "description": "머신러닝 기반 맞춤형 추천",
+                    "url": "/insurance/ml-dashboard/",
+                },
+                {
+                    "title": "📋 관리자",
+                    "description": "시스템 관리 및 데이터 관리",
+                    "url": "/admin/",
+                },
+            ],
+        }
+
+        return render(request, "insurance/main_page.html", context)
+
     except Exception as e:
-        logger.error(f"문서 검색 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': f'검색 중 오류가 발생했습니다: {str(e)}'
-        })
+        logger.error(f"메인 페이지 로드 실패: {e}")
+        return HttpResponse(f"페이지 로드 중 오류가 발생했습니다: {str(e)}", status=500)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def generate_response_api(request):
-    """RAG 응답 생성 API"""
-    try:
-        data = json.loads(request.body)
-        query = data.get('query', '')
-        context_docs = data.get('context_docs', [])
-        
-        if not query:
-            return JsonResponse({
-                'success': False,
-                'error': '질문을 입력해주세요.'
-            })
-        
-        # 응답 생성
-        response = rag_service.generate_response(query, context_docs)
-        
-        return JsonResponse({
-            'success': True,
-            'response': response,
-            'query': query
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': '잘못된 JSON 형식입니다.'
-        })
-    except Exception as e:
-        logger.error(f"응답 생성 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': f'응답 생성 중 오류가 발생했습니다: {str(e)}'
-        })
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def chat_api(request):
-    """통합 채팅 API (검색 + 응답 생성)"""
-    try:
-        data = json.loads(request.body)
-        query = data.get('query', '')
-        company_filter = data.get('company_filter', None)
-        
-        if not query:
-            return JsonResponse({
-                'success': False,
-                'error': '질문을 입력해주세요.'
-            })
-        
-        # 1단계: 관련 문서 검색
-        search_results = rag_service.search_documents(
-            query=query,
-            company_filter=company_filter,
-            top_k=5
-        )
-        
-        if not search_results:
-            return JsonResponse({
-                'success': False,
-                'error': '관련 문서를 찾을 수 없습니다.'
-            })
-        
-        # 2단계: 응답 생성
-        response = rag_service.generate_response(query, search_results)
-        
-        return JsonResponse({
-            'success': True,
-            'response': response,
-            'query': query,
-            'context_docs': search_results,
-            'total_context_docs': len(search_results)
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': '잘못된 JSON 형식입니다.'
-        })
-    except Exception as e:
-        logger.error(f"채팅 API 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': f'처리 중 오류가 발생했습니다: {str(e)}'
-        })
-
-
-@login_required
 def rag_dashboard(request):
     """RAG 대시보드"""
     try:
-        # 인덱스 통계
+        rag_service = RAGService()
         stats = rag_service.get_index_stats()
-        
-        # 보험사 목록
-        companies = InsuranceCompany.objects.filter(is_active=True)
-        
-        # 최근 업로드된 문서
-        recent_documents = PolicyDocument.objects.filter(
-            is_active=True
-        ).order_by('-upload_date')[:10]
-        
-        context = {
-            'stats': stats,
-            'companies': companies,
-            'recent_documents': recent_documents,
-            'total_documents': PolicyDocument.objects.filter(is_active=True).count(),
-            'total_companies': companies.count(),
-        }
-        
-        return render(request, 'insurance/rag_dashboard.html', context)
-        
+
+        context = {"title": "RAG 시스템 대시보드", "stats": stats}
+
+        return render(request, "insurance/rag_dashboard.html", context)
+
     except Exception as e:
-        logger.error(f"RAG 대시보드 오류: {e}")
-        return render(request, 'insurance/rag_dashboard.html', {
-            'error': f'대시보드 로딩 중 오류가 발생했습니다: {str(e)}'
-        })
+        logger.error(f"RAG 대시보드 로드 실패: {e}")
+        return HttpResponse(
+            f"대시보드 로드 중 오류가 발생했습니다: {str(e)}", status=500
+        )
 
 
-@csrf_exempt
-@require_http_methods(["GET"])
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def search_documents_api(request):
+    """문서 검색 API"""
+    try:
+        data = request.data
+        query = data.get("query", "").strip()
+
+        if not query:
+            return Response(
+                {"error": "검색어가 비어있습니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        rag_service = RAGService()
+        results = rag_service.search_documents(query, top_k=5)
+
+        return Response({"success": True, "query": query, "results": results})
+
+    except Exception as e:
+        logger.error(f"문서 검색 실패: {e}")
+        return Response(
+            {"error": f"검색 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def generate_response_api(request):
+    """응답 생성 API"""
+    try:
+        data = request.data
+        query = data.get("query", "").strip()
+
+        if not query:
+            return Response(
+                {"error": "질문이 비어있습니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        rag_service = RAGService()
+        response = rag_service.generate_response(query)
+
+        return Response({"success": True, "query": query, "response": response})
+
+    except Exception as e:
+        logger.error(f"응답 생성 실패: {e}")
+        return Response(
+            {"error": f"응답 생성 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def chat_api(request):
+    """채팅 API"""
+    try:
+        data = request.data
+        message = data.get("message", "").strip()
+
+        if not message:
+            return Response(
+                {"error": "메시지가 비어있습니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        rag_service = RAGService()
+        response = rag_service.chat(message)
+
+        return Response({"success": True, "message": message, "response": response})
+
+    except Exception as e:
+        logger.error(f"채팅 실패: {e}")
+        return Response(
+            {"error": f"채팅 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def get_index_stats_api(request):
     """인덱스 통계 API"""
     try:
+        rag_service = RAGService()
         stats = rag_service.get_index_stats()
-        
-        return JsonResponse({
-            'success': True,
-            'stats': stats
-        })
-        
+
+        return Response({"success": True, "stats": stats})
+
     except Exception as e:
-        logger.error(f"인덱스 통계 조회 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': f'통계 조회 중 오류가 발생했습니다: {str(e)}'
-        })
+        logger.error(f"통계 조회 실패: {e}")
+        return Response(
+            {"error": f"통계 조회 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def upload_document_api(request):
     """문서 업로드 API"""
     try:
-        data = json.loads(request.body)
-        document_id = data.get('document_id')
-        
-        if not document_id:
-            return JsonResponse({
-                'success': False,
-                'error': '문서 ID가 필요합니다.'
-            })
-        
-        try:
-            document = PolicyDocument.objects.get(id=document_id)
-        except PolicyDocument.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '문서를 찾을 수 없습니다.'
-            })
-        
-        # Pinecone에 업로드
-        success = rag_service.upload_document(document)
-        
-        if success:
-            return JsonResponse({
-                'success': True,
-                'message': f'문서가 성공적으로 업로드되었습니다: {document.get_file_name()}'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': f'문서 업로드에 실패했습니다: {document.get_file_name()}'
-            })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': '잘못된 JSON 형식입니다.'
-        })
+        if "file" not in request.FILES:
+            return Response(
+                {"error": "파일이 업로드되지 않았습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES["file"]
+
+        # 파일 크기 검증
+        if file.size > settings.MAX_UPLOAD_SIZE:
+            return Response(
+                {
+                    "error": f"파일 크기가 너무 큽니다. 최대 {settings.MAX_UPLOAD_SIZE} bytes"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 파일 확장자 검증
+        file_extension = file.name.split(".")[-1].lower()
+        if file_extension not in settings.ALLOWED_FILE_TYPES:
+            return Response(
+                {
+                    "error": f'지원하지 않는 파일 형식입니다. 지원 형식: {", ".join(settings.ALLOWED_FILE_TYPES)}'
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rag_service = RAGService()
+        result = rag_service.upload_document(file)
+
+        return Response(
+            {
+                "success": True,
+                "message": "문서가 성공적으로 업로드되었습니다.",
+                "result": result,
+            }
+        )
+
     except Exception as e:
-        logger.error(f"문서 업로드 API 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': f'업로드 중 오류가 발생했습니다: {str(e)}'
-        })
+        logger.error(f"문서 업로드 실패: {e}")
+        return Response(
+            {"error": f"문서 업로드 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def delete_document_api(request):
     """문서 삭제 API"""
     try:
-        data = json.loads(request.body)
-        document_id = data.get('document_id')
-        
+        data = request.data
+        document_id = data.get("document_id")
+
         if not document_id:
-            return JsonResponse({
-                'success': False,
-                'error': '문서 ID가 필요합니다.'
-            })
-        
-        try:
-            document = PolicyDocument.objects.get(id=document_id)
-        except PolicyDocument.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '문서를 찾을 수 없습니다.'
-            })
-        
-        # Pinecone에서 삭제
-        success = rag_service.delete_document(document)
-        
-        if success:
-            return JsonResponse({
-                'success': True,
-                'message': f'문서가 성공적으로 삭제되었습니다: {document.get_file_name()}'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': f'문서 삭제에 실패했습니다: {document.get_file_name()}'
-            })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': '잘못된 JSON 형식입니다.'
-        })
+            return Response(
+                {"error": "문서 ID가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        rag_service = RAGService()
+        result = rag_service.delete_document(document_id)
+
+        return Response(
+            {
+                "success": True,
+                "message": "문서가 성공적으로 삭제되었습니다.",
+                "result": result,
+            }
+        )
+
     except Exception as e:
-        logger.error(f"문서 삭제 API 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': f'삭제 중 오류가 발생했습니다: {str(e)}'
-        })
+        logger.error(f"문서 삭제 실패: {e}")
+        return Response(
+            {"error": f"문서 삭제 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

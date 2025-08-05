@@ -8,6 +8,7 @@ from . import views
 from . import langchain_views
 from . import langchain_dashboard
 from . import ml_views
+from . import ml_dashboard
 
 app_name = "insurance"
 
@@ -19,6 +20,7 @@ urlpatterns = [
     path("api/stats/", views.get_index_stats_api, name="get_index_stats_api"),
     path("api/upload/", views.upload_document_api, name="upload_document_api"),
     path("api/delete/", views.delete_document_api, name="delete_document_api"),
+    
     # LangChain + LLM API
     path("api/langchain/chat/", langchain_views.chat_with_agent, name="langchain_chat"),
     path(
@@ -61,6 +63,7 @@ urlpatterns = [
         langchain_views.test_langchain_tools,
         name="test_tools",
     ),
+    
     # ML 추천 시스템 API
     path(
         "api/ml/generate/",
@@ -104,6 +107,7 @@ urlpatterns = [
     ),
     path("api/ml/profiles/", ml_views.get_user_profiles, name="get_user_profiles"),
     path("api/ml/test/", ml_views.test_ml_models, name="test_ml_models"),
+    
     # LangChain 대시보드
     path(
         "langchain-dashboard/",
@@ -130,6 +134,12 @@ urlpatterns = [
         langchain_dashboard.langchain_status_ajax,
         name="langchain_status_ajax",
     ),
+    
+    # ML 대시보드
+    path("ml-dashboard/", ml_dashboard.ml_dashboard, name="ml_dashboard"),
+    path("ml-dashboard/ajax/", ml_dashboard.ml_dashboard_ajax, name="ml_dashboard_ajax"),
+    path("ml-dashboard/stats/", ml_dashboard.ml_dashboard_stats_ajax, name="ml_dashboard_stats_ajax"),
+    
     # RAG 대시보드
     path("rag-dashboard/", views.rag_dashboard, name="rag_dashboard"),
 ]
