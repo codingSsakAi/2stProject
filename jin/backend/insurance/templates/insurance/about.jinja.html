@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: var(--primary-color) !important;
+        }
+
+        .nav-link {
+            color: var(--text-color) !important;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color) !important;
+        }
+
+        .main-content {
+            padding: 120px 0 80px;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 0;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border-radius: 15px;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .page-description {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .about-section {
+            padding: 60px 0;
+        }
+
+        .about-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .about-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }
+
+        .feature-description {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .tech-stack {
+            background: var(--light-bg);
+            padding: 60px 0;
+        }
+
+        .tech-item {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .tech-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .tech-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .tech-description {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .team-section {
+            padding: 60px 0;
+        }
+
+        .team-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .team-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .team-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .team-role {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .team-description {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .contact-section {
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .contact-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .contact-description {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .btn-contact {
+            background: white;
+            color: var(--primary-color);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-contact:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+            
+            .contact-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 네비게이션 -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/insurance/">
+                <i class="fas fa-shield-alt me-2"></i>보험 추천 시스템
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/insurance/"><i class="fas fa-home me-1"></i>홈</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/insurance/langchain-dashboard/"><i class="fas fa-robot me-1"></i>AI 상담</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/insurance/ml-dashboard/"><i class="fas fa-chart-line me-1"></i>ML 추천</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/insurance/compare/"><i class="fas fa-balance-scale me-1"></i>보험 비교</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/insurance/about/"><i class="fas fa-info-circle me-1"></i>소개</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="main-content">
+        <div class="container">
+            <!-- 페이지 헤더 -->
+            <div class="page-header">
+                <h1 class="page-title">{{ title }}</h1>
+                <p class="page-description">{{ description }}</p>
+            </div>
+
+            <!-- 서비스 소개 -->
+            <section class="about-section">
+                <div class="row">
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="about-card text-center">
+                            <div class="feature-icon">🤖</div>
+                            <h3 class="feature-title">AI 상담사</h3>
+                            <p class="feature-description">
+                                LangChain 기반 지능형 AI 상담사가 보험 상담을 도와드립니다. 
+                                자연스러운 대화를 통해 맞춤형 보험 정보를 제공합니다.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="about-card text-center">
+                            <div class="feature-icon">🎯</div>
+                            <h3 class="feature-title">ML 추천</h3>
+                            <p class="feature-description">
+                                머신러닝 알고리즘을 통해 개인 상황에 맞는 최적의 보험을 추천합니다. 
+                                협업 필터링과 콘텐츠 기반 필터링을 결합한 하이브리드 추천 시스템입니다.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="about-card text-center">
+                            <div class="feature-icon">📊</div>
+                            <h3 class="feature-title">RAG 시스템</h3>
+                            <p class="feature-description">
+                                보험 약관과 문서를 검색하고 분석하는 RAG(Retrieval-Augmented Generation) 시스템입니다. 
+                                정확하고 최신의 보험 정보를 제공합니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 기술 스택 -->
+            <section class="tech-stack">
+                <div class="text-center mb-5">
+                    <h2><i class="fas fa-cogs me-2"></i>기술 스택</h2>
+                    <p class="text-muted">최신 기술을 활용한 AI 기반 보험 추천 시스템</p>
+                </div>
+                <div class="row">
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="tech-item">
+                            <div class="tech-icon">
+                                <i class="fab fa-python"></i>
+                            </div>
+                            <div class="tech-name">Django</div>
+                            <div class="tech-description">웹 프레임워크</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="tech-item">
+                            <div class="tech-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="tech-name">LangChain</div>
+                            <div class="tech-description">LLM 프레임워크</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="tech-item">
+                            <div class="tech-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="tech-name">Machine Learning</div>
+                            <div class="tech-description">추천 알고리즘</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="tech-item">
+                            <div class="tech-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="tech-name">RAG</div>
+                            <div class="tech-description">검색 시스템</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 개발팀 -->
+            <section class="team-section">
+                <div class="text-center mb-5">
+                    <h2><i class="fas fa-users me-2"></i>개발팀</h2>
+                    <p class="text-muted">AI 기반 보험 추천 시스템을 개발한 팀입니다</p>
+                </div>
+                <div class="row">
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="team-card">
+                            <div class="team-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="team-name">김진경</div>
+                            <div class="team-role">프로젝트 매니저</div>
+                            <div class="team-description">
+                                백엔드 개발 및 프로젝트 전체 관리
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="team-card">
+                            <div class="team-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="team-name">장선호</div>
+                            <div class="team-role">데이터 분석가</div>
+                            <div class="team-description">
+                                AI 모델링 및 데이터 분석
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="team-card">
+                            <div class="team-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="team-name">김민준</div>
+                            <div class="team-role">프론트엔드 개발자</div>
+                            <div class="team-description">
+                                UI/UX 개발 및 사용자 인터페이스
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 연락처 -->
+            <section class="contact-section">
+                <div class="container">
+                    <h2 class="contact-title">문의하기</h2>
+                    <p class="contact-description">
+                        AI 기반 보험 추천 시스템에 대한 문의사항이 있으시면 언제든 연락주세요.
+                    </p>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <a href="mailto:contact@insurance-ai.com" class="btn-contact">
+                            <i class="fas fa-envelope me-2"></i>이메일 문의
+                        </a>
+                        <a href="/insurance/langchain-dashboard/" class="btn-contact">
+                            <i class="fas fa-robot me-2"></i>AI 상담 시작
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 네비게이션 스크롤 효과
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+            } else {
+                navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+            }
+        });
+
+        // 카드 호버 효과
+        document.querySelectorAll('.about-card, .team-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body>
+</html> 

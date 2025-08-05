@@ -5,3 +5,7 @@ venv/
 develop_workflow.md
 env_template.txt
 insurance_project_ppt_v2.md
+work_session_summary.md
+__pycache__/
+*/__pycache__/
+*.pyc

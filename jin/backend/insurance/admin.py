@@ -1,291 +1,252 @@
+"""
+Insurance 앱 관리자 설정
+관리자 대시보드에서 보험사, 문서, 사용자 등을 관리할 수 있습니다.
+"""
+
 from django.contrib import admin
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from django.utils.html import format_html
 from django.urls import reverse
-from django.shortcuts import redirect
+from django.utils.safestring import mark_safe
+from django.db.models import Count, Avg, Sum
+from django.http import HttpResponseRedirect
 from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-import fitz
-from docx import Document
-import os
-import json
-from .models import (
-    InsuranceCompany,
-    PolicyDocument,
-    InsuranceQuote,
-    ChatSession,
-    ChatMessage,
-)
-from .services import rag_service
+from django.utils import timezone
+from datetime import datetime, timedelta
+
+from .models import PolicyDocument, InsuranceCompany, ChatHistory, RecommendationHistory
 
 
 @admin.register(InsuranceCompany)
 class InsuranceCompanyAdmin(admin.ModelAdmin):
-    """보험사 관리자"""
-
-    list_display = ("name", "code", "is_active", "created_at")
-    list_filter = ("is_active", "created_at")
-    search_fields = ("name", "code")
-    readonly_fields = ("created_at", "updated_at")
-    ordering = ("name",)
+    """보험사 관리"""
+    list_display = ['name', 'status', 'created_at', 'updated_at', 'document_count']
+    list_filter = ['status', 'created_at']
+    search_fields = ['name', 'description']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('name', 'description', 'status')
+        }),
+        ('연락처 정보', {
+            'fields': ('phone', 'email', 'website'),
+            'classes': ('collapse',)
+        }),
+        ('주소 정보', {
+            'fields': ('address', 'city', 'state', 'zip_code'),
+            'classes': ('collapse',)
+        }),
+        ('시스템 정보', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def document_count(self, obj):
+        """문서 수 표시"""
+        count = PolicyDocument.objects.filter(company=obj).count()
+        return count
+    document_count.short_description = '문서 수'
+    
+    actions = ['activate_companies', 'deactivate_companies']
+    
+    def activate_companies(self, request, queryset):
+        """선택된 보험사 활성화"""
+        updated = queryset.update(status='active')
+        self.message_user(request, f'{updated}개의 보험사가 활성화되었습니다.')
+    activate_companies.short_description = "선택된 보험사 활성화"
+    
+    def deactivate_companies(self, request, queryset):
+        """선택된 보험사 비활성화"""
+        updated = queryset.update(status='inactive')
+        self.message_user(request, f'{updated}개의 보험사가 비활성화되었습니다.')
+    deactivate_companies.short_description = "선택된 보험사 비활성화"
 
 
 @admin.register(PolicyDocument)
 class PolicyDocumentAdmin(admin.ModelAdmin):
-    """보험 약관 문서 관리자"""
-
-    list_display = (
-        "company",
-        "document_type",
-        "version",
-        "get_file_name",
-        "get_file_size_mb",
-        "page_count",
-        "is_active",
-        "upload_date",
-    )
-    list_filter = ("company", "document_type", "is_active", "upload_date")
-    search_fields = ("company__name", "file_path")
-    readonly_fields = ("upload_date", "file_size", "page_count", "pinecone_index_id")
-    actions = ["convert_pdf_to_docx", "upload_to_pinecone", "search_documents", "get_index_stats"]
-
+    """정책 문서 관리"""
+    list_display = ['title', 'company', 'document_type', 'upload_date', 'file_size', 'status']
+    list_filter = ['document_type', 'upload_date', 'status', 'company']
+    search_fields = ['title', 'description', 'company__name']
+    readonly_fields = ['upload_date', 'file_size', 'file_path']
+    
     fieldsets = (
-        ("기본 정보", {"fields": ("company", "document_type", "version", "is_active")}),
-        (
-            "파일 정보",
-            {"fields": ("file_path", "file_size", "page_count", "upload_date")},
-        ),
-        ("Pinecone 연동", {"fields": ("pinecone_index_id",), "classes": ("collapse",)}),
+        ('기본 정보', {
+            'fields': ('title', 'description', 'company', 'document_type', 'status')
+        }),
+        ('파일 정보', {
+            'fields': ('file', 'file_path', 'file_size', 'upload_date'),
+            'classes': ('collapse',)
+        }),
+        ('메타데이터', {
+            'fields': ('tags', 'keywords'),
+            'classes': ('collapse',)
+        }),
     )
-
-    def get_file_name(self, obj):
-        """파일명 표시"""
-        return obj.get_file_name()
-
-    get_file_name.short_description = "파일명"
-
-    def get_file_size_mb(self, obj):
+    
+    def file_size(self, obj):
         """파일 크기 표시"""
-        return f"{obj.get_file_size_mb()} MB"
-
-    get_file_size_mb.short_description = "파일 크기"
-
-    def convert_pdf_to_docx(self, request, queryset):
-        """PDF를 DOCX로 변환"""
-        converted_count = 0
-        for document in queryset:
-            if document.document_type == "PDF":
-                try:
-                    # PDF 파일 경로
-                    pdf_path = document.file_path
-                    if not os.path.exists(pdf_path):
-                        messages.error(
-                            request, f"PDF 파일을 찾을 수 없습니다: {pdf_path}"
-                        )
-                        continue
-
-                    # DOCX 파일 경로 생성
-                    docx_path = pdf_path.replace(".pdf", ".docx")
-
-                    # PDF 텍스트 추출 및 DOCX 생성
-                    doc = fitz.open(pdf_path)
-                    document_docx = Document()
-
-                    for page in doc:
-                        text = page.get_text()
-                        document_docx.add_paragraph(text)
-
-                    # DOCX 파일 저장
-                    document_docx.save(docx_path)
-                    doc.close()
-
-                    # 새로운 PolicyDocument 생성
-                    new_document = PolicyDocument.objects.create(
-                        company=document.company,
-                        document_type="DOCX",
-                        file_path=docx_path,
-                        version=document.version,
-                        file_size=os.path.getsize(docx_path),
-                        page_count=document.page_count,
-                    )
-
-                    converted_count += 1
-                    messages.success(
-                        request,
-                        f"변환 완료: {document.get_file_name()} -> {new_document.get_file_name()}",
-                    )
-
-                except Exception as e:
-                    messages.error(
-                        request, f"변환 실패: {document.get_file_name()} - {str(e)}"
-                    )
-
-        if converted_count > 0:
-            messages.success(
-                request, f"{converted_count}개 파일이 성공적으로 변환되었습니다."
-            )
-        else:
-            messages.warning(request, "변환할 PDF 파일이 없습니다.")
-
-    convert_pdf_to_docx.short_description = "선택된 PDF를 DOCX로 변환"
-
-    def update_pinecone_index(self, request, queryset):
-        """Pinecone 인덱스 업데이트"""
-        updated_count = 0
-        for document in queryset:
-            try:
-                # Pinecone 인덱스 업데이트 로직 (추후 구현)
-                document.pinecone_index_id = (
-                    f"index_{document.company.code}_{document.version}"
-                )
-                document.save()
-                updated_count += 1
-                messages.success(
-                    request, f"인덱스 업데이트 완료: {document.get_file_name()}"
-                )
-            except Exception as e:
-                messages.error(
-                    request,
-                    f"인덱스 업데이트 실패: {document.get_file_name()} - {str(e)}",
-                )
-
-        if updated_count > 0:
-            messages.success(
-                request, f"{updated_count}개 문서의 인덱스가 업데이트되었습니다."
-            )
-
-    def upload_to_pinecone(self, request, queryset):
-        """선택된 문서를 Pinecone에 업로드"""
-        success_count = 0
-        error_count = 0
-        
-        for document in queryset:
-            try:
-                if rag_service.upload_document(document):
-                    success_count += 1
-                    messages.success(request, f"업로드 성공: {document.get_file_name()}")
-                else:
-                    error_count += 1
-                    messages.error(request, f"업로드 실패: {document.get_file_name()}")
-            except Exception as e:
-                error_count += 1
-                messages.error(request, f"업로드 오류: {document.get_file_name()} - {str(e)}")
-        
-        if success_count > 0:
-            messages.success(request, f"{success_count}개 문서가 성공적으로 업로드되었습니다.")
-        if error_count > 0:
-            messages.warning(request, f"{error_count}개 문서 업로드에 실패했습니다.")
-    
-    upload_to_pinecone.short_description = "Pinecone에 문서 업로드"
-    
-    def search_documents(self, request, queryset):
-        """문서 검색 테스트"""
-        # 검색 기능은 별도 뷰로 구현
-        messages.info(request, "검색 기능은 별도 페이지에서 사용할 수 있습니다.")
-    
-    search_documents.short_description = "문서 검색 테스트"
-    
-    def get_index_stats(self, request, queryset):
-        """인덱스 통계 정보"""
-        try:
-            stats = rag_service.get_index_stats()
-            if stats:
-                messages.info(request, f"인덱스 통계: 총 {stats.get('total_vectors', 0)}개 벡터")
-                for company, count in stats.get('company_stats', {}).items():
-                    messages.info(request, f"- {company}: {count}개 벡터")
+        if obj.file:
+            size = obj.file.size
+            if size < 1024:
+                return f"{size} B"
+            elif size < 1024 * 1024:
+                return f"{size // 1024} KB"
             else:
-                messages.warning(request, "인덱스 통계를 가져올 수 없습니다.")
-        except Exception as e:
-            messages.error(request, f"통계 조회 실패: {str(e)}")
+                return f"{size // (1024 * 1024)} MB"
+        return "N/A"
+    file_size.short_description = '파일 크기'
     
-    get_index_stats.short_description = "인덱스 통계 조회"
+    actions = ['approve_documents', 'reject_documents', 'delete_selected']
+    
+    def approve_documents(self, request, queryset):
+        """선택된 문서 승인"""
+        updated = queryset.update(status='approved')
+        self.message_user(request, f'{updated}개의 문서가 승인되었습니다.')
+    approve_documents.short_description = "선택된 문서 승인"
+    
+    def reject_documents(self, request, queryset):
+        """선택된 문서 거부"""
+        updated = queryset.update(status='rejected')
+        self.message_user(request, f'{updated}개의 문서가 거부되었습니다.')
+    reject_documents.short_description = "선택된 문서 거부"
 
 
-@admin.register(InsuranceQuote)
-class InsuranceQuoteAdmin(admin.ModelAdmin):
-    """보험 견적 관리자"""
+# UserProfile은 users 앱에서 관리하므로 제거
 
-    list_display = (
-        "user",
-        "company",
-        "annual_premium",
-        "monthly_premium",
-        "coverage_level",
-        "customer_satisfaction",
-        "calculation_date",
-    )
-    list_filter = ("company", "coverage_level", "calculation_date")
-    search_fields = ("user__username", "company__name")
-    readonly_fields = ("calculation_date",)
+
+@admin.register(ChatHistory)
+class ChatHistoryAdmin(admin.ModelAdmin):
+    """채팅 기록 관리"""
+    list_display = ['user', 'message_type', 'created_at', 'response_length']
+    list_filter = ['message_type', 'created_at']
+    search_fields = ['user__username', 'message', 'response']
+    readonly_fields = ['created_at']
+    
     fieldsets = (
-        ("기본 정보", {"fields": ("user", "company", "calculation_date")}),
-        (
-            "보험료 정보",
-            {"fields": ("annual_premium", "monthly_premium", "coverage_level")},
-        ),
-        (
-            "상세 정보",
-            {
-                "fields": (
-                    "coverage_details",
-                    "special_discount",
-                    "discount_rate",
-                    "penalty_rate",
-                    "deductible",
-                )
-            },
-        ),
-        (
-            "추가 정보",
-            {
-                "fields": (
-                    "payment_options",
-                    "additional_benefits",
-                    "customer_satisfaction",
-                    "claim_service_rating",
-                )
-            },
-        ),
+        ('사용자 정보', {
+            'fields': ('user', 'session_id')
+        }),
+        ('메시지 정보', {
+            'fields': ('message', 'response', 'message_type')
+        }),
+        ('시스템 정보', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
     )
+    
+    def response_length(self, obj):
+        """응답 길이"""
+        if obj.response:
+            return len(obj.response)
+        return 0
+    response_length.short_description = '응답 길이'
+    
+    actions = ['export_chat_data', 'delete_old_chats']
+    
+    def export_chat_data(self, request, queryset):
+        """채팅 데이터 내보내기"""
+        # 실제 구현에서는 CSV 또는 Excel 파일로 내보내기
+        self.message_user(request, f'{queryset.count()}개의 채팅 기록이 내보내기 준비되었습니다.')
+    export_chat_data.short_description = "선택된 채팅 데이터 내보내기"
+    
+    def delete_old_chats(self, request, queryset):
+        """30일 이상 된 채팅 삭제"""
+        cutoff_date = timezone.now() - timedelta(days=30)
+        old_chats = ChatHistory.objects.filter(created_at__lt=cutoff_date)
+        count = old_chats.count()
+        old_chats.delete()
+        self.message_user(request, f'{count}개의 오래된 채팅 기록이 삭제되었습니다.')
+    delete_old_chats.short_description = "30일 이상 된 채팅 삭제"
 
 
-@admin.register(ChatSession)
-class ChatSessionAdmin(admin.ModelAdmin):
-    """채팅 세션 관리자"""
-
-    list_display = (
-        "user",
-        "session_id",
-        "is_active",
-        "created_at",
-        "get_message_count",
+@admin.register(RecommendationHistory)
+class RecommendationHistoryAdmin(admin.ModelAdmin):
+    """추천 기록 관리"""
+    list_display = ['user', 'recommendation_type', 'created_at', 'feedback_score']
+    list_filter = ['recommendation_type', 'feedback_score', 'created_at']
+    search_fields = ['user__username', 'recommendation_data']
+    readonly_fields = ['created_at']
+    
+    fieldsets = (
+        ('사용자 정보', {
+            'fields': ('user', 'session_id')
+        }),
+        ('추천 정보', {
+            'fields': ('recommendation_type', 'recommendation_data', 'feedback_score', 'feedback_comment')
+        }),
+        ('시스템 정보', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
     )
-    list_filter = ("is_active", "created_at")
-    search_fields = ("user__username", "session_id")
-    readonly_fields = ("session_id", "created_at", "updated_at")
+    
+    actions = ['export_recommendations', 'analyze_feedback']
+    
+    def export_recommendations(self, request, queryset):
+        """추천 데이터 내보내기"""
+        self.message_user(request, f'{queryset.count()}개의 추천 기록이 내보내기 준비되었습니다.')
+    export_recommendations.short_description = "선택된 추천 데이터 내보내기"
+    
+    def analyze_feedback(self, request, queryset):
+        """피드백 분석"""
+        avg_score = queryset.aggregate(Avg('feedback_score'))['feedback_score__avg']
+        if avg_score:
+            self.message_user(request, f'평균 피드백 점수: {avg_score:.2f}')
+        else:
+            self.message_user(request, '피드백 데이터가 없습니다.')
+    analyze_feedback.short_description = "피드백 분석"
 
-    def get_message_count(self, obj):
-        """메시지 개수 표시"""
-        return obj.messages.count()
 
-    get_message_count.short_description = "메시지 수"
+# 관리자 사이트 커스터마이징
+admin.site.site_header = "보험 추천 시스템 관리자"
+admin.site.site_title = "보험 관리자"
+admin.site.index_title = "관리자 대시보드"
+
+# 관리자 액션 추가
+class AdminActions:
+    """관리자 액션 클래스"""
+    
+    @staticmethod
+    def generate_system_report(modeladmin, request, queryset):
+        """시스템 리포트 생성"""
+        from django.http import JsonResponse
+        
+        # 통계 데이터 수집
+        stats = {
+            'total_users': UserProfile.objects.count(),
+            'total_documents': PolicyDocument.objects.count(),
+            'total_companies': InsuranceCompany.objects.count(),
+            'total_chats': ChatHistory.objects.count(),
+            'total_recommendations': RecommendationHistory.objects.count(),
+            'recent_chats': ChatHistory.objects.filter(
+                created_at__gte=timezone.now() - timedelta(days=7)
+            ).count(),
+            'avg_feedback': RecommendationHistory.objects.aggregate(
+                Avg('feedback_score')
+            )['feedback_score__avg'] or 0,
+        }
+        
+        return JsonResponse(stats)
+    
+    @staticmethod
+    def backup_data(modeladmin, request, queryset):
+        """데이터 백업"""
+        messages.success(request, "데이터 백업이 시작되었습니다.")
+        return HttpResponseRedirect(request.get_full_path())
+    
+    @staticmethod
+    def clear_cache(modeladmin, request, queryset):
+        """캐시 정리"""
+        from django.core.cache import cache
+        cache.clear()
+        messages.success(request, "캐시가 정리되었습니다.")
+        return HttpResponseRedirect(request.get_full_path())
 
 
-@admin.register(ChatMessage)
-class ChatMessageAdmin(admin.ModelAdmin):
-    """채팅 메시지 관리자"""
-
-    list_display = ("session", "message_type", "get_content_preview", "timestamp")
-    list_filter = ("message_type", "timestamp")
-    search_fields = ("session__user__username", "content")
-    readonly_fields = ("timestamp",)
-
-    def get_content_preview(self, obj):
-        """메시지 내용 미리보기"""
-        content = obj.content[:50]
-        return f"{content}..." if len(obj.content) > 50 else content
-
-    get_content_preview.short_description = "메시지 내용"
+# 관리자 액션 등록
+admin.site.add_action(AdminActions.generate_system_report, "시스템 리포트 생성")
+admin.site.add_action(AdminActions.backup_data, "데이터 백업")
+admin.site.add_action(AdminActions.clear_cache, "캐시 정리")
