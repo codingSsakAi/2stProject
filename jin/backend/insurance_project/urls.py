@@ -16,6 +16,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Insurance 앱 URL
     path("insurance/", include("insurance.urls")),
+    # Users 앱 URL
+    path("users/", include("users.urls")),
 ]
 
 # 개발 환경에서 미디어 파일 서빙

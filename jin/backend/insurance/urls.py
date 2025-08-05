@@ -20,7 +20,6 @@ urlpatterns = [
     path("api/stats/", views.get_index_stats_api, name="get_index_stats_api"),
     path("api/upload/", views.upload_document_api, name="upload_document_api"),
     path("api/delete/", views.delete_document_api, name="delete_document_api"),
-    
     # LangChain + LLM API
     path("api/langchain/chat/", langchain_views.chat_with_agent, name="langchain_chat"),
     path(
@@ -63,7 +62,6 @@ urlpatterns = [
         langchain_views.test_langchain_tools,
         name="test_tools",
     ),
-    
     # ML 추천 시스템 API
     path(
         "api/ml/generate/",
@@ -107,7 +105,37 @@ urlpatterns = [
     ),
     path("api/ml/profiles/", ml_views.get_user_profiles, name="get_user_profiles"),
     path("api/ml/test/", ml_views.test_ml_models, name="test_ml_models"),
-    
+    # 새로운 ML API 엔드포인트들
+    path(
+        "api/ml/performance/",
+        ml_views.get_model_performance,
+        name="get_model_performance",
+    ),
+    path(
+        "api/ml/retrain/",
+        ml_views.retrain_ml_models,
+        name="retrain_ml_models",
+    ),
+    path(
+        "api/ml/cluster-info/",
+        ml_views.get_user_cluster_info,
+        name="get_user_cluster_info",
+    ),
+    path(
+        "api/ml/personalized/",
+        ml_views.get_personalized_recommendations,
+        name="get_personalized_recommendations",
+    ),
+    path(
+        "api/ml/update-preference/",
+        ml_views.update_user_preference,
+        name="update_user_preference",
+    ),
+    path(
+        "api/ml/analytics/",
+        ml_views.get_recommendation_analytics,
+        name="get_recommendation_analytics",
+    ),
     # LangChain 대시보드
     path(
         "langchain-dashboard/",
@@ -134,12 +162,16 @@ urlpatterns = [
         langchain_dashboard.langchain_status_ajax,
         name="langchain_status_ajax",
     ),
-    
     # ML 대시보드
     path("ml-dashboard/", ml_dashboard.ml_dashboard, name="ml_dashboard"),
-    path("ml-dashboard/ajax/", ml_dashboard.ml_dashboard_ajax, name="ml_dashboard_ajax"),
-    path("ml-dashboard/stats/", ml_dashboard.ml_dashboard_stats_ajax, name="ml_dashboard_stats_ajax"),
-    
+    path(
+        "ml-dashboard/ajax/", ml_dashboard.ml_dashboard_ajax, name="ml_dashboard_ajax"
+    ),
+    path(
+        "ml-dashboard/stats/",
+        ml_dashboard.ml_dashboard_stats_ajax,
+        name="ml_dashboard_stats_ajax",
+    ),
     # RAG 대시보드
     path("rag-dashboard/", views.rag_dashboard, name="rag_dashboard"),
 ]

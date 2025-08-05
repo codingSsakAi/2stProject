@@ -14,6 +14,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 import json
+from django.db.models import Count
 
 from .ml_service import MLRecommendationService
 from users.models import UserProfile
@@ -369,6 +370,190 @@ def get_user_profiles(request):
         )
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_model_performance(request):
+    """ML 모델 성능 지표 조회"""
+    try:
+        ml_service = MLRecommendationService()
+        performance = ml_service.get_model_performance()
+
+        return Response({"success": True, "performance": performance})
+
+    except Exception as e:
+        logger.error(f"모델 성능 조회 실패: {e}")
+        return Response(
+            {"error": f"모델 성능 조회 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def retrain_ml_models(request):
+    """ML 모델 재훈련"""
+    try:
+        ml_service = MLRecommendationService()
+        success = ml_service.retrain_models()
+
+        if success:
+            return Response({"success": True, "message": "ML 모델 재훈련이 완료되었습니다."})
+        else:
+            return Response(
+                {"error": "ML 모델 재훈련에 실패했습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    except Exception as e:
+        logger.error(f"ML 모델 재훈련 실패: {e}")
+        return Response(
+            {"error": f"ML 모델 재훈련 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_user_cluster_info(request):
+    """사용자 클러스터 정보 조회"""
+    try:
+        user_id = request.GET.get("user_id")
+
+        if not user_id:
+            return Response(
+                {"error": "사용자 ID가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ml_service = MLRecommendationService()
+        cluster_info = ml_service.get_user_cluster_info(int(user_id))
+
+        return Response({"success": True, "cluster_info": cluster_info})
+
+    except Exception as e:
+        logger.error(f"사용자 클러스터 정보 조회 실패: {e}")
+        return Response(
+            {"error": f"클러스터 정보 조회 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def get_personalized_recommendations(request):
+    """개인화된 추천 생성"""
+    try:
+        data = request.data
+        user_id = data.get("user_id")
+        user_profile = data.get("user_profile", {})
+        recommendation_type = data.get("type", "hybrid")  # collaborative, content, hybrid
+
+        if not user_id:
+            return Response(
+                {"error": "사용자 ID가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ml_service = MLRecommendationService()
+
+        if recommendation_type == "collaborative":
+            recommendations = ml_service.get_collaborative_recommendations(int(user_id), 5)
+        elif recommendation_type == "content":
+            recommendations = ml_service.get_content_based_recommendations(user_profile, 5)
+        else:  # hybrid
+            recommendations = ml_service.get_hybrid_recommendations(int(user_id), user_profile, 5)
+
+        return Response({
+            "success": True, 
+            "recommendations": recommendations,
+            "type": recommendation_type
+        })
+
+    except Exception as e:
+        logger.error(f"개인화 추천 생성 실패: {e}")
+        return Response(
+            {"error": f"개인화 추천 생성 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def update_user_preference(request):
+    """사용자 선호도 업데이트"""
+    try:
+        data = request.data
+        user_id = data.get("user_id")
+        selected_product = data.get("selected_product")
+        satisfaction_score = data.get("satisfaction_score", 3)
+
+        if not user_id or not selected_product:
+            return Response(
+                {"error": "사용자 ID와 선택한 상품이 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 사용자 프로필 업데이트
+        try:
+            from django.contrib.auth.models import User
+            user = User.objects.get(id=user_id)
+            profile = UserProfile.objects.get(user=user)
+            profile.selected_insurance = selected_product
+            profile.satisfaction_score = satisfaction_score
+            profile.save()
+
+            return Response({
+                "success": True, 
+                "message": "사용자 선호도가 업데이트되었습니다."
+            })
+
+        except UserProfile.DoesNotExist:
+            return Response(
+                {"error": "사용자 프로필을 찾을 수 없습니다."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    except Exception as e:
+        logger.error(f"사용자 선호도 업데이트 실패: {e}")
+        return Response(
+            {"error": f"선호도 업데이트 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_recommendation_analytics(request):
+    """추천 시스템 분석 데이터"""
+    try:
+        ml_service = MLRecommendationService()
+        
+        # 기본 통계
+        stats = ml_service.get_recommendation_stats()
+        
+        # 모델 성능
+        performance = ml_service.get_model_performance()
+        
+        # 사용자 분포
+        from users.models import UserProfile
+        age_distribution = UserProfile.objects.values('age').annotate(count=Count('id'))
+        gender_distribution = UserProfile.objects.values('gender').annotate(count=Count('id'))
+        
+        analytics = {
+            'stats': stats,
+            'performance': performance,
+            'age_distribution': list(age_distribution),
+            'gender_distribution': list(gender_distribution)
+        }
+
+        return Response({"success": True, "analytics": analytics})
+
+    except Exception as e:
+        logger.error(f"추천 시스템 분석 실패: {e}")
+        return Response(
+            {"error": f"분석 데이터 조회 중 오류가 발생했습니다: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def test_ml_models(request):
@@ -429,6 +614,17 @@ def test_ml_models(request):
                 }
             except Exception as e:
                 test_results["hybrid"] = {"success": False, "error": str(e)}
+
+        # 모델 성능 테스트
+        if test_type in ["all", "performance"]:
+            try:
+                performance = ml_service.get_model_performance()
+                test_results["performance"] = {
+                    "success": True,
+                    "performance": performance,
+                }
+            except Exception as e:
+                test_results["performance"] = {"success": False, "error": str(e)}
 
         return Response({"success": True, "test_results": test_results})
 

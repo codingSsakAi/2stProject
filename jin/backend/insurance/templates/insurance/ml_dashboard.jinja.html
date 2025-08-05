@@ -295,6 +295,9 @@
                 <button class="btn btn-success" onclick="getRecommendationStats()">📈 통계 조회</button>
                 <button class="btn btn-warning" onclick="testMLModels()">🧪 ML 모델 테스트</button>
                 <button class="btn btn-secondary" onclick="getUserProfiles()">👥 사용자 프로필 조회</button>
+                <button class="btn btn-info" onclick="getModelPerformance()">📊 모델 성능</button>
+                <button class="btn btn-primary" onclick="retrainModels()">🔄 모델 재훈련</button>
+                <button class="btn btn-dark" onclick="getAnalytics()">📋 분석 데이터</button>
                 
                 <div id="systemResults" class="results-section"></div>
             </div>
@@ -517,6 +520,144 @@
                     </div>
                 `;
             });
+            
+            container.innerHTML = html;
+        }
+
+        // 모델 성능 조회
+        async function getModelPerformance() {
+            try {
+                const response = await fetch('/insurance/ml-dashboard/ajax/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'get_performance' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayModelPerformance(data.performance);
+                } else {
+                    showError('모델 성능 조회 실패: ' + data.error);
+                }
+            } catch (error) {
+                showError('요청 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // 모델 성능 표시
+        function displayModelPerformance(performance) {
+            const container = document.getElementById('systemResults');
+            let html = '<h4>📊 ML 모델 성능</h4>';
+            
+            html += '<div class="stats-grid">';
+            html += `<div class="stat-item"><div class="stat-number">${performance.user_count || 0}</div><div class="stat-label">사용자 수</div></div>`;
+            html += `<div class="stat-item"><div class="stat-number">${performance.product_count || 0}</div><div class="stat-label">상품 수</div></div>`;
+            html += `<div class="stat-item"><div class="stat-number">${performance.recommendation_count || 0}</div><div class="stat-label">추천 수</div></div>`;
+            html += `<div class="stat-item"><div class="stat-number">${performance.model_status || 'unknown'}</div><div class="stat-label">모델 상태</div></div>`;
+            html += '</div>';
+            
+            html += `<div class="result-item"><div class="result-title">마지막 훈련: ${performance.last_training || 'N/A'}</div></div>`;
+            
+            container.innerHTML = html;
+        }
+
+        // 모델 재훈련
+        async function retrainModels() {
+            try {
+                const response = await fetch('/insurance/ml-dashboard/ajax/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'retrain_models' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data.message);
+                    getModelPerformance();
+                } else {
+                    showError('모델 재훈련 실패: ' + data.error);
+                }
+            } catch (error) {
+                showError('요청 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // 분석 데이터 조회
+        async function getAnalytics() {
+            try {
+                const response = await fetch('/insurance/ml-dashboard/ajax/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'get_analytics' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayAnalytics(data.analytics);
+                } else {
+                    showError('분석 데이터 조회 실패: ' + data.error);
+                }
+            } catch (error) {
+                showError('요청 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // 분석 데이터 표시
+        function displayAnalytics(analytics) {
+            const container = document.getElementById('systemResults');
+            let html = '<h4>📋 추천 시스템 분석</h4>';
+            
+            // 기본 통계
+            if (analytics.stats) {
+                html += '<h5>📊 기본 통계</h5>';
+                html += '<div class="stats-grid">';
+                html += `<div class="stat-item"><div class="stat-number">${analytics.stats.total_recommendations || 0}</div><div class="stat-label">총 추천</div></div>`;
+                html += `<div class="stat-item"><div class="stat-number">${analytics.stats.viewed_recommendations || 0}</div><div class="stat-label">조회된 추천</div></div>`;
+                html += `<div class="stat-item"><div class="stat-number">${analytics.stats.selected_recommendations || 0}</div><div class="stat-label">선택된 추천</div></div>`;
+                html += `<div class="stat-item"><div class="stat-number">${(analytics.stats.avg_satisfaction || 0).toFixed(1)}</div><div class="stat-label">평균 만족도</div></div>`;
+                html += '</div>';
+            }
+            
+            // 모델 성능
+            if (analytics.performance) {
+                html += '<h5>⚙️ 모델 성능</h5>';
+                html += `<div class="result-item">
+                    <div class="result-title">사용자 수: ${analytics.performance.user_count || 0} | 상품 수: ${analytics.performance.product_count || 0}</div>
+                    <div class="result-method">모델 상태: ${analytics.performance.model_status || 'unknown'} | 마지막 훈련: ${analytics.performance.last_training || 'N/A'}</div>
+                </div>`;
+            }
+            
+            // 나이 분포
+            if (analytics.age_distribution && analytics.age_distribution.length > 0) {
+                html += '<h5>👥 나이 분포</h5>';
+                analytics.age_distribution.forEach(item => {
+                    html += `<div class="result-item">
+                        <div class="result-title">${item.age}세</div>
+                        <div class="result-method">사용자 수: ${item.count}명</div>
+                    </div>`;
+                });
+            }
+            
+            // 성별 분포
+            if (analytics.gender_distribution && analytics.gender_distribution.length > 0) {
+                html += '<h5>👤 성별 분포</h5>';
+                analytics.gender_distribution.forEach(item => {
+                    const gender = item.gender === 'M' ? '남성' : '여성';
+                    html += `<div class="result-item">
+                        <div class="result-title">${gender}</div>
+                        <div class="result-method">사용자 수: ${item.count}명</div>
+                    </div>`;
+                });
+            }
             
             container.innerHTML = html;
         }

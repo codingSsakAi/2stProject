@@ -31,12 +31,23 @@ class MLRecommendationService:
         """ML 추천 서비스 초기화"""
         # ML 모델 설정
         self.scaler = StandardScaler()
-        self.pca = PCA(n_components=settings.get('ML_PCA_COMPONENTS', 5))
-        self.kmeans = KMeans(n_clusters=settings.get('ML_CLUSTERS', 5), random_state=42)
+        self.pca = PCA(n_components=5)  # 고정값으로 설정
+        self.kmeans = KMeans(n_clusters=5, random_state=42)  # 고정값으로 설정
         self.tfidf = TfidfVectorizer(
-            max_features=settings.get('ML_TFIDF_MAX_FEATURES', 1000), 
+            max_features=1000,  # 고정값으로 설정
             stop_words='english'
         )
+        
+        # 데이터 초기화
+        self.user_df = pd.DataFrame()
+        self.user_features = None
+        self.user_features_pca = None
+        self.user_clusters = None
+        self.user_product_matrix = pd.DataFrame()
+        self.product_features = None
+        self.product_similarity = None
+        
+        # 모델 초기화
         self._initialize_models()
 
     def _initialize_models(self):
@@ -44,12 +55,17 @@ class MLRecommendationService:
         try:
             # 사용자 데이터 로드 및 전처리
             self._load_user_data()
-            self._preprocess_data()
-            self._train_models()
-            logger.info("ML 추천 시스템 초기화 완료")
+            
+            if not self.user_df.empty:
+                self._preprocess_data()
+                self._train_models()
+                logger.info("ML 추천 시스템 초기화 완료")
+            else:
+                logger.warning("사용자 데이터가 없어 ML 모델 초기화를 건너뜁니다.")
 
         except Exception as e:
             logger.error(f"ML 추천 시스템 초기화 실패: {e}")
+            # 기본값 설정
             self.user_features = None
             self.product_features = None
 
@@ -71,9 +87,9 @@ class MLRecommendationService:
                     'user_id': profile.user.id,
                     'age': profile.age or 30,
                     'gender': 1 if profile.gender == 'M' else 0,
-                    'driving_experience': profile.driving_experience,
-                    'annual_mileage': profile.annual_mileage,
-                    'accident_history': profile.accident_history,
+                    'driving_experience': profile.driving_experience or 5,
+                    'annual_mileage': profile.annual_mileage or 12000,
+                    'accident_history': profile.accident_history or 0,
                     'satisfaction_score': profile.satisfaction_score or 3,
                     'selected_insurance': profile.selected_insurance or 'basic'
                 })
@@ -87,34 +103,38 @@ class MLRecommendationService:
 
     def _create_sample_data(self):
         """샘플 데이터 생성 (개발용)"""
-        from django.contrib.auth.models import User
+        try:
+            from django.contrib.auth.models import User
 
-        # 샘플 사용자 생성
-        sample_users = [
-            {'username': 'user1', 'age': 25, 'gender': 'M', 'driving_experience': 3, 'annual_mileage': 15000, 'accident_history': 0},
-            {'username': 'user2', 'age': 35, 'gender': 'F', 'driving_experience': 8, 'annual_mileage': 8000, 'accident_history': 1},
-            {'username': 'user3', 'age': 45, 'gender': 'M', 'driving_experience': 15, 'annual_mileage': 20000, 'accident_history': 2},
-            {'username': 'user4', 'age': 28, 'gender': 'F', 'driving_experience': 5, 'annual_mileage': 12000, 'accident_history': 0},
-            {'username': 'user5', 'age': 52, 'gender': 'M', 'driving_experience': 20, 'annual_mileage': 10000, 'accident_history': 1},
-        ]
+            # 샘플 사용자 생성
+            sample_users = [
+                {'username': 'user1', 'age': 25, 'gender': 'M', 'driving_experience': 3, 'annual_mileage': 15000, 'accident_history': 0},
+                {'username': 'user2', 'age': 35, 'gender': 'F', 'driving_experience': 8, 'annual_mileage': 8000, 'accident_history': 1},
+                {'username': 'user3', 'age': 45, 'gender': 'M', 'driving_experience': 15, 'annual_mileage': 20000, 'accident_history': 2},
+                {'username': 'user4', 'age': 28, 'gender': 'F', 'driving_experience': 5, 'annual_mileage': 12000, 'accident_history': 0},
+                {'username': 'user5', 'age': 52, 'gender': 'M', 'driving_experience': 20, 'annual_mileage': 10000, 'accident_history': 1},
+            ]
 
-        for user_data in sample_users:
-            user, created = User.objects.get_or_create(username=user_data['username'])
-            if created:
-                profile, created = UserProfile.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'age': user_data['age'],
-                        'gender': user_data['gender'],
-                        'driving_experience': user_data['driving_experience'],
-                        'annual_mileage': user_data['annual_mileage'],
-                        'accident_history': user_data['accident_history'],
-                        'satisfaction_score': np.random.randint(3, 6),
-                        'selected_insurance': np.random.choice(['basic', 'premium', 'student', 'senior'])
-                    }
-                )
+            for user_data in sample_users:
+                user, created = User.objects.get_or_create(username=user_data['username'])
+                if created:
+                    profile, created = UserProfile.objects.get_or_create(
+                        user=user,
+                        defaults={
+                            'age': user_data['age'],
+                            'gender': user_data['gender'],
+                            'driving_experience': user_data['driving_experience'],
+                            'annual_mileage': user_data['annual_mileage'],
+                            'accident_history': user_data['accident_history'],
+                            'satisfaction_score': np.random.randint(3, 6),
+                            'selected_insurance': np.random.choice(['basic', 'premium', 'student', 'senior'])
+                        }
+                    )
 
-        logger.info("샘플 데이터 생성 완료")
+            logger.info("샘플 데이터 생성 완료")
+            
+        except Exception as e:
+            logger.error(f"샘플 데이터 생성 실패: {e}")
 
     def _preprocess_data(self):
         """데이터 전처리"""
@@ -229,7 +249,9 @@ class MLRecommendationService:
                         recommendations.append({
                             'product': product,
                             'score': rating * similarity,
-                            'method': 'collaborative'
+                            'method': 'collaborative',
+                            'similar_user_id': similar_user_id,
+                            'similarity': similarity
                         })
 
             # 점수별 정렬
@@ -244,24 +266,44 @@ class MLRecommendationService:
     def get_content_based_recommendations(self, user_profile: Dict[str, Any], top_k: int = 5) -> List[Dict[str, Any]]:
         """콘텐츠 기반 필터링 추천"""
         try:
-            if self.product_features is None:
-                return []
-
             # 사용자 프로필을 특성 벡터로 변환
             user_features = self._extract_user_features(user_profile)
 
             # 상품과의 유사도 계산
             product_scores = []
 
-            for i, product in enumerate(PolicyDocument.objects.all()):
-                # 간단한 규칙 기반 점수 계산
-                score = self._calculate_content_score(user_profile, product)
-                product_scores.append({
-                    'product_id': product.id,
-                    'product_name': product.title,
-                    'score': score,
-                    'method': 'content_based'
-                })
+            # 실제 보험 상품 데이터가 있는 경우
+            products = PolicyDocument.objects.all()
+            if products.exists():
+                for i, product in enumerate(products):
+                    # 콘텐츠 기반 점수 계산
+                    score = self._calculate_content_score(user_profile, product)
+                    product_scores.append({
+                        'product_id': product.id,
+                        'product_name': product.title,
+                        'score': score,
+                        'method': 'content_based',
+                        'product_type': product.document_type
+                    })
+            else:
+                # 샘플 보험 상품으로 테스트
+                sample_products = [
+                    {'id': 1, 'title': '기본 자동차보험', 'type': 'basic'},
+                    {'id': 2, 'title': '프리미엄 자동차보험', 'type': 'premium'},
+                    {'id': 3, 'title': '학생 자동차보험', 'type': 'student'},
+                    {'id': 4, 'title': '시니어 자동차보험', 'type': 'senior'},
+                    {'id': 5, 'title': '종합 자동차보험', 'type': 'comprehensive'}
+                ]
+                
+                for product in sample_products:
+                    score = self._calculate_content_score(user_profile, product)
+                    product_scores.append({
+                        'product_id': product['id'],
+                        'product_name': product['title'],
+                        'score': score,
+                        'method': 'content_based',
+                        'product_type': product['type']
+                    })
 
             # 점수별 정렬
             product_scores.sort(key=lambda x: x['score'], reverse=True)
@@ -331,7 +373,7 @@ class MLRecommendationService:
             logger.error(f"사용자 특성 추출 실패: {e}")
             return np.array([30, 0, 5, 12000, 0]).reshape(1, -1)
 
-    def _calculate_content_score(self, user_profile: Dict[str, Any], product: PolicyDocument) -> float:
+    def _calculate_content_score(self, user_profile: Dict[str, Any], product) -> float:
         """콘텐츠 기반 점수 계산"""
         try:
             score = 0.0
@@ -339,44 +381,57 @@ class MLRecommendationService:
             # 나이 기반 점수
             age = user_profile.get('age', 30)
             if age < 30:
-                if 'student' in product.title.lower() or 'young' in product.title.lower():
+                if 'student' in str(product.title).lower() or 'young' in str(product.title).lower():
                     score += 2.0
+                elif 'basic' in str(product.title).lower():
+                    score += 1.5
             elif age > 50:
-                if 'senior' in product.title.lower() or 'mature' in product.title.lower():
+                if 'senior' in str(product.title).lower() or 'mature' in str(product.title).lower():
                     score += 2.0
+                elif 'premium' in str(product.title).lower():
+                    score += 1.5
+            else:  # 30-50세
+                if 'premium' in str(product.title).lower() or 'comprehensive' in str(product.title).lower():
+                    score += 1.5
 
-            # 성별 기반 점수
+            # 성별 기반 점수 (성별 차이는 크지 않게 설정)
             gender = user_profile.get('gender', 0)
             if gender == 1:  # 남성
-                if 'male' in product.title.lower():
-                    score += 1.0
+                if 'premium' in str(product.title).lower():
+                    score += 0.5
             else:  # 여성
-                if 'female' in product.title.lower() or 'women' in product.title.lower():
-                    score += 1.0
+                if 'basic' in str(product.title).lower() or 'student' in str(product.title).lower():
+                    score += 0.5
 
             # 운전 경력 기반 점수
             driving_exp = user_profile.get('driving_experience', 5)
             if driving_exp < 3:
-                if 'new' in product.title.lower() or 'beginner' in product.title.lower():
+                if 'student' in str(product.title).lower() or 'basic' in str(product.title).lower():
                     score += 1.5
             elif driving_exp > 10:
-                if 'experienced' in product.title.lower() or 'premium' in product.title.lower():
+                if 'premium' in str(product.title).lower() or 'comprehensive' in str(product.title).lower():
                     score += 1.5
+            else:  # 3-10년
+                if 'comprehensive' in str(product.title).lower():
+                    score += 1.0
 
             # 연간 주행거리 기반 점수
             mileage = user_profile.get('annual_mileage', 12000)
             if mileage > 15000:
-                if 'high' in product.title.lower() or 'extended' in product.title.lower():
+                if 'premium' in str(product.title).lower() or 'comprehensive' in str(product.title).lower():
                     score += 1.0
             elif mileage < 8000:
-                if 'low' in product.title.lower() or 'basic' in product.title.lower():
+                if 'basic' in str(product.title).lower() or 'student' in str(product.title).lower():
                     score += 1.0
 
             # 사고 이력 기반 점수
             accidents = user_profile.get('accident_history', 0)
             if accidents > 0:
-                if 'comprehensive' in product.title.lower() or 'full' in product.title.lower():
+                if 'comprehensive' in str(product.title).lower() or 'premium' in str(product.title).lower():
                     score += 1.5
+            else:
+                if 'basic' in str(product.title).lower() or 'student' in str(product.title).lower():
+                    score += 0.5
 
             return score
 
@@ -523,8 +578,8 @@ class MLRecommendationService:
                 history.append({
                     'id': rec.id,
                     'recommendation_date': rec.recommendation_date,
-                    'recommended_products_count': rec.get_recommended_products_count(),
-                    'similar_users_count': rec.get_similar_users_count(),
+                    'recommended_products_count': len(rec.recommended_products) if rec.recommended_products else 0,
+                    'similar_users_count': len(rec.similar_users) if rec.similar_users else 0,
                     'ml_scores': rec.ml_scores,
                     'user_feedback': rec.user_feedback,
                     'is_viewed': rec.is_viewed,
@@ -572,4 +627,67 @@ class MLRecommendationService:
 
         except Exception as e:
             logger.error(f"추천 시스템 통계 조회 실패: {e}")
+            return {}
+
+    def retrain_models(self):
+        """ML 모델 재훈련"""
+        try:
+            logger.info("ML 모델 재훈련 시작")
+            
+            # 데이터 다시 로드
+            self._load_user_data()
+            
+            if not self.user_df.empty:
+                self._preprocess_data()
+                self._train_models()
+                logger.info("ML 모델 재훈련 완료")
+                return True
+            else:
+                logger.warning("재훈련할 데이터가 없습니다.")
+                return False
+                
+        except Exception as e:
+            logger.error(f"ML 모델 재훈련 실패: {e}")
+            return False
+
+    def get_model_performance(self) -> Dict[str, Any]:
+        """모델 성능 지표"""
+        try:
+            performance = {
+                'user_count': len(self.user_df) if not self.user_df.empty else 0,
+                'product_count': PolicyDocument.objects.count(),
+                'recommendation_count': MLRecommendation.objects.count(),
+                'model_status': 'trained' if self.user_features is not None else 'not_trained',
+                'last_training': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            return performance
+            
+        except Exception as e:
+            logger.error(f"모델 성능 조회 실패: {e}")
+            return {}
+
+    def get_user_cluster_info(self, user_id: int) -> Dict[str, Any]:
+        """사용자 클러스터 정보"""
+        try:
+            if self.user_df.empty or self.user_clusters is None:
+                return {}
+                
+            user_idx = self.user_df[self.user_df['user_id'] == user_id].index
+            if len(user_idx) == 0:
+                return {}
+                
+            user_cluster = self.user_clusters[user_idx[0]]
+            cluster_users = self.user_df[self.user_clusters == user_cluster]
+            
+            return {
+                'cluster_id': int(user_cluster),
+                'cluster_size': len(cluster_users),
+                'cluster_avg_age': cluster_users['age'].mean(),
+                'cluster_avg_driving_exp': cluster_users['driving_experience'].mean(),
+                'cluster_avg_satisfaction': cluster_users['satisfaction_score'].mean()
+            }
+            
+        except Exception as e:
+            logger.error(f"사용자 클러스터 정보 조회 실패: {e}")
             return {}
