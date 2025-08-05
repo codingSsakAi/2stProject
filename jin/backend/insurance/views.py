@@ -97,6 +97,25 @@ def about_page(request):
         )
 
 
+def personalized_chat(request):
+    """개인화된 AI 챗봇 페이지"""
+    try:
+        context = {
+            "title": "개인화된 AI 챗봇",
+            "description": "당신의 프로필을 기반으로 맞춤형 보험 상담을 제공합니다",
+        }
+
+        return render(request, "insurance/personalized_chat.jinja.html", context)
+
+    except Exception as e:
+        logger.error(f"개인화 챗봇 페이지 로드 실패: {e}")
+        return render(
+            request,
+            "insurance/personalized_chat.jinja.html",
+            {"error": f"페이지 로드 중 오류가 발생했습니다: {str(e)}"},
+        )
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def search_documents_api(request):

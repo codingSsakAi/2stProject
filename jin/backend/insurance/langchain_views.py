@@ -101,7 +101,7 @@ def clear_conversation_memory(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_service_status(request):
-    """LangChain 서비스 상태 조회"""
+    """서비스 상태 조회"""
     try:
         langchain_service = LangChainService()
         status_info = langchain_service.get_service_status()
@@ -122,26 +122,23 @@ def get_service_status(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def generate_insurance_recommendation(request):
-    """맞춤형 보험 추천 생성"""
+    """보험 추천 생성"""
     try:
         data = request.data
-        user_info = data.get('user_info', '').strip()
+        user_profile = data.get('user_profile', {})
         
-        if not user_info:
+        if not user_profile:
             return Response(
-                {'error': '사용자 정보가 비어있습니다.'},
+                {'error': '사용자 프로필이 필요합니다.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         langchain_service = LangChainService()
-        
-        # 추천 생성
-        recommendation = langchain_service._generate_insurance_recommendation(user_info)
+        recommendation = langchain_service.generate_insurance_recommendation(user_profile)
         
         return Response({
             'success': True,
-            'recommendation': recommendation,
-            'user_info': user_info
+            'recommendation': recommendation
         })
 
     except Exception as e:
@@ -159,24 +156,19 @@ def search_insurance_documents(request):
     try:
         data = request.data
         query = data.get('query', '').strip()
-        top_k = data.get('top_k', 5)
         
         if not query:
             return Response(
-                {'error': '검색어가 비어있습니다.'},
+                {'error': '검색어가 필요합니다.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         langchain_service = LangChainService()
-        
-        # 문서 검색
-        search_result = langchain_service._search_insurance_documents(query)
+        results = langchain_service.search_insurance_documents(query)
         
         return Response({
             'success': True,
-            'search_result': search_result,
-            'query': query,
-            'top_k': top_k
+            'results': results
         })
 
     except Exception as e:
@@ -190,32 +182,29 @@ def search_insurance_documents(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def get_insurance_company_info(request):
-    """보험 회사 정보 조회"""
+    """보험사 정보 조회"""
     try:
         data = request.data
         company_name = data.get('company_name', '').strip()
         
         if not company_name:
             return Response(
-                {'error': '회사명이 비어있습니다.'},
+                {'error': '보험사명이 필요합니다.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         langchain_service = LangChainService()
-        
-        # 회사 정보 조회
-        company_info = langchain_service._get_insurance_company_info(company_name)
+        company_info = langchain_service.get_insurance_company_info(company_name)
         
         return Response({
             'success': True,
-            'company_info': company_info,
-            'company_name': company_name
+            'company_info': company_info
         })
 
     except Exception as e:
-        logger.error(f"보험 회사 정보 조회 실패: {e}")
+        logger.error(f"보험사 정보 조회 실패: {e}")
         return Response(
-            {'error': f'회사 정보 조회 중 오류가 발생했습니다: {str(e)}'},
+            {'error': f'보험사 정보 조회 중 오류가 발생했습니다: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -223,32 +212,30 @@ def get_insurance_company_info(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def compare_insurance_products(request):
-    """보험 상품 비교 분석"""
+    """보험 상품 비교"""
     try:
         data = request.data
-        product_names = data.get('product_names', '').strip()
+        products = data.get('products', [])
+        user_profile = data.get('user_profile', {})
         
-        if not product_names:
+        if not products:
             return Response(
-                {'error': '상품명이 비어있습니다.'},
+                {'error': '비교할 상품이 필요합니다.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         langchain_service = LangChainService()
-        
-        # 상품 비교 분석
-        comparison_result = langchain_service._compare_insurance_products(product_names)
+        comparison = langchain_service.compare_insurance_products(products, user_profile)
         
         return Response({
             'success': True,
-            'comparison_result': comparison_result,
-            'product_names': product_names
+            'comparison': comparison
         })
 
     except Exception as e:
-        logger.error(f"보험 상품 비교 분석 실패: {e}")
+        logger.error(f"보험 상품 비교 실패: {e}")
         return Response(
-            {'error': f'상품 비교 분석 중 오류가 발생했습니다: {str(e)}'},
+            {'error': f'상품 비교 중 오류가 발생했습니다: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -259,43 +246,158 @@ def test_langchain_tools(request):
     """LangChain 도구 테스트"""
     try:
         data = request.data
-        tool_name = data.get('tool_name', '').strip()
-        tool_input = data.get('tool_input', '').strip()
+        tool_name = data.get('tool_name', '')
         
-        if not tool_name or not tool_input:
-            return Response(
-                {'error': '도구명과 입력값이 필요합니다.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         langchain_service = LangChainService()
-        
-        # 도구 실행
-        tool_functions = {
-            '보험_문서_검색': langchain_service._search_insurance_documents,
-            '보험_회사_정보_조회': langchain_service._get_insurance_company_info,
-            '보험_추천_생성': langchain_service._generate_insurance_recommendation,
-            '보험_비교_분석': langchain_service._compare_insurance_products
-        }
-        
-        if tool_name not in tool_functions:
-            return Response(
-                {'error': f'알 수 없는 도구명: {tool_name}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        result = tool_functions[tool_name](tool_input)
+        test_result = langchain_service.test_tool(tool_name)
         
         return Response({
             'success': True,
-            'tool_name': tool_name,
-            'tool_input': tool_input,
-            'result': result
+            'test_result': test_result
         })
 
     except Exception as e:
         logger.error(f"LangChain 도구 테스트 실패: {e}")
         return Response(
             {'error': f'도구 테스트 중 오류가 발생했습니다: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def generate_personalized_recommendation(request):
+    """개인화된 보험 추천 생성"""
+    try:
+        data = request.data
+        user_profile = data.get('user_profile', {})
+        user_preferences = data.get('user_preferences', {})
+        chat_history = data.get('chat_history', [])
+        
+        if not user_profile:
+            return Response(
+                {'error': '사용자 프로필이 필요합니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        langchain_service = LangChainService()
+        
+        # 개인화된 추천 생성
+        personalized_recommendation = langchain_service.generate_personalized_recommendation(
+            user_profile=user_profile,
+            user_preferences=user_preferences,
+            chat_history=chat_history
+        )
+        
+        return Response({
+            'success': True,
+            'personalized_recommendation': personalized_recommendation
+        })
+
+    except Exception as e:
+        logger.error(f"개인화 추천 생성 실패: {e}")
+        return Response(
+            {'error': f'개인화 추천 생성 중 오류가 발생했습니다: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def analyze_user_risk_profile(request):
+    """사용자 위험도 프로필 분석"""
+    try:
+        data = request.data
+        user_profile = data.get('user_profile', {})
+        
+        if not user_profile:
+            return Response(
+                {'error': '사용자 프로필이 필요합니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        langchain_service = LangChainService()
+        
+        # 위험도 분석
+        risk_analysis = langchain_service.analyze_user_risk_profile(user_profile)
+        
+        return Response({
+            'success': True,
+            'risk_analysis': risk_analysis
+        })
+
+    except Exception as e:
+        logger.error(f"위험도 분석 실패: {e}")
+        return Response(
+            {'error': f'위험도 분석 중 오류가 발생했습니다: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def get_smart_insurance_suggestions(request):
+    """스마트 보험 제안"""
+    try:
+        data = request.data
+        user_profile = data.get('user_profile', {})
+        current_situation = data.get('current_situation', '')
+        
+        if not user_profile:
+            return Response(
+                {'error': '사용자 프로필이 필요합니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        langchain_service = LangChainService()
+        
+        # 스마트 제안 생성
+        smart_suggestions = langchain_service.get_smart_insurance_suggestions(
+            user_profile=user_profile,
+            current_situation=current_situation
+        )
+        
+        return Response({
+            'success': True,
+            'smart_suggestions': smart_suggestions
+        })
+
+    except Exception as e:
+        logger.error(f"스마트 제안 생성 실패: {e}")
+        return Response(
+            {'error': f'스마트 제안 생성 중 오류가 발생했습니다: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def update_user_preferences(request):
+    """사용자 선호도 업데이트"""
+    try:
+        data = request.data
+        user_id = data.get('user_id')
+        preferences = data.get('preferences', {})
+        
+        if not user_id:
+            return Response(
+                {'error': '사용자 ID가 필요합니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        langchain_service = LangChainService()
+        
+        # 선호도 업데이트
+        update_result = langchain_service.update_user_preferences(user_id, preferences)
+        
+        return Response({
+            'success': True,
+            'update_result': update_result
+        })
+
+    except Exception as e:
+        logger.error(f"사용자 선호도 업데이트 실패: {e}")
+        return Response(
+            {'error': f'선호도 업데이트 중 오류가 발생했습니다: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         ) 

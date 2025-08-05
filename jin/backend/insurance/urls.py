@@ -15,7 +15,9 @@ app_name = "insurance"
 urlpatterns = [
     # RAG 시스템 API
     path("api/rag/search/", views.search_documents_api, name="search_documents_api"),
-    path("api/rag/generate/", views.generate_response_api, name="generate_response_api"),
+    path(
+        "api/rag/generate/", views.generate_response_api, name="generate_response_api"
+    ),
     path("api/rag/chat/", views.chat_api, name="chat_api"),
     path("api/rag/stats/", views.get_index_stats_api, name="get_index_stats_api"),
     path("api/rag/upload/", views.upload_document_api, name="upload_document_api"),
@@ -61,6 +63,27 @@ urlpatterns = [
         "api/langchain/test-tools/",
         langchain_views.test_langchain_tools,
         name="test_tools",
+    ),
+    # 개인화 추천 API
+    path(
+        "api/langchain/personalized-recommendation/",
+        langchain_views.generate_personalized_recommendation,
+        name="personalized_recommendation",
+    ),
+    path(
+        "api/langchain/risk-analysis/",
+        langchain_views.analyze_user_risk_profile,
+        name="risk_analysis",
+    ),
+    path(
+        "api/langchain/smart-suggestions/",
+        langchain_views.get_smart_insurance_suggestions,
+        name="smart_suggestions",
+    ),
+    path(
+        "api/langchain/update-preferences/",
+        langchain_views.update_user_preferences,
+        name="update_preferences",
     ),
     # ML 추천 시스템 API
     path(
@@ -178,4 +201,5 @@ urlpatterns = [
     path("", views.main_page, name="main_page"),
     path("compare/", views.compare_insurance, name="compare_insurance"),
     path("about/", views.about_page, name="about_page"),
+    path("personalized-chat/", views.personalized_chat, name="personalized_chat"),
 ]
