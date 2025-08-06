@@ -3,8 +3,10 @@ from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-INDEX_NAME = "insurance-clauses"
-EMBED_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+# 환경변수로 인덱스 이름 관리
+INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "insurance-clauses-new")
+# 업로드와 동일한 모델 사용
+EMBED_MODEL = "jhgan/ko-sroberta-multitask"
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(INDEX_NAME)
