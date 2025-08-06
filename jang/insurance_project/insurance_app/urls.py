@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views
-from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -13,5 +12,5 @@ urlpatterns = [
     path('market-analysis/', views.get_market_analysis, name='market_analysis'),  # 추가
     path('api/search/', views.insurance_clause_search, name='insurance_clause_search'),
     path('api/qa/', views.insurance_clause_qa, name='insurance_clause_qa'),
-    path('logout/', LogoutView.as_view(next_page='home'), name='logout'),
+    path('logout/', views.logout_view, name='logout'),  # 수정된 부분
 ]
