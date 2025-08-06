@@ -62,3 +62,93 @@
                         <div class="mb-3">
                             <label for="tags" class="form-label">태그 (쉼표로 구분)</label>
                             <input type="text" class="form-control" id="tags" name="tags" 
+                                   placeholder="예: 자동차보험, 운전자보험, 상해보험">
+                        </div>
+                        
+                        <!-- 업로드 버튼 -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                <i class="fas fa-upload me-2"></i>문서 업로드
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 진행 상황 표시 -->
+            <div class="mt-4" id="progressSection" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-spinner fa-spin me-2"></i>업로드 진행 중...
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress mb-3">
+                            <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="progressText" class="text-muted">파일 업로드 중...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const progressSection = document.getElementById('progressSection');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // 진행 상황 표시
+    progressSection.style.display = 'block';
+    uploadBtn.disabled = true;
+    
+    // 업로드 진행
+    fetch('{% url "insurance:admin_upload_document" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            progressText.innerHTML = '<i class="fas fa-check text-success me-2"></i>업로드 완료!';
+            progressBar.style.width = '100%';
+            progressBar.className = 'progress-bar bg-success';
+            
+            setTimeout(() => {
+                window.location.href = '{% url "insurance:admin_document_list" %}';
+            }, 2000);
+        } else {
+            progressText.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-2"></i>업로드 실패: ' + data.error;
+            progressBar.className = 'progress-bar bg-danger';
+            uploadBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        progressText.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-2"></i>오류 발생: ' + error;
+        progressBar.className = 'progress-bar bg-danger';
+        uploadBtn.disabled = false;
+    });
+});
+
+// 파일 선택 시 파일명 표시
+document.getElementById('document').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const titleInput = document.getElementById('title');
+        if (!titleInput.value) {
+            titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+        }
+    }
+});
+</script>
+{% endblock %}
