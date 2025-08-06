@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.contrib import messages
@@ -12,7 +12,6 @@ from .pinecone_search import retrieve_insurance_clauses   # Pinecone 연동 함�
 import json
 from django.views.decorators.http import require_http_methods
 from .pinecone_search import retrieve_insurance_clauses
-from .insurance_mock_server import InsuranceService
 
 def home(request):
     return render(request, 'insurance_app/home.html')
@@ -48,51 +47,19 @@ def login_view(request):
         form = AuthenticationForm()
     return render(request, 'insurance_app/login.html', {'form': form})
 
-def logout_view(request):
-    """로그아웃 시 메시지 삭제 후 로그아웃 처리"""
-    if request.method == 'POST':
-        # 기존 메시지들을 모두 삭제
-        storage = messages.get_messages(request)
-        for message in storage:
-            pass  # 메시지를 순회하면서 삭제
-        storage.used = True  # 메시지 스토리지를 비움
-        
-        logout(request)
-        return redirect('login')
-    return redirect('home')
-
 @login_required
 def recommend_insurance(request):
+    """보험 추천 폼 페이지 (실제 추천은 별도 API)"""
     if request.method == 'POST':
-        try:
-            # FormData에서 값 추출 (user model의 필드 직접 접근, 없는 건 default)
-            user_profile = {
-                'birth_date': str(getattr(request.user, 'birth_date', '1990-01-01')),
-                'gender': getattr(request.user, 'gender', 'M'),
-                'residence_area': request.POST.get('region', '서울'),
-                'driving_experience': int(request.POST.get('driving_experience', 5)),
-                'accident_history': int(request.POST.get('accident_history', 0)),
-                'annual_mileage': int(request.POST.get('annual_mileage', 12000)),
-                'car_info': {'type': request.POST.get('car_type', '준중형')},
-                'coverage_level': request.POST.get('coverage_level', '표준')
-            }
-            service = InsuranceService()
-            result = service.calculate_insurance_premium(user_profile)
-            return JsonResponse({'success': True, 'data': result})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    else:
-        context = {
-            'user': request.user,
-            'car_types': ['경차', '소형', '준중형', '중형', '대형', 'SUV'],
-            'regions': ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '기타'],
-            'coverage_levels': ['기본', '표준', '고급', '프리미엄'],
-            'insurance_companies': [
-                '삼성화재','현대해상','KB손해보험','메리츠화재','DB손해보험',
-                '롯데손해보험','하나손해보험','흥국화재','AXA손해보험','MG손해보험','캐롯손해보험'
-            ]
-        }
-        return render(request, 'insurance_app/recommend.html', context)
+        # 보험 추천 API가 아니라, 보험 추천 폼일 경우만 사용
+        pass
+    context = {
+        'user': request.user,
+        'car_types': ['경차', '소형', '준중형', '중형', '대형', 'SUV'],
+        'regions': ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '기타'],
+        'coverage_levels': ['기본', '표준', '고급', '프리미엄']
+    }
+    return render(request, 'insurance_app/recommend.html', context)
 
 @csrf_exempt
 def get_company_detail(request, company_name):

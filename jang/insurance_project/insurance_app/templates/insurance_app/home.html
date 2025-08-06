@@ -49,35 +49,6 @@
         .btn-secondary:hover {
             box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
         }
-        .nav-bar {
-    margin-top: 18px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
-
-.nav-btn {
-    display: inline-block;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    padding: 8px 18px;
-    border-radius: 30px;
-    font-size: 1em;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background 0.2s, transform 0.2s;
-}
-.nav-btn:hover {
-    background: linear-gradient(135deg, #2980b9, #3498db);
-    transform: translateY(-2px) scale(1.04);
-}
-.logout-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-.logout-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #e74c3c);
-}
-
     </style>
 </head>
 <body>
@@ -98,10 +69,6 @@
         
         {% if user.is_authenticated %}
             <p>안녕하세요, {{ user.username }}님!</p>
-            <form action="{% url 'logout' %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="nav-btn logout-btn">로그아웃</button>
-            </form>
         {% else %}
             <a href="{% url 'signup' %}" class="btn">회원가입</a>
             <a href="{% url 'login' %}" class="btn">로그인</a>
