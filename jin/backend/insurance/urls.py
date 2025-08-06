@@ -202,4 +202,20 @@ urlpatterns = [
     path("compare/", views.compare_insurance, name="compare_insurance"),
     path("about/", views.about_page, name="about_page"),
     path("personalized-chat/", views.personalized_chat, name="personalized_chat"),
+
+    # 관리자 전용 URL 패턴
+    path('admin/upload/', views.admin_upload_document, name='admin_upload_document'),
+    path('admin/documents/', views.admin_document_list, name='admin_document_list'),
+    path('admin/pinecone/', views.admin_pinecone_management, name='admin_pinecone_management'),
+
+    # Pinecone 관리 API
+    path('api/pinecone/update-company/', views.update_company_index, name='update_company_index'),
+    path('api/pinecone/delete-company/', views.delete_company_data, name='delete_company_data'),
+    path('api/pinecone/update-all/', views.update_all_index, name='update_all_index'),
+    path('api/pinecone/clear-all/', views.clear_all_index, name='clear_all_index'),
+    path('api/pinecone/stats/', views.get_pinecone_stats, name='get_pinecone_stats'),
+
+    # 문서 관리 API
+    path('api/documents/<int:document_id>/delete/', views.delete_document_api, name='delete_document_api'),
+    path('api/documents/search/', views.search_documents_api, name='search_documents_api'),
 ]

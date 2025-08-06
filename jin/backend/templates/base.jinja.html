@@ -33,7 +33,7 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'profile' %}">
+                            <a class="nav-link" href="{% url 'users:profile' %}">
                                 <i class="fas fa-user me-1"></i>{{ user.username }}
                             </a>
                         </li>
@@ -45,18 +45,18 @@
                             </li>
                         {% endif %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">
+                            <a class="nav-link" href="{% url 'users:logout' %}">
                                 <i class="fas fa-sign-out-alt me-1"></i>로그아웃
                             </a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">
+                            <a class="nav-link" href="{% url 'users:login' %}">
                                 <i class="fas fa-sign-in-alt me-1"></i>로그인
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'register' %}">
+                            <a class="nav-link" href="{% url 'users:register' %}">
                                 <i class="fas fa-user-plus me-1"></i>회원가입
                             </a>
                         </li>
