@@ -138,8 +138,11 @@ class RAGService:
                 self.vectorstore = None
                 return
 
-            self.vectorstore = Pinecone.from_existing_index(
-                index_name=settings.PINECONE_INDEX_NAME, embedding=self.embeddings
+            # 빈 인덱스로 시작할 수 있도록 수정
+            self.vectorstore = Pinecone(
+                index=self.pinecone_index,
+                embedding=self.embeddings,
+                text_key="text"
             )
             logger.info("벡터 스토어 초기화 완료")
 
@@ -229,6 +232,95 @@ class RAGService:
             logger.error(f"문서 업로드 실패: {e}")
             return {"success": False, "error": str(e)}
 
+    def upload_document_with_metadata(self, file_path, company, document_type, title, tags=""):
+        """보험사별 메타데이터를 포함한 문서 업로드"""
+        try:
+            if self.vectorstore is None:
+                return {
+                    "success": False,
+                    "error": "벡터 스토어가 초기화되지 않았습니다.",
+                }
+
+            # 파일 확장자 확인
+            file_extension = str(file_path).split(".")[-1].lower()
+
+            # 텍스트 추출
+            if file_extension == "pdf":
+                text = self._extract_text_from_pdf_file(file_path)
+            elif file_extension == "docx":
+                text = self._extract_text_from_docx_file(file_path)
+            else:
+                return {"success": False, "error": "지원하지 않는 파일 형식입니다."}
+
+            if not text.strip():
+                return {
+                    "success": False,
+                    "error": "파일에서 텍스트를 추출할 수 없습니다.",
+                }
+
+            # 텍스트 분할
+            chunks = self._split_text(text)
+
+            # 보험사별 메타데이터 생성
+            from datetime import datetime
+            upload_date = datetime.now().strftime("%Y-%m-%d")
+            
+            metadatas = []
+            for i in range(len(chunks)):
+                metadata = {
+                    "source": str(file_path).split("/")[-1],
+                    "company": company,
+                    "document_type": document_type,
+                    "title": title,
+                    "upload_date": upload_date,
+                    "chunk": i,
+                    "file_path": str(file_path),
+                    "tags": tags,
+                    "total_chunks": len(chunks)
+                }
+                metadatas.append(metadata)
+
+            # 벡터 스토어에 추가
+            self.vectorstore.add_texts(texts=chunks, metadatas=metadatas)
+
+            return {
+                "success": True,
+                "filename": str(file_path).split("/")[-1],
+                "company": company,
+                "document_type": document_type,
+                "chunks_count": len(chunks),
+                "text_length": len(text),
+                "upload_date": upload_date
+            }
+
+        except Exception as e:
+            logger.error(f"문서 업로드 실패: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _extract_text_from_pdf_file(self, file_path) -> str:
+        """PDF 파일 경로에서 텍스트 추출"""
+        try:
+            pdf_reader = PyPDF2.PdfReader(file_path)
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+            return text
+        except Exception as e:
+            logger.error(f"PDF 텍스트 추출 실패: {e}")
+            return ""
+
+    def _extract_text_from_docx_file(self, file_path) -> str:
+        """DOCX 파일 경로에서 텍스트 추출"""
+        try:
+            doc = Document(file_path)
+            text = ""
+            for paragraph in doc.paragraphs:
+                text += paragraph.text + "\n"
+            return text
+        except Exception as e:
+            logger.error(f"DOCX 텍스트 추출 실패: {e}")
+            return ""
+
     def search_documents(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """문서 검색"""
         try:
@@ -255,6 +347,38 @@ class RAGService:
 
         except Exception as e:
             logger.error(f"문서 검색 실패: {e}")
+            return []
+
+    def search_documents_by_company(self, query: str, company: str = None, top_k: int = 5) -> List[Dict[str, Any]]:
+        """보험사별 문서 검색"""
+        try:
+            if self.vectorstore is None:
+                logger.warning("벡터 스토어가 초기화되지 않아 검색을 수행할 수 없습니다.")
+                return []
+
+            # 필터 설정
+            filter_dict = {}
+            if company:
+                filter_dict["company"] = company
+
+            # 유사도 검색
+            if filter_dict:
+                docs = self.vectorstore.similarity_search(query, k=top_k, filter=filter_dict)
+            else:
+                docs = self.vectorstore.similarity_search(query, k=top_k)
+
+            results = []
+            for doc in docs:
+                results.append({
+                    "content": doc.page_content,
+                    "metadata": doc.metadata,
+                    "score": getattr(doc, "score", 0.0),
+                })
+
+            return results
+
+        except Exception as e:
+            logger.error(f"보험사별 문서 검색 실패: {e}")
             return []
 
     def generate_response(self, query: str) -> str:
@@ -352,3 +476,48 @@ class RAGService:
                 "index_size": 0,
                 "embedding_dimension": settings.UPSTAGE_EMBEDDING_DIMENSION,
             }
+
+    def get_company_document_stats(self) -> Dict[str, Any]:
+        """보험사별 문서 통계"""
+        try:
+            if self.vectorstore is None:
+                return {"error": "벡터 스토어가 초기화되지 않았습니다."}
+
+            # Pinecone에서 모든 벡터 조회
+            stats = self.pinecone_index.describe_index_stats()
+            
+            # 보험사별 통계 계산
+            company_stats = {}
+            total_vectors = stats.get("total_vector_count", 0)
+            
+            # 보험사 목록
+            companies = [
+                "삼성화재", "현대해상", "KB손해보험", "메리츠화재",
+                "DB손해보험", "롯데손해보험", "하나손해보험", "흥국화재",
+                "AXA손해보험", "MG손해보험", "캐롯손해보험", "한화손해보험"
+            ]
+            
+            for company in companies:
+                try:
+                    # 보험사별 벡터 수 조회
+                    company_vectors = self.pinecone_index.query(
+                        vector=[0] * settings.UPSTAGE_EMBEDDING_DIMENSION,
+                        top_k=1,
+                        filter={"company": company},
+                        include_metadata=False
+                    )
+                    company_stats[company] = len(company_vectors.matches)
+                except Exception as e:
+                    company_stats[company] = 0
+                    logger.warning(f"{company} 통계 조회 실패: {e}")
+
+            return {
+                "total_vectors": total_vectors,
+                "company_stats": company_stats,
+                "index_dimension": settings.UPSTAGE_EMBEDDING_DIMENSION,
+                "index_name": settings.PINECONE_INDEX_NAME
+            }
+
+        except Exception as e:
+            logger.error(f"보험사별 문서 통계 조회 실패: {e}")
+            return {"error": str(e)}
