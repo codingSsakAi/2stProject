@@ -324,9 +324,9 @@ def admin_upload_document(request):
 
             # 자동으로 제목과 타입 생성
             filename = secure_filename(document_file.name)
-            title = filename.replace('.pdf', '').replace('.docx', '')
+            title = filename.replace(".pdf", "").replace(".docx", "")
             document_type = "이용약관"  # 기본값
-            
+
             # 파일 저장 및 처리
             result = process_document_upload(
                 company, document_file, title, document_type, "", ""
@@ -339,9 +339,18 @@ def admin_upload_document(request):
 
     # GET 요청: 업로드 페이지 표시
     insurance_companies = [
-        "삼성화재", "현대해상", "KB손해보험", "메리츠화재", "DB손해보험",
-        "롯데손해보험", "하나손해보험", "흥국화재", "AXA손해보험", 
-        "MG손해보험", "캐롯손해보험", "한화손해보험",
+        "삼성화재",
+        "현대해상",
+        "KB손해보험",
+        "메리츠화재",
+        "DB손해보험",
+        "롯데손해보험",
+        "하나손해보험",
+        "흥국화재",
+        "AXA손해보험",
+        "MG손해보험",
+        "캐롯손해보험",
+        "한화손해보험",
     ]
 
     context = {"insurance_companies": insurance_companies, "title": "단일 파일 업로드"}
