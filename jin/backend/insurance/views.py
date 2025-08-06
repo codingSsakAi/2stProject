@@ -311,24 +311,25 @@ def admin_required(view_func):
 
 @admin_required
 def admin_upload_document(request):
-    """관리자 문서 업로드 페이지"""
+    """관리자 문서 업로드 페이지 (단순화된 버전)"""
     if request.method == "POST":
         try:
             company = request.POST.get("company")
             document_file = request.FILES.get("document")
-            title = request.POST.get("title")
-            document_type = request.POST.get("document_type")
-            description = request.POST.get("description", "")
-            tags = request.POST.get("tags", "")
 
-            if not all([company, document_file, title, document_type]):
+            if not company or not document_file:
                 return JsonResponse(
-                    {"success": False, "error": "필수 정보가 누락되었습니다."}
+                    {"success": False, "error": "보험사와 파일을 선택해주세요."}
                 )
 
+            # 자동으로 제목과 타입 생성
+            filename = secure_filename(document_file.name)
+            title = filename.replace('.pdf', '').replace('.docx', '')
+            document_type = "이용약관"  # 기본값
+            
             # 파일 저장 및 처리
             result = process_document_upload(
-                company, document_file, title, document_type, description, tags
+                company, document_file, title, document_type, "", ""
             )
 
             return JsonResponse(result)
@@ -338,21 +339,12 @@ def admin_upload_document(request):
 
     # GET 요청: 업로드 페이지 표시
     insurance_companies = [
-        "삼성화재",
-        "현대해상",
-        "KB손해보험",
-        "메리츠화재",
-        "DB손해보험",
-        "롯데손해보험",
-        "하나손해보험",
-        "흥국화재",
-        "AXA손해보험",
-        "MG손해보험",
-        "캐롯손해보험",
-        "한화손해보험",
+        "삼성화재", "현대해상", "KB손해보험", "메리츠화재", "DB손해보험",
+        "롯데손해보험", "하나손해보험", "흥국화재", "AXA손해보험", 
+        "MG손해보험", "캐롯손해보험", "한화손해보험",
     ]
 
-    context = {"insurance_companies": insurance_companies, "title": "문서 업로드"}
+    context = {"insurance_companies": insurance_companies, "title": "단일 파일 업로드"}
 
     return render(request, "insurance/admin_upload.jinja.html", context)
 
@@ -411,68 +403,372 @@ def process_document_upload(company, file, title, document_type, description, ta
 
 
 def convert_pdf_to_docx(pdf_path, docx_path):
-    """PDF를 DOCX로 변환"""
+    """PDF를 DOCX로 변환 (개선된 버전)"""
     try:
-        # PDF 텍스트 추출
-        pdf_reader = PyPDF2.PdfReader(pdf_path)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
+        # 방법 1: PyPDF2 사용
+        text = extract_text_with_pypdf2(pdf_path)
+
+        # 방법 1이 실패하면 방법 2 시도
+        if not text.strip():
+            text = extract_text_with_alternative_method(pdf_path)
+
+        if not text.strip():
+            raise Exception("PDF에서 텍스트를 추출할 수 없습니다.")
 
         # DOCX 생성
         doc = Document()
-        doc.add_paragraph(text)
-        doc.save(docx_path)
 
+        # 텍스트를 문단으로 분할하여 추가
+        paragraphs = text.split("\n")
+        for para in paragraphs:
+            if para.strip():
+                # 특수 문자 제거 후 문단 추가
+                clean_para = clean_text_for_docx(para)
+                if clean_para.strip():
+                    doc.add_paragraph(clean_para)
+
+        doc.save(docx_path)
         logger.info(f"PDF → DOCX 변환 완료: {pdf_path} → {docx_path}")
 
     except Exception as e:
         logger.error(f"PDF → DOCX 변환 실패: {e}")
         raise e
 
+
+def extract_text_with_pypdf2(pdf_path):
+    """PyPDF2를 사용한 텍스트 추출"""
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_path)
+        text = ""
+
+        for page_num, page in enumerate(pdf_reader.pages):
+            try:
+                page_text = page.extract_text()
+                if page_text:
+                    # 특수 문자 정리
+                    page_text = clean_text_for_docx(page_text)
+                    text += page_text + "\n"
+            except Exception as e:
+                logger.warning(f"페이지 {page_num + 1} 텍스트 추출 실패: {e}")
+                continue
+
+        return text
+    except Exception as e:
+        logger.warning(f"PyPDF2 추출 실패: {e}")
+        return ""
+
+
+def extract_text_with_alternative_method(pdf_path):
+    """대체 방법을 사용한 텍스트 추출"""
+    try:
+        # PDF를 바이너리로 읽어서 텍스트 추출 시도
+        with open(pdf_path, "rb") as file:
+            content = file.read()
+
+        # PDF 시그니처 확인
+        if content.startswith(b"%PDF"):
+            # 간단한 텍스트 추출 시도
+            text = ""
+            content_str = content.decode("utf-8", errors="ignore")
+
+            # 텍스트 패턴 찾기
+            import re
+
+            text_patterns = [
+                r"BT\s*([^E]*?)\s*ET",  # 텍스트 블록
+                r"\(([^)]*)\)",  # 괄호 안의 텍스트
+                r"\[([^\]]*)\]",  # 대괄호 안의 텍스트
+            ]
+
+            for pattern in text_patterns:
+                matches = re.findall(pattern, content_str)
+                for match in matches:
+                    if len(match.strip()) > 10:  # 의미있는 텍스트만
+                        text += match.strip() + "\n"
+
+            return clean_text_for_docx(text)
+        else:
+            return ""
+
+    except Exception as e:
+        logger.warning(f"대체 방법 추출 실패: {e}")
+        return ""
+
+
+def clean_text_for_docx(text):
+    """DOCX 호환을 위한 텍스트 정리"""
+    import re
+
+    # NULL 바이트 제거
+    text = text.replace("\x00", "")
+
+    # 제어 문자 제거 (0x00-0x1F, 0x7F-0x9F)
+    text = "".join(char for char in text if ord(char) >= 32 or char in "\n\r\t")
+
+    # XML 호환되지 않는 문자 제거
+    text = re.sub(
+        r"[^\x20-\x7E\xA0-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF\u2C60-\u2C7F\uA720-\uA7FF\uFB00-\uFB4F]",
+        "",
+        text,
+    )
+
+    # 연속된 공백 정리
+    text = re.sub(r"\s+", " ", text)
+
+    # 빈 줄 정리
+    text = re.sub(r"\n\s*\n", "\n", text)
+
+    return text.strip()
+
+
+def convert_multiple_pdfs_to_single_docx(pdf_files, company):
+    """여러 PDF 파일을 하나의 DOCX로 통합 변환"""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+
+        # 새로운 DOCX 문서 생성
+        doc = Document()
+
+        # 제목 추가
+        title = doc.add_heading(f"{company} 이용약관 통합본", 0)
+        title.alignment = 1  # 가운데 정렬
+
+        # 날짜 추가
+        from datetime import datetime
+
+        date_paragraph = doc.add_paragraph(
+            f"생성일: {datetime.now().strftime('%Y년 %m월 %d일')}"
+        )
+        date_paragraph.alignment = 1  # 가운데 정렬
+
+        # 구분선 추가
+        doc.add_paragraph("=" * 50)
+
+        all_text = ""
+        file_count = 0
+
+        for pdf_file in pdf_files:
+            try:
+                # PDF에서 텍스트 추출
+                text = extract_text_with_pypdf2(pdf_file)
+
+                if not text.strip():
+                    text = extract_text_with_alternative_method(pdf_file)
+
+                if text.strip():
+                    # 파일명을 제목으로 추가
+                    filename = pdf_file.name.replace(".pdf", "")
+                    doc.add_heading(f"【{filename}】", level=1)
+
+                    # 텍스트를 문단으로 분할하여 추가
+                    paragraphs = text.split("\n")
+                    for para in paragraphs:
+                        if para.strip():
+                            clean_para = clean_text_for_docx(para)
+                            if clean_para.strip():
+                                doc.add_paragraph(clean_para)
+
+                    # 구분선 추가
+                    doc.add_paragraph("-" * 30)
+                    file_count += 1
+                    all_text += text + "\n\n"
+
+            except Exception as e:
+                logger.error(f"PDF 처리 실패: {pdf_file.name} - {e}")
+                continue
+
+        if file_count == 0:
+            raise Exception("처리할 수 있는 PDF 파일이 없습니다.")
+
+        # 통합된 DOCX 파일 저장
+        docx_dir = Path(settings.BASE_DIR) / "policy_documents" / "docx" / company
+        docx_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        docx_filename = f"{company}_통합이용약관_{timestamp}.docx"
+        docx_path = docx_dir / docx_filename
+
+        doc.save(docx_path)
+
+        logger.info(
+            f"멀티 PDF → 단일 DOCX 변환 완료: {file_count}개 파일 → {docx_path}"
+        )
+
+        return {
+            "success": True,
+            "docx_path": str(docx_path),
+            "file_count": file_count,
+            "all_text": all_text,
+        }
+
+    except Exception as e:
+        logger.error(f"멀티 PDF → DOCX 변환 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def process_multiple_document_upload(company, files):
+    """멀티 파일 업로드 처리"""
+    try:
+        # 1. PDF 파일들을 임시 저장
+        pdf_dir = Path(settings.BASE_DIR) / "policy_documents" / "pdf" / company
+        pdf_dir.mkdir(parents=True, exist_ok=True)
+
+        saved_pdf_files = []
+        for file in files:
+            if file.name.lower().endswith(".pdf"):
+                filename = secure_filename(file.name)
+                pdf_path = pdf_dir / filename
+
+                with open(pdf_path, "wb") as f:
+                    for chunk in file.chunks():
+                        f.write(chunk)
+
+                saved_pdf_files.append(pdf_path)
+
+        if not saved_pdf_files:
+            return {"success": False, "error": "PDF 파일이 없습니다."}
+
+        # 2. 여러 PDF를 하나의 DOCX로 통합 변환
+        conversion_result = convert_multiple_pdfs_to_single_docx(
+            saved_pdf_files, company
+        )
+
+        if not conversion_result["success"]:
+            return conversion_result
+
+        docx_path = conversion_result["docx_path"]
+        file_count = conversion_result["file_count"]
+
+        # 3. 데이터베이스에 문서 정보 저장
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        document = PolicyDocument.objects.create(
+            title=f"{company} 통합 이용약관",
+            company=InsuranceCompany.objects.get(name=company),
+            document_type="통합이용약관",
+            description=f"{file_count}개 PDF 파일을 통합한 이용약관",
+            tags=f"{company},통합,이용약관",
+            file_path=docx_path,
+            status="approved",
+        )
+
+        # 4. Pinecone에서 기존 해당 보험사 데이터 삭제 후 새로 업로드
+        rag_service = RAGService()
+
+        # 기존 데이터 삭제
+        if rag_service.pinecone_index:
+            try:
+                rag_service.pinecone_index.delete(filter={"company": company})
+                logger.info(f"{company} 기존 Pinecone 데이터 삭제 완료")
+            except Exception as e:
+                logger.warning(f"기존 데이터 삭제 실패: {e}")
+
+        # 새로운 통합 문서 업로드
+        upload_result = rag_service.upload_document_with_metadata(
+            docx_path,
+            company,
+            "통합이용약관",
+            f"{company} 통합 이용약관",
+            f"{company},통합,이용약관",
+        )
+
+        return {
+            "success": True,
+            "message": f"{company} 통합 문서 업로드 완료: {file_count}개 파일",
+            "document_id": document.id,
+            "file_count": file_count,
+            "pinecone_result": upload_result,
+        }
+
+    except Exception as e:
+        logger.error(f"멀티 문서 업로드 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@admin_required
+def admin_multiple_upload_document(request):
+    """관리자 멀티 파일 업로드 페이지"""
+    if request.method == "POST":
+        try:
+            company = request.POST.get("company")
+            files = request.FILES.getlist("files")
+
+            if not company or not files:
+                return JsonResponse(
+                    {"success": False, "error": "보험사와 파일을 선택해주세요."}
+                )
+
+            # 파일 처리
+            result = process_multiple_document_upload(company, files)
+            return JsonResponse(result)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    # GET 요청: 업로드 페이지 표시
+    insurance_companies = [
+        "삼성화재",
+        "현대해상",
+        "KB손해보험",
+        "메리츠화재",
+        "DB손해보험",
+        "롯데손해보험",
+        "하나손해보험",
+        "흥국화재",
+        "AXA손해보험",
+        "MG손해보험",
+        "캐롯손해보험",
+        "한화손해보험",
+    ]
+
+    context = {"insurance_companies": insurance_companies, "title": "멀티 파일 업로드"}
+    return render(request, "insurance/admin_multiple_upload.jinja.html", context)
+
+
 @admin_required
 def admin_document_list(request):
     """관리자 문서 목록 페이지"""
-    documents = PolicyDocument.objects.all().order_by('-upload_date')
-    context = {
-        'documents': documents,
-        'title': '문서 관리'
-    }
-    return render(request, 'insurance/admin_documents.jinja.html', context)
+    documents = PolicyDocument.objects.all().order_by("-upload_date")
+    context = {"documents": documents, "title": "문서 관리"}
+    return render(request, "insurance/admin_documents.jinja.html", context)
+
 
 @admin_required
 def admin_pinecone_management(request):
     """관리자 Pinecone 관리 페이지"""
     rag_service = RAGService()
     stats = rag_service.get_company_document_stats()
-    
-    context = {
-        'stats': stats,
-        'title': 'Pinecone 관리'
-    }
-    return render(request, 'insurance/admin_pinecone.jinja.html', context)
+
+    context = {"stats": stats, "title": "Pinecone 관리"}
+    return render(request, "insurance/admin_pinecone.jinja.html", context)
+
 
 # Pinecone 관리 API 뷰 함수들
 @admin_required
 def update_company_index(request):
     """보험사별 인덱스 업데이트"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             import json
+
             data = json.loads(request.body)
-            company = data.get('company')
-            
+            company = data.get("company")
+
             if not company:
-                return JsonResponse({'success': False, 'error': '보험사 정보가 누락되었습니다.'})
-            
+                return JsonResponse(
+                    {"success": False, "error": "보험사 정보가 누락되었습니다."}
+                )
+
             rag_service = RAGService()
-            
+
             # 해당 보험사의 승인된 문서들만 다시 업로드
             documents = PolicyDocument.objects.filter(
-                company__name=company,
-                status='approved'
+                company__name=company, status="approved"
             )
-            
+
             success_count = 0
             for document in documents:
                 if document.file_path:
@@ -482,67 +778,73 @@ def update_company_index(request):
                             company,
                             document.document_type,
                             document.title,
-                            document.tags
+                            document.tags,
                         )
-                        if result['success']:
+                        if result["success"]:
                             success_count += 1
                     except Exception as e:
                         logger.error(f"문서 업로드 실패: {document.title} - {e}")
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'{company} 인덱스 업데이트 완료: {success_count}개 문서',
-                'updated_count': success_count
-            })
-            
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f"{company} 인덱스 업데이트 완료: {success_count}개 문서",
+                    "updated_count": success_count,
+                }
+            )
+
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다.'})
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "POST 요청만 지원합니다."})
+
 
 @admin_required
 def delete_company_data(request):
     """보험사별 데이터 삭제"""
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         try:
             import json
+
             data = json.loads(request.body)
-            company = data.get('company')
-            
+            company = data.get("company")
+
             if not company:
-                return JsonResponse({'success': False, 'error': '보험사 정보가 누락되었습니다.'})
-            
+                return JsonResponse(
+                    {"success": False, "error": "보험사 정보가 누락되었습니다."}
+                )
+
             rag_service = RAGService()
-            
+
             # Pinecone에서 해당 보험사 데이터 삭제
             if rag_service.pinecone_index:
                 # 보험사별 필터로 벡터 삭제
                 rag_service.pinecone_index.delete(filter={"company": company})
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'{company} 데이터 삭제 완료'
-            })
-            
+
+            return JsonResponse(
+                {"success": True, "message": f"{company} 데이터 삭제 완료"}
+            )
+
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "DELETE 요청만 지원합니다."})
+
 
 @admin_required
 def update_all_index(request):
     """전체 인덱스 업데이트"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             rag_service = RAGService()
-            
+
             # 기존 인덱스 초기화
             if rag_service.pinecone_index:
                 rag_service.pinecone_index.delete(delete_all=True)
-            
+
             # 승인된 모든 문서 다시 업로드
-            documents = PolicyDocument.objects.filter(status='approved')
-            
+            documents = PolicyDocument.objects.filter(status="approved")
+
             success_count = 0
             for document in documents:
                 if document.file_path:
@@ -552,43 +854,44 @@ def update_all_index(request):
                             document.company.name,
                             document.document_type,
                             document.title,
-                            document.tags
+                            document.tags,
                         )
-                        if result['success']:
+                        if result["success"]:
                             success_count += 1
                     except Exception as e:
                         logger.error(f"문서 업로드 실패: {document.title} - {e}")
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'전체 인덱스 업데이트 완료: {success_count}개 문서',
-                'updated_count': success_count
-            })
-            
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f"전체 인덱스 업데이트 완료: {success_count}개 문서",
+                    "updated_count": success_count,
+                }
+            )
+
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다.'})
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "POST 요청만 지원합니다."})
+
 
 @admin_required
 def clear_all_index(request):
     """전체 인덱스 초기화"""
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         try:
             rag_service = RAGService()
-            
+
             if rag_service.pinecone_index:
                 rag_service.pinecone_index.delete(delete_all=True)
-            
-            return JsonResponse({
-                'success': True,
-                'message': '전체 인덱스 초기화 완료'
-            })
-            
+
+            return JsonResponse({"success": True, "message": "전체 인덱스 초기화 완료"})
+
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "DELETE 요청만 지원합니다."})
+
 
 @admin_required
 def get_pinecone_stats(request):
@@ -596,82 +899,81 @@ def get_pinecone_stats(request):
     try:
         rag_service = RAGService()
         stats = rag_service.get_company_document_stats()
-        
-        return JsonResponse({
-            'success': True,
-            'stats': stats
-        })
-        
+
+        return JsonResponse({"success": True, "stats": stats})
+
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({"success": False, "error": str(e)})
+
 
 @admin_required
 def delete_document_api(request, document_id):
     """문서 삭제 API"""
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         try:
             document = PolicyDocument.objects.get(id=document_id)
-            
+
             # Pinecone에서 해당 문서 벡터 삭제
             rag_service = RAGService()
             if rag_service.pinecone_index:
                 rag_service.pinecone_index.delete(
                     filter={
                         "source": document.file_path.split("/")[-1],
-                        "company": document.company.name
+                        "company": document.company.name,
                     }
                 )
-            
+
             # 데이터베이스에서 문서 삭제
             document.delete()
-            
-            return JsonResponse({
-                'success': True,
-                'message': '문서 삭제 완료'
-            })
-            
+
+            return JsonResponse({"success": True, "message": "문서 삭제 완료"})
+
         except PolicyDocument.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
+            return JsonResponse({"success": False, "error": "문서를 찾을 수 없습니다."})
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "DELETE 요청만 지원합니다."})
+
 
 def secure_filename(filename):
     """안전한 파일명 생성 (Django 내장 함수 사용)"""
     # 파일명에서 특수문자 제거
-    filename = re.sub(r'[^\w\s-]', '', filename)
+    filename = re.sub(r"[^\w\s-]", "", filename)
     # 공백을 언더스코어로 변경
-    filename = re.sub(r'[-\s]+', '_', filename)
+    filename = re.sub(r"[-\s]+", "_", filename)
     return filename
+
 
 def search_documents_api(request):
     """문서 검색 API"""
-    if request.method == 'GET':
+    if request.method == "GET":
         try:
-            query = request.GET.get('query', '')
-            company = request.GET.get('company', '')
-            top_k = int(request.GET.get('top_k', 5))
-            
+            query = request.GET.get("query", "")
+            company = request.GET.get("company", "")
+            top_k = int(request.GET.get("top_k", 5))
+
             if not query:
-                return JsonResponse({'success': False, 'error': '검색어가 필요합니다.'})
-            
+                return JsonResponse({"success": False, "error": "검색어가 필요합니다."})
+
             rag_service = RAGService()
-            
+
             if company:
                 results = rag_service.search_documents_by_company(query, company, top_k)
             else:
                 results = rag_service.search_documents(query, top_k)
-            
-            return JsonResponse({
-                'success': True,
-                'results': results,
-                'query': query,
-                'company': company,
-                'count': len(results)
-            })
-            
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "results": results,
+                    "query": query,
+                    "company": company,
+                    "count": len(results),
+                }
+            )
+
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'GET 요청만 지원합니다.'})
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "GET 요청만 지원합니다."})

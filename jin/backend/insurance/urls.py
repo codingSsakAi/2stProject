@@ -205,6 +205,7 @@ urlpatterns = [
 
     # 관리자 전용 URL 패턴
     path('admin/upload/', views.admin_upload_document, name='admin_upload_document'),
+    path('admin/multiple-upload/', views.admin_multiple_upload_document, name='admin_multiple_upload_document'),
     path('admin/documents/', views.admin_document_list, name='admin_document_list'),
     path('admin/pinecone/', views.admin_pinecone_management, name='admin_pinecone_management'),
 

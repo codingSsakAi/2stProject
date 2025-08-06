@@ -1,0 +1,195 @@
+{% extends 'base.jinja.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>멀티 파일 업로드
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="multipleUploadForm" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- 보험사 선택 -->
+                        <div class="mb-3">
+                            <label for="company" class="form-label">보험사 선택</label>
+                            <select class="form-select" id="company" name="company" required>
+                                <option value="">보험사를 선택하세요</option>
+                                {% for company in insurance_companies %}
+                                <option value="{{ company }}">{{ company }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- 파일 선택 -->
+                        <div class="mb-3">
+                            <label for="files" class="form-label">PDF 파일 선택 (여러 개 선택 가능)</label>
+                            <input type="file" class="form-control" id="files" name="files" 
+                                   multiple accept=".pdf" required>
+                            <div class="form-text">여러 PDF 파일을 선택하면 하나의 통합 DOCX 파일로 변환됩니다.</div>
+                        </div>
+                        
+                        <!-- 선택된 파일 목록 -->
+                        <div class="mb-3" id="selectedFiles" style="display: none;">
+                            <label class="form-label">선택된 파일:</label>
+                            <ul class="list-group" id="fileList"></ul>
+                        </div>
+                        
+                        <!-- 업로드 버튼 -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                <i class="fas fa-upload me-2"></i>업로드 및 변환
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- 진행 상황 표시 -->
+                    <div id="progressSection" style="display: none;" class="mt-3">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="progressText" class="text-center">처리 중...</div>
+                    </div>
+                    
+                    <!-- 결과 메시지 -->
+                    <div id="resultMessage" class="mt-3" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- 설명 섹션 -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>사용 방법
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>보험사를 선택하세요</li>
+                        <li>여러 PDF 파일을 선택하세요 (Ctrl+클릭으로 다중 선택)</li>
+                        <li>업로드 버튼을 클릭하면 자동으로 하나의 DOCX 파일로 통합됩니다</li>
+                        <li>기존 해당 보험사의 Pinecone 데이터는 새로운 통합 데이터로 교체됩니다</li>
+                    </ol>
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>팁:</strong> 여러 개의 이용약관 PDF를 한 번에 업로드하면 
+                        하나의 통합된 문서로 만들어져 더 효율적인 검색이 가능합니다.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('multipleUploadForm');
+    const fileInput = document.getElementById('files');
+    const selectedFiles = document.getElementById('selectedFiles');
+    const fileList = document.getElementById('fileList');
+    const progressSection = document.getElementById('progressSection');
+    const progressBar = document.querySelector('.progress-bar');
+    const progressText = document.getElementById('progressText');
+    const resultMessage = document.getElementById('resultMessage');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // 파일 선택 시 목록 표시
+    fileInput.addEventListener('change', function() {
+        const files = this.files;
+        if (files.length > 0) {
+            fileList.innerHTML = '';
+            for (let i = 0; i < files.length; i++) {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = `${i + 1}. ${files[i].name}`;
+                fileList.appendChild(li);
+            }
+            selectedFiles.style.display = 'block';
+        } else {
+            selectedFiles.style.display = 'none';
+        }
+    });
+    
+    // 폼 제출 처리
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        
+        // UI 상태 변경
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>처리 중...';
+        progressSection.style.display = 'block';
+        resultMessage.style.display = 'none';
+        
+        // 진행 상황 시뮬레이션
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            progressBar.style.width = progress + '%';
+            progressText.textContent = `파일 처리 중... ${Math.round(progress)}%`;
+        }, 500);
+        
+        // AJAX 요청
+        fetch('{% url "insurance:admin_multiple_upload_document" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+            progressText.textContent = '완료!';
+            
+            setTimeout(() => {
+                progressSection.style.display = 'none';
+                resultMessage.style.display = 'block';
+                
+                if (data.success) {
+                    resultMessage.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>성공!</strong> ${data.message}
+                            <br><small>처리된 파일 수: ${data.file_count}개</small>
+                        </div>
+                    `;
+                    form.reset();
+                    selectedFiles.style.display = 'none';
+                } else {
+                    resultMessage.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>오류:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+                
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>업로드 및 변환';
+            }, 1000);
+        })
+        .catch(error => {
+            clearInterval(progressInterval);
+            progressSection.style.display = 'none';
+            resultMessage.style.display = 'block';
+            resultMessage.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>오류:</strong> 네트워크 오류가 발생했습니다.
+                </div>
+            `;
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>업로드 및 변환';
+        });
+    });
+});
+</script>
+{% endblock %} 
