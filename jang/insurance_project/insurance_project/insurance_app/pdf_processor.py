@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from .pinecone_client import get_index
 
+
 # 384차원 임베딩 모델
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
