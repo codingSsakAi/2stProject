@@ -445,63 +445,186 @@ def convert_pdf_to_docx(pdf_path, docx_path):
 
 
 def extract_text_with_pypdf2(pdf_path):
-    """PyPDF2를 사용한 텍스트 추출"""
+    """PyPDF2를 사용한 텍스트 추출 (한글 지원 개선)"""
     try:
-        pdf_reader = PyPDF2.PdfReader(pdf_path)
-        text = ""
+        import PyPDF2
 
-        for page_num, page in enumerate(pdf_reader.pages):
-            try:
-                page_text = page.extract_text()
-                if page_text:
-                    # 특수 문자 정리
-                    page_text = clean_text_for_docx(page_text)
-                    text += page_text + "\n"
-            except Exception as e:
-                logger.warning(f"페이지 {page_num + 1} 텍스트 추출 실패: {e}")
-                continue
+        with open(pdf_path, "rb") as file:
+            pdf_reader = PyPDF2.PdfReader(file)
 
-        return text
+            text = ""
+            for page_num in range(len(pdf_reader.pages)):
+                try:
+                    page = pdf_reader.pages[page_num]
+                    page_text = page.extract_text()
+
+                    if page_text:
+                        # 한글 텍스트 정리
+                        cleaned_text = clean_korean_text(page_text)
+                        if cleaned_text.strip():
+                            text += cleaned_text + "\n\n"
+
+                except Exception as e:
+                    logger.warning(f"페이지 {page_num + 1} 텍스트 추출 실패: {e}")
+                    continue
+
+            return text.strip()
+
     except Exception as e:
-        logger.warning(f"PyPDF2 추출 실패: {e}")
+        logger.error(f"PyPDF2 텍스트 추출 실패: {e}")
         return ""
 
 
+def clean_korean_text(text):
+    """한글 텍스트 정리"""
+    import re
+
+    # 기본 정리
+    text = text.replace("\x00", "")  # NULL 바이트 제거
+
+    # 한글 문자 정규화
+    text = re.sub(
+        r"[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7AF\uD7B0-\uD7FF\w\s\.\,\;\:\!\?\(\)\[\]\-\_\+\=\*\&\^\%\$\#\@\~]",
+        "",
+        text,
+    )
+
+    # 연속된 공백 정리
+    text = re.sub(r"\s+", " ", text)
+
+    # 빈 줄 정리
+    text = re.sub(r"\n\s*\n", "\n", text)
+
+    return text.strip()
+
+
 def extract_text_with_alternative_method(pdf_path):
-    """대체 방법을 사용한 텍스트 추출"""
+    """대체 방법을 사용한 텍스트 추출 (한글 지원 강화)"""
     try:
-        # PDF를 바이너리로 읽어서 텍스트 추출 시도
+        # 방법 1: pdfplumber 시도 (한글 지원 우수)
+        try:
+            import pdfplumber
+
+            with pdfplumber.open(pdf_path) as pdf:
+                text = ""
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        cleaned_text = clean_korean_text(page_text)
+                        if cleaned_text.strip():
+                            text += cleaned_text + "\n\n"
+
+                if text.strip():
+                    return clean_text_for_docx(text)
+        except ImportError:
+            logger.info("pdfplumber가 설치되지 않음, 다른 방법 시도")
+        except Exception as e:
+            logger.warning(f"pdfplumber 추출 실패: {e}")
+
+        # 방법 2: PyMuPDF (fitz) 시도
+        try:
+            import fitz
+
+            doc = fitz.open(pdf_path)
+            text = ""
+            for page in doc:
+                page_text = page.get_text()
+                if page_text:
+                    cleaned_text = clean_korean_text(page_text)
+                    if cleaned_text.strip():
+                        text += cleaned_text + "\n\n"
+            doc.close()
+
+            if text.strip():
+                return clean_text_for_docx(text)
+        except ImportError:
+            logger.info("PyMuPDF가 설치되지 않음, 다른 방법 시도")
+        except Exception as e:
+            logger.warning(f"PyMuPDF 추출 실패: {e}")
+
+        # 방법 3: 기존 방법 (개선됨)
         with open(pdf_path, "rb") as file:
             content = file.read()
 
-        # PDF 시그니처 확인
-        if content.startswith(b"%PDF"):
-            # 간단한 텍스트 추출 시도
-            text = ""
-            content_str = content.decode("utf-8", errors="ignore")
-
-            # 텍스트 패턴 찾기
-            import re
-
-            text_patterns = [
-                r"BT\s*([^E]*?)\s*ET",  # 텍스트 블록
-                r"\(([^)]*)\)",  # 괄호 안의 텍스트
-                r"\[([^\]]*)\]",  # 대괄호 안의 텍스트
-            ]
-
-            for pattern in text_patterns:
-                matches = re.findall(pattern, content_str)
-                for match in matches:
-                    if len(match.strip()) > 10:  # 의미있는 텍스트만
-                        text += match.strip() + "\n"
-
-            return clean_text_for_docx(text)
-        else:
+        if not content.startswith(b"%PDF"):
             return ""
+
+        text = ""
+
+        # 다양한 인코딩 시도
+        encodings = ["utf-8", "cp949", "euc-kr", "latin-1", "iso-8859-1"]
+
+        for encoding in encodings:
+            try:
+                content_str = content.decode(encoding, errors="ignore")
+                extracted_text = extract_text_from_string_improved(content_str)
+                if extracted_text.strip():
+                    text = extracted_text
+                    break
+            except Exception as e:
+                logger.debug(f"{encoding} 디코딩 실패: {e}")
+                continue
+
+        return clean_text_for_docx(text)
 
     except Exception as e:
         logger.warning(f"대체 방법 추출 실패: {e}")
         return ""
+
+
+def extract_text_from_string_improved(content_str):
+    """개선된 문자열에서 텍스트 추출 (한글 지원)"""
+    import re
+
+    text = ""
+
+    # 한글 텍스트 패턴들
+    korean_patterns = [
+        r"([가-힣\s]{10,})",  # 한글 + 공백 (10자 이상)
+        r"([가-힣\w\s]{15,})",  # 한글 + 영문 + 공백 (15자 이상)
+        r"\(([가-힣\w\s]{5,})\)",  # 괄호 안의 한글 텍스트
+        r"\[([가-힣\w\s]{5,})\]",  # 대괄호 안의 한글 텍스트
+    ]
+
+    # PDF 텍스트 명령어 패턴들
+    pdf_patterns = [
+        r"BT\s*([^E]*?)\s*ET",  # 텍스트 블록
+        r"Tj\s*([^)]*)\)",  # Tj 명령어
+        r"TJ\s*\[([^\]]*)\]",  # TJ 명령어
+    ]
+
+    # 한글 패턴 먼저 시도
+    for pattern in korean_patterns:
+        try:
+            matches = re.findall(pattern, content_str, re.DOTALL)
+            for match in matches:
+                if isinstance(match, str) and len(match.strip()) > 5:
+                    # 한글 비율 확인
+                    korean_chars = len(re.findall(r"[가-힣]", match))
+                    if korean_chars > 0:  # 한글이 포함된 경우만
+                        clean_match = re.sub(r"[^\w\s가-힣]", "", match)
+                        if len(clean_match) > 5:
+                            text += clean_match.strip() + "\n"
+        except Exception as e:
+            logger.debug(f"한글 패턴 {pattern} 처리 실패: {e}")
+            continue
+
+    # PDF 패턴 시도
+    for pattern in pdf_patterns:
+        try:
+            matches = re.findall(pattern, content_str, re.DOTALL)
+            for match in matches:
+                if isinstance(match, str) and len(match.strip()) > 5:
+                    # 한글이 포함된 경우만 선택
+                    if re.search(r"[가-힣]", match):
+                        clean_match = re.sub(r"[^\w\s가-힣]", "", match)
+                        if len(clean_match) > 5:
+                            text += clean_match.strip() + "\n"
+        except Exception as e:
+            logger.debug(f"PDF 패턴 {pattern} 처리 실패: {e}")
+            continue
+
+    return text
 
 
 def clean_text_for_docx(text):
@@ -535,6 +658,7 @@ def convert_multiple_pdfs_to_single_docx(pdf_files, company):
     try:
         from docx import Document
         from docx.shared import Inches
+        from pathlib import Path
 
         # 새로운 DOCX 문서 생성
         doc = Document()
@@ -559,16 +683,28 @@ def convert_multiple_pdfs_to_single_docx(pdf_files, company):
 
         for pdf_file in pdf_files:
             try:
+                # pdf_file이 문자열인지 파일 객체인지 확인
+                if isinstance(pdf_file, str):
+                    pdf_path = pdf_file
+                    filename = Path(pdf_file).name
+                else:
+                    pdf_path = str(pdf_file)
+                    filename = (
+                        pdf_file.name
+                        if hasattr(pdf_file, "name")
+                        else Path(pdf_file).name
+                    )
+
                 # PDF에서 텍스트 추출
-                text = extract_text_with_pypdf2(pdf_file)
+                text = extract_text_with_pypdf2(pdf_path)
 
                 if not text.strip():
-                    text = extract_text_with_alternative_method(pdf_file)
+                    text = extract_text_with_alternative_method(pdf_path)
 
                 if text.strip():
                     # 파일명을 제목으로 추가
-                    filename = pdf_file.name.replace(".pdf", "")
-                    doc.add_heading(f"【{filename}】", level=1)
+                    clean_filename = filename.replace(".pdf", "")
+                    doc.add_heading(f"【{clean_filename}】", level=1)
 
                     # 텍스트를 문단으로 분할하여 추가
                     paragraphs = text.split("\n")
@@ -584,7 +720,7 @@ def convert_multiple_pdfs_to_single_docx(pdf_files, company):
                     all_text += text + "\n\n"
 
             except Exception as e:
-                logger.error(f"PDF 처리 실패: {pdf_file.name} - {e}")
+                logger.error(f"PDF 처리 실패: {filename} - {e}")
                 continue
 
         if file_count == 0:
@@ -986,3 +1122,355 @@ def search_documents_api(request):
             return JsonResponse({"success": False, "error": str(e)})
 
     return JsonResponse({"success": False, "error": "GET 요청만 지원합니다."})
+
+
+def convert_pdf_to_docx_optimized(pdf_path, docx_path):
+    """PDF를 DOCX로 변환 (용량 최적화 버전)"""
+    try:
+        # 방법 1: PyPDF2 사용
+        text = extract_text_with_pypdf2_optimized(pdf_path)
+
+        # 방법 1이 실패하면 방법 2 시도
+        if not text.strip():
+            text = extract_text_with_alternative_method_optimized(pdf_path)
+
+        if not text.strip():
+            raise Exception("PDF에서 텍스트를 추출할 수 없습니다.")
+
+        # DOCX 생성 (용량 최적화)
+        doc = Document()
+
+        # 문서 속성 최적화
+        doc.core_properties.title = "자동차보험 약관"
+        doc.core_properties.author = "보험 추천 시스템"
+        doc.core_properties.subject = "자동차보험 약관"
+
+        # 텍스트를 문단으로 분할하여 추가 (용량 최적화)
+        paragraphs = text.split("\n")
+        for para in paragraphs:
+            if para.strip():
+                # 특수 문자 제거 후 문단 추가
+                clean_para = clean_text_for_docx_optimized(para)
+                if clean_para.strip():
+                    doc.add_paragraph(clean_para)
+
+        doc.save(docx_path)
+        logger.info(f"PDF → DOCX 변환 완료 (최적화): {pdf_path} → {docx_path}")
+
+    except Exception as e:
+        logger.error(f"PDF → DOCX 변환 실패: {e}")
+        raise e
+
+
+def extract_text_with_pypdf2_optimized(pdf_path):
+    """PyPDF2를 사용한 텍스트 추출 (용량 최적화)"""
+    try:
+        import PyPDF2
+
+        with open(pdf_path, "rb") as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+
+            text = ""
+            for page_num in range(len(pdf_reader.pages)):
+                try:
+                    page = pdf_reader.pages[page_num]
+                    page_text = page.extract_text()
+
+                    if page_text:
+                        # 한글 텍스트 정리 (용량 최적화)
+                        cleaned_text = clean_korean_text_optimized(page_text)
+                        if cleaned_text.strip():
+                            text += cleaned_text + "\n\n"
+
+                except Exception as e:
+                    logger.warning(f"페이지 {page_num + 1} 텍스트 추출 실패: {e}")
+                    continue
+
+            return text.strip()
+
+    except Exception as e:
+        logger.error(f"PyPDF2 텍스트 추출 실패: {e}")
+        return ""
+
+
+def clean_korean_text_optimized(text):
+    """한글 텍스트 정리 (용량 최적화)"""
+    import re
+
+    # 기본 정리
+    text = text.replace("\x00", "")  # NULL 바이트 제거
+
+    # 불필요한 공백 제거
+    text = re.sub(r"\s+", " ", text)
+
+    # 빈 줄 정리
+    text = re.sub(r"\n\s*\n", "\n", text)
+
+    # 한글 문자만 유지 (용량 최적화)
+    text = re.sub(r"[^\uAC00-\uD7AF\w\s\.\,\;\:\!\?\(\)\[\]\-\_]", "", text)
+
+    return text.strip()
+
+
+def extract_text_with_alternative_method_optimized(pdf_path):
+    """대체 방법을 사용한 텍스트 추출 (용량 최적화)"""
+    try:
+        # 방법 1: pdfplumber 시도
+        try:
+            import pdfplumber
+
+            with pdfplumber.open(pdf_path) as pdf:
+                text = ""
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        cleaned_text = clean_korean_text_optimized(page_text)
+                        if cleaned_text.strip():
+                            text += cleaned_text + "\n\n"
+
+                if text.strip():
+                    return clean_text_for_docx_optimized(text)
+        except ImportError:
+            logger.info("pdfplumber가 설치되지 않음, 다른 방법 시도")
+        except Exception as e:
+            logger.warning(f"pdfplumber 추출 실패: {e}")
+
+        # 방법 2: PyMuPDF (fitz) 시도
+        try:
+            import fitz
+
+            doc = fitz.open(pdf_path)
+            text = ""
+            for page in doc:
+                page_text = page.get_text()
+                if page_text:
+                    cleaned_text = clean_korean_text_optimized(page_text)
+                    if cleaned_text.strip():
+                        text += cleaned_text + "\n\n"
+            doc.close()
+
+            if text.strip():
+                return clean_text_for_docx_optimized(text)
+        except ImportError:
+            logger.info("PyMuPDF가 설치되지 않음, 다른 방법 시도")
+        except Exception as e:
+            logger.warning(f"PyMuPDF 추출 실패: {e}")
+
+        return ""
+
+    except Exception as e:
+        logger.warning(f"대체 방법 추출 실패: {e}")
+        return ""
+
+
+def clean_text_for_docx_optimized(text):
+    """DOCX 호환을 위한 텍스트 정리 (용량 최적화)"""
+    import re
+
+    # NULL 바이트 제거
+    text = text.replace("\x00", "")
+
+    # 제어 문자 제거
+    text = "".join(char for char in text if ord(char) >= 32 or char in "\n\r\t")
+
+    # 연속된 공백 정리
+    text = re.sub(r"\s+", " ", text)
+
+    # 빈 줄 정리
+    text = re.sub(r"\n\s*\n", "\n", text)
+
+    return text.strip()
+
+
+def convert_all_pdfs_to_docx():
+    """모든 PDF 파일을 DOCX로 변환"""
+    try:
+        from pathlib import Path
+        from datetime import datetime
+
+        pdf_base_dir = Path(settings.BASE_DIR) / "policy_documents" / "pdf"
+        docx_base_dir = Path(settings.BASE_DIR) / "policy_documents" / "docx"
+
+        if not pdf_base_dir.exists():
+            return {"success": False, "error": "PDF 폴더가 존재하지 않습니다."}
+
+        conversion_results = []
+        total_files = 0
+        success_count = 0
+
+        # 각 보험사 폴더 순회
+        for company_dir in pdf_base_dir.iterdir():
+            if company_dir.is_dir():
+                company_name = company_dir.name
+                docx_company_dir = docx_base_dir / company_name
+                docx_company_dir.mkdir(parents=True, exist_ok=True)
+
+                # 기존 DOCX 파일 삭제
+                for docx_file in docx_company_dir.glob("*.docx"):
+                    try:
+                        docx_file.unlink()
+                        logger.info(f"기존 DOCX 파일 삭제: {docx_file}")
+                    except Exception as e:
+                        logger.warning(f"기존 DOCX 파일 삭제 실패: {docx_file} - {e}")
+
+                # PDF 파일들 변환
+                for pdf_file in company_dir.glob("*.pdf"):
+                    total_files += 1
+                    try:
+                        # DOCX 파일명 생성
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        docx_filename = f"{pdf_file.stem}_{timestamp}.docx"
+                        docx_path = docx_company_dir / docx_filename
+
+                        # PDF → DOCX 변환
+                        convert_pdf_to_docx_optimized(pdf_file, docx_path)
+
+                        conversion_results.append(
+                            {
+                                "company": company_name,
+                                "pdf_file": pdf_file.name,
+                                "docx_file": docx_filename,
+                                "status": "success",
+                            }
+                        )
+                        success_count += 1
+
+                    except Exception as e:
+                        logger.error(f"PDF 변환 실패: {pdf_file} - {e}")
+                        conversion_results.append(
+                            {
+                                "company": company_name,
+                                "pdf_file": pdf_file.name,
+                                "status": "failed",
+                                "error": str(e),
+                            }
+                        )
+
+        return {
+            "success": True,
+            "message": f"PDF 변환 완료: {success_count}/{total_files}개 파일",
+            "total_files": total_files,
+            "success_count": success_count,
+            "results": conversion_results,
+        }
+
+    except Exception as e:
+        logger.error(f"전체 PDF 변환 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def process_hanwha_insurance_upload():
+    """한화손해보험 PDF 변환 및 Pinecone 업데이트"""
+    try:
+        from pathlib import Path
+        from datetime import datetime
+
+        # 파일 경로 설정
+        pdf_path = (
+            Path(settings.BASE_DIR)
+            / "policy_documents"
+            / "pdf"
+            / "한화손해보험"
+            / "(취합)한화손해보험_개인용(공동물건)자동차보험_약관.pdf"
+        )
+        docx_dir = (
+            Path(settings.BASE_DIR) / "policy_documents" / "docx" / "한화손해보험"
+        )
+        docx_dir.mkdir(parents=True, exist_ok=True)
+
+        # 기존 DOCX 파일 삭제
+        for docx_file in docx_dir.glob("*.docx"):
+            try:
+                docx_file.unlink()
+                logger.info(f"기존 DOCX 파일 삭제: {docx_file}")
+            except Exception as e:
+                logger.warning(f"기존 DOCX 파일 삭제 실패: {docx_file} - {e}")
+
+        # DOCX 파일명 생성
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        docx_filename = f"한화손해보험_자동차보험_약관_{timestamp}.docx"
+        docx_path = docx_dir / docx_filename
+
+        # PDF 파일 존재 확인
+        if not pdf_path.exists():
+            return {
+                "success": False,
+                "error": "한화손해보험 PDF 파일이 존재하지 않습니다.",
+            }
+
+        # PDF → DOCX 변환
+        convert_pdf_to_docx_optimized(pdf_path, docx_path)
+
+        # Pinecone에서 기존 한화손해보험 데이터 삭제
+        rag_service = RAGService()
+        if rag_service.pinecone_index:
+            try:
+                rag_service.pinecone_index.delete(filter={"company": "한화손해보험"})
+                logger.info("한화손해보험 기존 Pinecone 데이터 삭제 완료")
+            except Exception as e:
+                logger.warning(f"기존 데이터 삭제 실패: {e}")
+
+        # 새로운 DOCX 파일을 Pinecone에 업로드
+        upload_result = rag_service.upload_document_with_metadata(
+            docx_path,
+            "한화손해보험",
+            "이용약관",
+            "한화손해보험 자동차보험 약관",
+            "한화손해보험,자동차보험,약관",
+        )
+
+        return {
+            "success": True,
+            "message": "한화손해보험 PDF 변환 및 Pinecone 업데이트 완료",
+            "pdf_file": pdf_path.name,
+            "docx_file": docx_filename,
+            "pinecone_result": upload_result,
+        }
+
+    except Exception as e:
+        logger.error(f"한화손해보험 처리 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@admin_required
+def admin_convert_all_pdfs(request):
+    """모든 PDF 파일 변환 관리 페이지"""
+    if request.method == "POST":
+        try:
+            # 모든 PDF → DOCX 변환
+            result = convert_all_pdfs_to_docx()
+            return JsonResponse(result)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    # GET 요청: 변환 페이지 표시
+    context = {
+        "title": "전체 PDF 변환",
+        "description": "모든 PDF 파일을 DOCX로 변환합니다.",
+    }
+
+    return render(request, "insurance/admin_convert_all.jinja.html", context)
+
+
+@admin_required
+def admin_hanwha_insurance_convert(request):
+    """한화손해보험 PDF 변환 전용 페이지"""
+    if request.method == "POST":
+        try:
+            # 한화손해보험 PDF 변환 및 Pinecone 업데이트
+            result = process_hanwha_insurance_upload()
+            return JsonResponse(result)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    # GET 요청: 변환 페이지 표시
+    context = {
+        "title": "한화손해보험 PDF 변환",
+        "company": "한화손해보험",
+        "pdf_filename": "(취합)한화손해보험_개인용(공동물건)자동차보험_약관.pdf",
+        "pdf_size": "57MB",
+    }
+
+    return render(request, "insurance/admin_hanwha_convert.jinja.html", context)
