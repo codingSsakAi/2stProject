@@ -806,5 +806,450 @@ Pinecone 인덱스 정보:
 각 단계 완료 후 git 커밋/푸시도 잊지 마세요!
 
 ================================================================================
+보험사별 문서 관리 시스템 상세 계획
+================================================================================
+
+1. 폴더 구조 정리
+
+현재 PDF 폴더 구조 (12개 보험사):
+policy_documents/pdf/
+├── 삼성화재/
+├── 현대해상/
+├── KB손해보험/
+├── 메리츠화재/
+├── DB손해보험/
+├── 롯데손해보험/
+├── 하나손해보험/
+├── 흥국화재/
+├── AXA손해보험/
+├── MG손해보험/
+├── 캐롯손해보험/
+└── 한화손해보험/
+
+목표 DOCX 폴더 구조 (동일한 보험사별 구조):
+policy_documents/docx/
+├── 삼성화재/
+├── 현대해상/
+├── KB손해보험/
+├── 메리츠화재/
+├── DB손해보험/
+├── 롯데손해보험/
+├── 하나손해보험/
+├── 흥국화재/
+├── AXA손해보험/
+├── MG손해보험/
+├── 캐롯손해보험/
+└── 한화손해보험/
+
+2. Pinecone 보험사별 데이터 관리
+
+벡터 메타데이터 구조:
+{
+    "source": "파일명.pdf",
+    "company": "보험사명",
+    "document_type": "약관/안내서/특별약관",
+    "upload_date": "2024-01-01",
+    "chunk": 0,
+    "file_path": "policy_documents/docx/보험사명/파일명.docx"
+}
+
+검색 시 보험사별 필터링:
+- 전체 검색: 모든 보험사 문서
+- 보험사별 검색: 특정 보험사 문서만
+- 문서 타입별 검색: 약관, 안내서, 특별약관 등
+
+3. 관리자 업로드 시스템
+
+3-1. 관리자 업로드 페이지 기능:
+- [ ] 보험사 선택 드롭다운 (12개 보험사)
+- [ ] 파일 업로드 (PDF/DOCX)
+- [ ] 문서 타입 선택 (약관/안내서/특별약관)
+- [ ] 문서 제목/설명 입력
+- [ ] 태그/키워드 입력
+- [ ] 업로드 버튼
+
+3-2. 업로드 처리 과정:
+1단계: 파일 업로드
+- 선택된 보험사 폴더에 PDF 저장
+- 파일명 정리 (중복 방지)
+
+2단계: PDF → DOCX 변환:
+```python
+def convert_pdf_to_docx(pdf_path, company):
+    """PDF를 DOCX로 변환"""
+    docx_path = pdf_path.replace('/pdf/', '/docx/').replace('.pdf', '.docx')
+    os.makedirs(os.path.dirname(docx_path), exist_ok=True)
+    
+    # PDF → DOCX 변환 로직
+    # python-docx 또는 다른 라이브러리 사용
+    
+    return docx_path
+```
+
+3단계: 텍스트 추출 및 청킹
+- DOCX에서 텍스트 추출
+- RecursiveCharacterTextSplitter로 청킹
+- 청크별 메타데이터 생성
+
+4단계: Pinecone 업로드:
+```python
+def upload_to_pinecone(docx_path, company, metadata):
+    """DOCX를 Pinecone에 업로드"""
+    rag_service = RAGService()
+    
+    # 텍스트 추출
+    text = extract_text_from_docx(docx_path)
+    
+    # 청킹
+    chunks = rag_service._split_text(text)
+    
+    # 메타데이터 생성
+    metadatas = []
+    for i, chunk in enumerate(chunks):
+        chunk_metadata = metadata.copy()
+        chunk_metadata.update({
+            "chunk": i,
+            "company": company,
+            "file_path": docx_path
+        })
+        metadatas.append(chunk_metadata)
+    
+    # Pinecone 업로드
+    rag_service.vectorstore.add_texts(texts=chunks, metadatas=metadatas)
+```
+
+4. 관리자 기능 구현
+
+4-1. 관리자 대시보드 메뉴:
+- [ ] 문서 관리
+  - 문서 업로드
+  - 문서 목록/검색
+  - 문서 수정/삭제
+- [ ] 보험사 관리
+  - 보험사별 문서 통계
+  - 보험사별 Pinecone 데이터 관리
+- [ ] Pinecone 관리
+  - 인덱스 통계 확인
+  - 보험사별 데이터 확인
+  - 전체 인덱스 업데이트
+
+4-2. 문서 업로드 페이지:
+```html
+<!-- 관리자 문서 업로드 페이지 -->
+<div class="upload-section">
+    <h3>문서 업로드</h3>
+    
+    <!-- 보험사 선택 -->
+    <div class="form-group">
+        <label>보험사 선택:</label>
+        <select name="company" required>
+            <option value="">보험사를 선택하세요</option>
+            <option value="삼성화재">삼성화재</option>
+            <option value="현대해상">현대해상</option>
+            <option value="KB손해보험">KB손해보험</option>
+            <option value="메리츠화재">메리츠화재</option>
+            <option value="DB손해보험">DB손해보험</option>
+            <option value="롯데손해보험">롯데손해보험</option>
+            <option value="하나손해보험">하나손해보험</option>
+            <option value="흥국화재">흥국화재</option>
+            <option value="AXA손해보험">AXA손해보험</option>
+            <option value="MG손해보험">MG손해보험</option>
+            <option value="캐롯손해보험">캐롯손해보험</option>
+            <option value="한화손해보험">한화손해보험</option>
+        </select>
+    </div>
+    
+    <!-- 파일 업로드 -->
+    <div class="form-group">
+        <label>파일 선택:</label>
+        <input type="file" name="document" accept=".pdf,.docx" required>
+    </div>
+    
+    <!-- 문서 정보 -->
+    <div class="form-group">
+        <label>문서 제목:</label>
+        <input type="text" name="title" required>
+    </div>
+    
+    <div class="form-group">
+        <label>문서 타입:</label>
+        <select name="document_type" required>
+            <option value="약관">약관</option>
+            <option value="안내서">안내서</option>
+            <option value="특별약관">특별약관</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label>설명:</label>
+        <textarea name="description"></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label>태그 (쉼표로 구분):</label>
+        <input type="text" name="tags" placeholder="자동차보험,개인용,공동물건">
+    </div>
+    
+    <button type="submit" class="btn btn-primary">업로드 및 변환</button>
+</div>
+```
+
+5. 구현 단계
+
+5-1. 폴더 구조 생성:
+```bash
+# jin/backend 폴더에서 실행
+mkdir -p policy_documents/docx/삼성화재
+mkdir -p policy_documents/docx/현대해상
+mkdir -p policy_documents/docx/KB손해보험
+mkdir -p policy_documents/docx/메리츠화재
+mkdir -p policy_documents/docx/DB손해보험
+mkdir -p policy_documents/docx/롯데손해보험
+mkdir -p policy_documents/docx/하나손해보험
+mkdir -p policy_documents/docx/흥국화재
+mkdir -p policy_documents/docx/AXA손해보험
+mkdir -p policy_documents/docx/MG손해보험
+mkdir -p policy_documents/docx/캐롯손해보험
+mkdir -p policy_documents/docx/한화손해보험
+```
+
+5-2. 관리자 뷰 구현:
+- [ ] admin_upload_document 뷰 생성
+- [ ] admin_document_list 뷰 생성
+- [ ] admin_pinecone_management 뷰 생성
+
+5-3. 서비스 함수 구현:
+- [ ] upload_document_with_company 함수
+- [ ] convert_pdf_to_docx 함수
+- [ ] update_pinecone_by_company 함수
+
+5-4. 템플릿 생성:
+- [ ] admin_upload.jinja.html
+- [ ] admin_documents.jinja.html
+- [ ] admin_pinecone.jinja.html
+
+6. 보험사별 데이터 관리
+
+6-1. Pinecone 메타데이터 구조:
+```python
+metadata = {
+    "source": f"{company}_{filename}",
+    "company": company,
+    "document_type": document_type,
+    "upload_date": upload_date,
+    "chunk": chunk_index,
+    "file_path": f"policy_documents/docx/{company}/{filename}.docx",
+    "tags": tags,
+    "description": description
+}
+```
+
+6-2. 보험사별 검색 기능:
+```python
+def search_documents_by_company(self, query: str, company: str, top_k: int = 5):
+    """보험사별 문서 검색"""
+    try:
+        results = self.vectorstore.similarity_search(
+            query,
+            k=top_k,
+            filter={"company": company}
+        )
+        return results
+    except Exception as e:
+        logger.error(f"보험사별 검색 실패: {e}")
+        return []
+```
+
+7. 에러 처리 및 로깅
+
+7-1. 업로드 과정 로깅:
+- 파일 업로드 성공/실패
+- PDF → DOCX 변환 성공/실패
+- Pinecone 업로드 성공/실패
+- 보험사별 통계 기록
+
+7-2. 에러 처리:
+- 파일 형식 검증
+- 파일 크기 제한
+- 중복 파일 처리
+- 변환 실패 시 롤백
+
+8. 성능 최적화
+
+8-1. 배치 처리:
+- 여러 파일 동시 업로드
+- 백그라운드 작업 큐
+- 진행률 표시
+
+8-2. 캐싱:
+- 보험사별 문서 목록 캐싱
+- 검색 결과 캐싱
+- 임베딩 결과 캐싱
+
+================================================================================
+관리자 업로드 시스템 구현 계획
+================================================================================
+
+1. 관리자 전용 페이지 구조
+
+URL 패턴:
+- /admin/upload/ - 문서 업로드 페이지
+- /admin/documents/ - 문서 관리 페이지
+- /admin/pinecone/ - Pinecone 관리 페이지
+
+2. 보험사 정보 관리
+
+보험사 목록 (12개):
+```python
+INSURANCE_COMPANIES = [
+    "삼성화재",
+    "현대해상", 
+    "KB손해보험",
+    "메리츠화재",
+    "DB손해보험",
+    "롯데손해보험",
+    "하나손해보험",
+    "흥국화재",
+    "AXA손해보험",
+    "MG손해보험",
+    "캐롯손해보험",
+    "한화손해보험"
+]
+```
+
+3. 업로드 처리 로직
+
+3-1. 파일 저장:
+```python
+def save_uploaded_file(file, company):
+    """업로드된 파일을 보험사 폴더에 저장"""
+    filename = secure_filename(file.name)
+    pdf_path = f"policy_documents/pdf/{company}/{filename}"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+    
+    with open(pdf_path, 'wb') as f:
+        for chunk in file.chunks():
+            f.write(chunk)
+    
+    return pdf_path
+```
+
+3-2. PDF → DOCX 변환:
+```python
+def convert_pdf_to_docx(pdf_path, company):
+    """PDF를 DOCX로 변환"""
+    docx_path = pdf_path.replace('/pdf/', '/docx/').replace('.pdf', '.docx')
+    os.makedirs(os.path.dirname(docx_path), exist_ok=True)
+    
+    # PDF → DOCX 변환 로직
+    # python-docx 또는 다른 라이브러리 사용
+    
+    return docx_path
+```
+
+3-3. Pinecone 업로드:
+```python
+def upload_to_pinecone(docx_path, company, metadata):
+    """DOCX를 Pinecone에 업로드"""
+    rag_service = RAGService()
+    
+    # 텍스트 추출
+    text = extract_text_from_docx(docx_path)
+    
+    # 청킹
+    chunks = rag_service._split_text(text)
+    
+    # 메타데이터 생성
+    metadatas = []
+    for i, chunk in enumerate(chunks):
+        chunk_metadata = metadata.copy()
+        chunk_metadata.update({
+            "chunk": i,
+            "company": company,
+            "file_path": docx_path
+        })
+        metadatas.append(chunk_metadata)
+    
+    # Pinecone 업로드
+    rag_service.vectorstore.add_texts(texts=chunks, metadatas=metadatas)
+```
+
+4. 관리자 권한 확인
+
+4-1. 관리자 전용 뷰 데코레이터:
+```python
+from django.contrib.auth.decorators import user_passes_test
+
+def admin_required(view_func):
+    """관리자 권한 확인 데코레이터"""
+    return user_passes_test(lambda u: u.is_staff)(view_func)
+
+@admin_required
+def admin_upload_document(request):
+    """관리자 문서 업로드 페이지"""
+    # 관리자 전용 로직
+```
+
+5. 진행률 표시
+
+5-1. 업로드 진행률:
+- 파일 업로드: 20%
+- PDF → DOCX 변환: 40%
+- 텍스트 추출: 60%
+- Pinecone 업로드: 80%
+- 완료: 100%
+
+5-2. 실시간 상태 업데이트:
+- AJAX를 통한 진행률 업데이트
+- WebSocket을 통한 실시간 알림
+
+================================================================================
 *이 문서는 작업 진행 상황에 따라 지속적으로 업데이트됩니다.*
 ================================================================================ 
+
+
+================================================================================ 
+2025년 08월 05일 작업 일지
+================================================================================ 
+📋 내일 진행할 남은 작업 목록
+✅ 이미 완료된 작업들:
+✅ insurance_mock_server.py 파일 이동 (jin → jin/backend)
+✅ 메인페이지 메뉴 정리 (4개 → 1개)
+✅ 사용자 인증 템플릿 완성 (login, profile)
+✅ 불필요한 코드 정리 (OpenAI 임베딩, EMBEDDING_DIMENSION)
+✅ 한화손해보험 Mock 서버 추가
+✅ 관리자 업로드 시스템 구현
+✅ Pinecone API 엔드포인트 구현
+✅ 웹 인터페이스 구현
+🔄 내일 진행할 작업들:
+1. Pinecone 설정 완료
+🔄 Pinecone 인덱스 생성 오류 해결
+🔄 Upstage 임베딩 연결 확인
+🔄 벡터 데이터베이스 초기화
+2. 실제 PDF 문서 업로드 테스트
+�� 한화손해보험 PDF 파일 업로드
+🔄 PDF → DOCX 변환 테스트
+🔄 Pinecone 벡터 업로드 테스트
+3. AI 챗봇 기능 완성
+�� 개인화된 추천 로직 구현
+�� 사용자 프로필 기반 추천
+🔄 RAG 시스템과 연동
+4. 시스템 테스트 및 최적화
+�� 전체 워크플로우 테스트
+�� 성능 최적화
+🔄 에러 처리 개선
+5. 추가 기능 구현
+🔄 음성 입력 기능
+🔄 모바일 반응형 개선
+🔄 관리자 대시보드 확장
+�� 내일 우선순위:
+Pinecone 설정 해결 (가장 중요)
+실제 PDF 업로드 테스트
+AI 챗봇 기능 완성
+전체 시스템 통합 테스트
+�� 현재 상태:
+✅ 웹 서버: 정상 실행 중 (http://localhost:8000/)
+✅ 데이터베이스: MySQL 연결 완료
+✅ 관리자 계정: 생성됨 (admin)
+✅ 기본 기능: 로그인, 회원가입, 메인 페이지
+내일 작업 시작하실 때 이 목록을 참고하시면 됩니다! 🚀

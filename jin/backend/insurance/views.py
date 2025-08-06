@@ -25,7 +25,8 @@ from pathlib import Path
 from django.conf import settings
 import PyPDF2
 from docx import Document
-from werkzeug.utils import secure_filename
+import logging
+import re
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -635,6 +636,14 @@ def delete_document_api(request, document_id):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'DELETE 요청만 지원합니다.'})
+
+def secure_filename(filename):
+    """안전한 파일명 생성 (Django 내장 함수 사용)"""
+    # 파일명에서 특수문자 제거
+    filename = re.sub(r'[^\w\s-]', '', filename)
+    # 공백을 언더스코어로 변경
+    filename = re.sub(r'[-\s]+', '_', filename)
+    return filename
 
 def search_documents_api(request):
     """문서 검색 API"""
