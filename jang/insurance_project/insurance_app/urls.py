@@ -12,4 +12,5 @@ urlpatterns = [
     path('market-analysis/', views.get_market_analysis, name='market_analysis'),  # 추가
     path('api/search/', views.insurance_clause_search, name='insurance_clause_search'),
     path('api/qa/', views.insurance_clause_qa, name='insurance_clause_qa'),
+    path('logout/', views.logout_view, name='logout'),  # 수정된 부분
 ]
