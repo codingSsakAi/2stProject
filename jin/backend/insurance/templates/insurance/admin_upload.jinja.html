@@ -6,13 +6,11 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-md-8 offset-md-2">
-            <!-- 멀티 업로드 링크 -->
+            <!-- 업로드 안내 -->
             <div class="alert alert-info mb-3">
                 <i class="fas fa-info-circle me-2"></i>
-                <strong>새로운 기능!</strong> 
-                <a href="{% url 'insurance:admin_multiple_upload_document' %}" class="alert-link">
-                    멀티 파일 업로드
-                </a>를 사용하면 여러 PDF 파일을 하나의 통합 문서로 만들 수 있습니다.
+                <strong>업로드 안내!</strong> 
+                PDF 파일을 업로드하면 자동으로 DOCX로 변환되고 Pinecone에 업로드됩니다.
             </div>
             
             <div class="card">
