@@ -13,7 +13,7 @@ import pinecone
 from openai import OpenAI
 from langchain_upstage import UpstageEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Pinecone
+from langchain_community.vectorstores import Pinecone as LangChainPinecone
 from langchain.chains import RetrievalQA
 from langchain_community.llms import OpenAI as LangChainOpenAI
 import PyPDF2
@@ -35,7 +35,7 @@ class RAGService:
         self._initialize_vectorstore()
 
     def _initialize_pinecone(self):
-        """Pinecone 초기화"""
+        """Pinecone 초기화 (기존 API 구조)"""
         try:
             api_key = settings.PINECONE_API_KEY
             environment = settings.PINECONE_ENVIRONMENT
@@ -46,52 +46,33 @@ class RAGService:
                 self.pinecone_index = None
                 return
 
-            # 여러 환경 시도
-            environments_to_try = [
-                environment,
-                "us-east-1-aws",
-                "us-west1-gcp",
-                "gcp-starter",
-            ]
+            # Pinecone 초기화
+            pinecone.init(api_key=api_key, environment=environment)
+            logger.info("Pinecone 초기화 완료")
 
-            pinecone_initialized = False
-            for env in environments_to_try:
+            # 인덱스가 존재하지 않으면 생성
+            if index_name not in pinecone.list_indexes():
                 try:
-                    logger.info(f"Pinecone 환경 시도: {env}")
-                    pinecone.init(api_key=api_key, environment=env)
+                    pinecone.create_index(
+                        name=index_name,
+                        dimension=settings.UPSTAGE_EMBEDDING_DIMENSION,
+                        metric="cosine"
+                    )
+                    logger.info(f"Pinecone 인덱스 생성: {index_name}")
+                except Exception as create_error:
+                    logger.error(f"Pinecone 인덱스 생성 실패: {create_error}")
+                    # Pinecone 오류가 있어도 계속 진행
+                    logger.warning("Pinecone 없이 계속 진행합니다.")
+                    self.pinecone_index = None
+                    return
 
-                    # 인덱스 목록 확인
-                    available_indexes = pinecone.list_indexes()
-                    logger.info(f"사용 가능한 Pinecone 인덱스: {available_indexes}")
-
-                    # 인덱스가 존재하지 않으면 생성
-                    if index_name not in available_indexes:
-                        try:
-                            pinecone.create_index(
-                                name=index_name,
-                                dimension=settings.UPSTAGE_EMBEDDING_DIMENSION,
-                                metric="cosine",
-                            )
-                            logger.info(f"Pinecone 인덱스 생성: {index_name}")
-                        except Exception as create_error:
-                            logger.error(f"Pinecone 인덱스 생성 실패: {create_error}")
-                            continue
-
-                    self.pinecone_index = pinecone.Index(index_name)
-                    logger.info(f"Pinecone 초기화 완료 (환경: {env})")
-                    pinecone_initialized = True
-                    break
-
-                except Exception as e:
-                    logger.warning(f"Pinecone 환경 {env} 연결 실패: {e}")
-                    continue
-
-            if not pinecone_initialized:
-                logger.error("모든 Pinecone 환경 연결 실패")
-                self.pinecone_index = None
+            # 인덱스 연결
+            self.pinecone_index = pinecone.Index(index_name)
+            logger.info(f"Pinecone 인덱스 연결 완료: {index_name}")
 
         except Exception as e:
             logger.error(f"Pinecone 초기화 실패: {e}")
+            logger.warning("Pinecone 없이 계속 진행합니다.")
             self.pinecone_index = None
 
     def _initialize_openai(self):
@@ -138,11 +119,9 @@ class RAGService:
                 self.vectorstore = None
                 return
 
-            # 빈 인덱스로 시작할 수 있도록 수정
-            self.vectorstore = Pinecone(
-                index=self.pinecone_index,
-                embedding=self.embeddings,
-                text_key="text"
+            # 새로운 LangChain Pinecone 벡터 스토어 초기화
+            self.vectorstore = LangChainPinecone(
+                index=self.pinecone_index, embedding=self.embeddings, text_key="text"
             )
             logger.info("벡터 스토어 초기화 완료")
 
@@ -232,7 +211,9 @@ class RAGService:
             logger.error(f"문서 업로드 실패: {e}")
             return {"success": False, "error": str(e)}
 
-    def upload_document_with_metadata(self, file_path, company, document_type, title, tags=""):
+    def upload_document_with_metadata(
+        self, file_path, company, document_type, title, tags=""
+    ):
         """보험사별 메타데이터를 포함한 문서 업로드"""
         try:
             if self.vectorstore is None:
@@ -263,8 +244,9 @@ class RAGService:
 
             # 보험사별 메타데이터 생성
             from datetime import datetime
+
             upload_date = datetime.now().strftime("%Y-%m-%d")
-            
+
             metadatas = []
             for i in range(len(chunks)):
                 metadata = {
@@ -276,7 +258,7 @@ class RAGService:
                     "chunk": i,
                     "file_path": str(file_path),
                     "tags": tags,
-                    "total_chunks": len(chunks)
+                    "total_chunks": len(chunks),
                 }
                 metadatas.append(metadata)
 
@@ -290,7 +272,7 @@ class RAGService:
                 "document_type": document_type,
                 "chunks_count": len(chunks),
                 "text_length": len(text),
-                "upload_date": upload_date
+                "upload_date": upload_date,
             }
 
         except Exception as e:
@@ -349,11 +331,15 @@ class RAGService:
             logger.error(f"문서 검색 실패: {e}")
             return []
 
-    def search_documents_by_company(self, query: str, company: str = None, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search_documents_by_company(
+        self, query: str, company: str = None, top_k: int = 5
+    ) -> List[Dict[str, Any]]:
         """보험사별 문서 검색"""
         try:
             if self.vectorstore is None:
-                logger.warning("벡터 스토어가 초기화되지 않아 검색을 수행할 수 없습니다.")
+                logger.warning(
+                    "벡터 스토어가 초기화되지 않아 검색을 수행할 수 없습니다."
+                )
                 return []
 
             # 필터 설정
@@ -363,17 +349,21 @@ class RAGService:
 
             # 유사도 검색
             if filter_dict:
-                docs = self.vectorstore.similarity_search(query, k=top_k, filter=filter_dict)
+                docs = self.vectorstore.similarity_search(
+                    query, k=top_k, filter=filter_dict
+                )
             else:
                 docs = self.vectorstore.similarity_search(query, k=top_k)
 
             results = []
             for doc in docs:
-                results.append({
-                    "content": doc.page_content,
-                    "metadata": doc.metadata,
-                    "score": getattr(doc, "score", 0.0),
-                })
+                results.append(
+                    {
+                        "content": doc.page_content,
+                        "metadata": doc.metadata,
+                        "score": getattr(doc, "score", 0.0),
+                    }
+                )
 
             return results
 
@@ -485,18 +475,27 @@ class RAGService:
 
             # Pinecone에서 모든 벡터 조회
             stats = self.pinecone_index.describe_index_stats()
-            
+
             # 보험사별 통계 계산
             company_stats = {}
             total_vectors = stats.get("total_vector_count", 0)
-            
+
             # 보험사 목록
             companies = [
-                "삼성화재", "현대해상", "KB손해보험", "메리츠화재",
-                "DB손해보험", "롯데손해보험", "하나손해보험", "흥국화재",
-                "AXA손해보험", "MG손해보험", "캐롯손해보험", "한화손해보험"
+                "삼성화재",
+                "현대해상",
+                "KB손해보험",
+                "메리츠화재",
+                "DB손해보험",
+                "롯데손해보험",
+                "하나손해보험",
+                "흥국화재",
+                "AXA손해보험",
+                "MG손해보험",
+                "캐롯손해보험",
+                "한화손해보험",
             ]
-            
+
             for company in companies:
                 try:
                     # 보험사별 벡터 수 조회
@@ -504,7 +503,7 @@ class RAGService:
                         vector=[0] * settings.UPSTAGE_EMBEDDING_DIMENSION,
                         top_k=1,
                         filter={"company": company},
-                        include_metadata=False
+                        include_metadata=False,
                     )
                     company_stats[company] = len(company_vectors.matches)
                 except Exception as e:
@@ -515,7 +514,7 @@ class RAGService:
                 "total_vectors": total_vectors,
                 "company_stats": company_stats,
                 "index_dimension": settings.UPSTAGE_EMBEDDING_DIMENSION,
-                "index_name": settings.PINECONE_INDEX_NAME
+                "index_name": settings.PINECONE_INDEX_NAME,
             }
 
         except Exception as e:
