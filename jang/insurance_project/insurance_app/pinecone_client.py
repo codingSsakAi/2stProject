@@ -3,11 +3,15 @@ import os
 
 pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
 
+# 환경변수로 인덱스 이름 관리
+INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "insurance-clauses-new")
+
 def create_index():
-    if "insurance-clauses" not in [i["name"] for i in pc.list_indexes()]:
+    existing_indexes = [i["name"] for i in pc.list_indexes()]
+    if INDEX_NAME not in existing_indexes:
         pc.create_index(
-            name="insurance-clauses",
-            dimension=384,
+            name=INDEX_NAME,
+            dimension=768,  # 업로드 모델과 일치하도록 768로 변경
             metric="cosine",
             spec=ServerlessSpec(
                 cloud='aws',
@@ -16,4 +20,4 @@ def create_index():
         )
 
 def get_index():
-    return pc.Index("insurance-clauses")
+    return pc.Index(INDEX_NAME)
