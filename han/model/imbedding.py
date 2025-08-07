@@ -13,7 +13,7 @@ load_dotenv()
 UPSTAGE_API_KEY = os.getenv("UPSTAGE_API_KEY")
 PINECONE_API_KEY_MY = os.getenv("PINECONE_API_KEY_MY")
 INDEX_NAME = "solar-embedding-index"  # Pinecone에서 만든 1024차원 인덱스명
-DOCX_PATH = "accident_ratio_text_markdown.docx"  # 분석할 docx 파일명
+DOCX_PATH = "pdf_to_docx_part.docx"  # 분석할 docx 파일명
 
 # 임베딩 클라이언트 (Upstage Solar)
 def get_upstage_embedding(texts):

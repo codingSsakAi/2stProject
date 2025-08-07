@@ -29,7 +29,7 @@ PINECONE_ENV = os.getenv('PINECONE_ENV')
 # 환경 변수 로드 부분에 추가
 PINECONE_API_KEY_MY = os.environ.get("PINECONE_API_KEY_MY")
 UPSTAGE_API_KEY = os.environ.get("UPSTAGE_API_KEY")
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # OpenAI API 키도 추가
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')  # OpenAI API 키도 추가
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

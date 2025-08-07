@@ -1,0 +1,42 @@
+<div class="accordion" id="weeklyAccordion">
+    {% for a in articles %}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false"
+                    aria-controls="collapse{{ forloop.counter }}">
+                <span class="badge bg-primary me-2">{{ a.category }}</span>
+                {{ a.title }}
+            </button>
+        </h2>
+        <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse"
+             aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#weeklyAccordion">
+            <div class="accordion-body">
+                <div>
+                    <span class="badge bg-secondary">{{ a.main_em }}</span>
+                    {% if a.main_h4 %}<h5 class="mt-2">{{ a.main_h4 }}</h5>{% endif %}
+                </div>
+                {% if a.main_strongs %}
+                    <ul class="mt-2">
+                    {% for strong in a.main_strongs %}
+                        <li><strong>{{ strong }}</strong></li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if a.main_ps %}
+                    <div class="mt-2">
+                    {% for p in a.main_ps %}
+                        {% if p %}<p>{{ p }}</p>{% endif %}
+                    {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{{ a.url }}" target="_blank" class="btn btn-outline-primary btn-sm">상세 페이지 바로가기</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-warning mt-4">기사 데이터가 없습니다.</div>
+    {% endfor %}
+</div>

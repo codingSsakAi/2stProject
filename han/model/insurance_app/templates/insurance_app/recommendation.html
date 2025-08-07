@@ -177,8 +177,12 @@
 
             <div style="margin-top: 16px;">
                 <a href="{% url 'home' %}" class="nav-btn">홈으로</a>
+                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#weeklyModal">
+                자동차 주간 보험정보 보기
+                </button>
                 <a href="{% url 'recommend_insurance' %}" class="nav-btn">보험료 계산</a>
             </div>
+            
         </div>
 
         <div class="search-section">
@@ -359,39 +363,101 @@
             const query = document.getElementById('faultRatioQuery').value.trim();
             const loading = document.getElementById('faultRatioLoading');
             const resultArea = document.getElementById('faultRatioResults');
+            
             if (!query) {
                 alert('검색어를 입력해주세요.');
                 return;
             }
+            
             loading.style.display = 'block';
             resultArea.innerHTML = '';
+            
             try {
-                const res = await fetch('/fault-ratio-search/', {
+                const res = await fetch('/fault_ratio_search/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({query: query})
                 });
                 const data = await res.json();
                 loading.style.display = 'none';
-                if (data.success && data.results.length) {
-                    let html = '';
-                    data.results.forEach(item => {
-                        html += `
-                            <div class="clause-result-card">
-                                <div class="clause-title">p.${item.page} (청크 ${item.chunk_idx})</div>
-                                <div style="margin-top: 12px;">${item.chunk || item.text}</div>
-                            </div>
-                        `;
-                    });
-                    resultArea.innerHTML = html;
+                
+                if (data.success) {
+                    displayFaultRatioResults(data);
                 } else {
-                    resultArea.innerHTML = '<div style="padding: 18px;">검색 결과가 없습니다.</div>';
+                    resultArea.innerHTML = `<div style="padding: 18px; color: #e74c3c;">오류: ${data.error}</div>`;
                 }
             } catch (error) {
                 loading.style.display = 'none';
-                resultArea.innerHTML = '<div style="padding: 18px;">검색 오류가 발생했습니다.</div>';
+                resultArea.innerHTML = '<div style="padding: 18px; color: #e74c3c;">검색 오류가 발생했습니다.</div>';
+                console.error('과실비율 검색 오류:', error);
             }
-        });  // ← 이 줄은 이미 잘 되어 있음!
+        });
+
+        // 과실비율 검색 결과 표시 함수 (새로 추가)
+        function displayFaultRatioResults(data) {
+            const resultArea = document.getElementById('faultRatioResults');
+            
+            if (!data.top_matches || data.top_matches.length === 0) {
+                resultArea.innerHTML = '<div style="padding: 18px;">검색 결과가 없습니다.</div>';
+                return;
+            }
+            
+            let html = `
+                <div class="search-summary" style="background: #e8f4f8; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 10px;">🔍 검색 질문: "${data.query}"</h3>
+                    <p style="color: #7f8c8d;">총 ${data.total_searched || 10}개 문서 중 상위 3개 결과</p>
+                </div>
+            `;
+            
+            // AI 요약이 있다면 표시
+            if (data.ai_summary) {
+                html += `
+                    <div class="ai-summary" style="background: #f0f8ff; border: 2px solid #3498db; border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+                        <h4 style="color: #2980b9; margin-bottom: 15px; display: flex; align-items: center;">
+                            🤖 <span style="margin-left: 8px;">AI 분석 결과</span>
+                        </h4>
+                        <div class="summary-content" style="line-height: 1.6; color: #2c3e50;">
+                            ${data.ai_summary.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 상세 검색 결과
+            html += `<div class="detailed-matches"><h4 style="color: #2c3e50; margin-bottom: 15px;">📋 상세 검색 결과</h4>`;
+            
+            data.top_matches.forEach((match, index) => {
+                const rankBadge = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                html += `
+                    <div class="match-item" style="background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
+                        <div class="match-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                            <span class="rank" style="background: #3498db; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold;">
+                                ${rankBadge} ${index + 1}위
+                            </span>
+                            <span class="similarity" style="background: #27ae60; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold;">
+                                유사도: ${match.similarity_percentage || (match.score * 100).toFixed(1) + '%'}
+                            </span>
+                            <span class="source" style="color: #7f8c8d; font-size: 0.9em;">
+                                📄 ${match.file || '문서'} ${match.page ? `(p.${match.page})` : ''}
+                            </span>
+                        </div>
+                        <div class="match-content" style="color: #2c3e50; line-height: 1.6;">
+                            <p>${match.text || match.chunk}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+            resultArea.innerHTML = html;
+        }
+        document.getElementById('weeklyModal').addEventListener('show.bs.modal', function () {
+            fetch('/weekly/partial/')
+                .then(res => res.text())
+                .then(html => {
+                document.getElementById('weeklyModalBody').innerHTML = html;
+                });
+            });
     </script>
 </body>
 </html>
