@@ -13,6 +13,8 @@ import json
 from django.views.decorators.http import require_http_methods
 from .pinecone_search import retrieve_insurance_clauses
 from .insurance_mock_server import InsuranceService
+from .forms import UserProfileChangeForm
+from .forms import EmailPasswordChangeForm
 
 def home(request):
     return render(request, 'insurance_app/home.html')
@@ -202,3 +204,15 @@ def logout_view(request):
         logout(request)
         return redirect('login')
     return redirect('home')
+
+@login_required
+def mypage(request):
+    if request.method == "POST":
+        form = EmailPasswordChangeForm(request.POST, user=request.user, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "회원정보가 수정되었습니다.")
+            return redirect('mypage')
+    else:
+        form = EmailPasswordChangeForm(user=request.user, instance=request.user)
+    return render(request, 'insurance_app/mypage.html', {'form': form})

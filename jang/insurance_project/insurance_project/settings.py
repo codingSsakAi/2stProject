@@ -81,3 +81,4 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 USE_MOCK_API = True
+LOGIN_URL = '/login/'
