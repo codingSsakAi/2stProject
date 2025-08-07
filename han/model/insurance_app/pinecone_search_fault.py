@@ -23,7 +23,7 @@ def upstage_query_embedding(text):
     resp.raise_for_status()
     return resp.json()["data"][0]["embedding"]
 
-def retrieve_fault_ratio(query, top_k=5):
+def retrieve_fault_ratio(query, top_k=10):
     query_emb = upstage_query_embedding(query)
     result = index.query(
         vector=query_emb,

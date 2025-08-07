@@ -14,5 +14,7 @@ urlpatterns = [
     path('api/search/', views.insurance_clause_search, name='insurance_clause_search'),
     path('api/qa/', views.insurance_clause_qa, name='insurance_clause_qa'),
     path('logout/', LogoutView.as_view(next_page='home'), name='logout'),
-    path('fault-ratio-search/', views.fault_ratio_search, name='fault_ratio_search'),
+    path('fault_ratio_search/', views.fault_ratio_search, name='fault_ratio_search'),
+    path('weekly/', views.weekly_articles, name='weekly_articles'),
+    path('weekly/partial/', views.weekly_articles_partial, name='weekly_articles_partial'), 
 ]

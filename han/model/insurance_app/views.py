@@ -15,6 +15,8 @@ from .pinecone_search import retrieve_insurance_clauses
 from .insurance_mock_server import InsuranceService
 from .pinecone_search_fault import retrieve_fault_ratio
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+import os
 
 def home(request):
     return render(request, 'insurance_app/home.html')
@@ -196,11 +198,118 @@ def insurance_clause_qa(request):
 def fault_ratio_search(request):
     if request.method == 'POST':
         import json
+        from openai import OpenAI
+        
         data = json.loads(request.body)
         query = data.get('query', '')
-        if query:
-            results = retrieve_fault_ratio(query, top_k=5)
-            return JsonResponse({'success': True, 'results': results})
-        else:
+        
+        if not query:
             return JsonResponse({'success': False, 'error': '검색어를 입력해주세요.'})
+        
+        try:
+            # Pinecone에서 상위 10개 결과 검색
+            results = retrieve_fault_ratio(query, top_k=10)
+            
+            if not results:
+                return JsonResponse({'success': False, 'error': '관련 근거를 찾지 못했습니다.'})
+
+            # 상위 3개 결과만 선택 (이미 유사도 순으로 정렬됨)
+            top_3_results = results[:3]
+            
+            # 상위 3개 결과를 컨텍스트로 구성
+            context_str = ""
+            for i, match in enumerate(top_3_results):
+                context_str += f"""
+{i+1}번째 근거 (유사도: {match['score']:.4f})
+파일: {match['file']}
+페이지: {match['page']}
+내용: {match['text']}
+
+"""
+            
+            # OpenAI GPT-4o-mini를 사용하여 AI 요약 생성
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            
+            prompt = f"""
+다음은 자동차 사고 과실비율과 관련된 검색 결과입니다.
+
+사용자 질문: "{query}"
+
+검색된 근거 자료:
+{context_str}
+
+위 검색 결과를 바탕으로 다음 요구사항에 맞게 답변해 주세요:
+1. 사용자의 질문에 대한 명확하고 이해하기 쉬운 답변을 제공
+2. 각 근거 자료의 유사도 점수와 출처 정보 포함
+3. 과실비율에 대한 구체적인 정보가 있다면 명시
+4. 추가 주의사항이나 예외사항이 있다면 언급
+
+답변 형식:
+## 과실비율 분석 결과
+
+**질문에 대한 답변:**
+[여기에 명확한 답변]
+
+**근거 자료:**
+[각 근거별로 유사도와 함께 정리]
+
+**주의사항:**
+[추가 고려사항이나 제한사항]
+"""
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 자동차 보험 과실비율 전문가입니다. 제공된 자료를 바탕으로 정확하고 이해하기 쉬운 답변을 제공해주세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1500,
+                temperature=0.3
+            )
+            
+            ai_summary = response.choices[0].message.content
+            
+            return JsonResponse({
+                'success': True,
+                'query': query,
+                'ai_summary': ai_summary,
+                'top_matches': [
+                    {
+                        'score': f"{match['score']:.4f}",
+                        'similarity_percentage': f"{match['score'] * 100:.1f}%",
+                        'file': match['file'],
+                        'page': match['page'],
+                        'text': match['text'][:300] + "..." if len(match['text']) > 300 else match['text'],
+                        'full_text': match['text']
+                    } for match in top_3_results
+                ],
+                'total_searched': len(results)
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False, 
+                'error': f'검색 중 오류가 발생했습니다: {str(e)}'
+            })
+    
     return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다.'})
+
+def weekly_articles(request):
+    # JSON 경로는 앱 내부를 기준으로
+    json_path = os.path.join(os.path.dirname(__file__), 'weekly_articles.json')
+    try:
+        with open(json_path, encoding='utf-8') as f:
+            articles = json.load(f)
+    except Exception:
+        articles = []
+
+    return render(request, 'insurance_app/weekly.html', {'articles': articles})
+
+def weekly_articles_partial(request):
+    json_path = os.path.join(os.path.dirname(__file__), 'weekly_articles.json')
+    try:
+        with open(json_path, encoding='utf-8') as f:
+            articles = json.load(f)
+    except Exception:
+        articles = []
+    return render(request, 'insurance_app/weekly_partial.html', {'articles': articles})
