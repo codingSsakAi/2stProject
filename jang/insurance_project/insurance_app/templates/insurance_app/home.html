@@ -97,6 +97,9 @@
         
         {% if user.is_authenticated %}
             <p>안녕하세요, {{ user.username }}님!</p>
+            <a href="{% url 'mypage' %}" class="nav-btn" style="margin-right: 10px;">
+                👤 마이페이지
+            </a>
             <form action="{% url 'logout' %}" method="post" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="nav-btn logout-btn">로그아웃</button>

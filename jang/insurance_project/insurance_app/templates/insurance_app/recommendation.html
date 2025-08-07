@@ -18,7 +18,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -44,8 +44,50 @@
             font-size: 1.1em;
         }
 
-        .search-section {
+        .nav-bar {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 1em;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            transform: translateY(-2px) scale(1.04);
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+        }
+
+        .content {
             padding: 40px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
         }
 
         .search-box {
@@ -99,16 +141,16 @@
         .loading {
             display: none;
             text-align: center;
-            padding: 20px;
+            padding: 40px;
             color: #666;
         }
 
         .spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-right: 10px;
@@ -123,19 +165,28 @@
             display: none;
         }
 
+        .results h3 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
         .result-item {
-            background: #f8f9fa;
-            border-left: 5px solid #3498db;
-            margin-bottom: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            margin-bottom: 25px;
             padding: 25px;
-            border-radius: 10px;
             transition: all 0.3s ease;
             animation: slideIn 0.5s ease forwards;
+            position: relative;
         }
 
         .result-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border-color: #3498db;
         }
 
         @keyframes slideIn {
@@ -151,9 +202,19 @@
 
         .result-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .document-name {
+            color: #3498db;
+            font-weight: bold;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .similarity-score {
@@ -163,81 +224,151 @@
             border-radius: 20px;
             font-size: 0.9em;
             font-weight: bold;
-            margin-left: auto;
-        }
-
-        .document-name {
-            color: #3498db;
-            font-weight: bold;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
         .result-text {
             color: #2c3e50;
             line-height: 1.6;
             font-size: 1.05em;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
         }
 
         .no-results {
             text-align: center;
-            padding: 40px;
+            padding: 60px 40px;
             color: #666;
-            font-size: 1.1em;
+            font-size: 1.2em;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .no-results h3 {
+            margin-bottom: 15px;
+            font-size: 1.8em;
+            color: #555;
         }
 
         .example-queries {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
+            background: #e7f1ff;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
         }
 
         .example-queries h3 {
             color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.2em;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            font-weight: 600;
         }
 
         .example-query {
             display: inline-block;
             background: white;
             color: #3498db;
-            padding: 8px 15px;
-            margin: 5px;
-            border-radius: 20px;
+            padding: 12px 20px;
+            margin: 8px;
+            border-radius: 25px;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid #3498db;
-            font-size: 0.9em;
+            font-size: 0.95em;
+            font-weight: 500;
         }
 
         .example-query:hover {
             background: #3498db;
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .user-info-card {
+            background: #e8f4f8;
+            border: 2px solid #3498db;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .user-info-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link a:hover {
+            opacity: 1;
         }
 
         .footer {
             background: #2c3e50;
             color: white;
             text-align: center;
-            padding: 20px;
-            font-size: 0.9em;
-            opacity: 0.8;
+            padding: 25px;
+            font-size: 0.95em;
+            opacity: 0.9;
         }
-        .nav-btn:hover {
-    background: linear-gradient(135deg, #2980b9, #3498db);
-    transform: translateY(-2px) scale(1.04);
-}
-.logout-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-.logout-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #e74c3c);
-}
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .form-section {
+                padding: 20px;
+            }
+            
+            .nav-bar {
+                gap: 8px;
+            }
+            
+            .nav-btn {
+                padding: 6px 14px;
+                font-size: 0.9em;
+            }
+            
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .example-query {
+                display: block;
+                margin: 8px 0;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -245,36 +376,47 @@
         <div class="header">
             <h1>🔍 보험 약관 AI 검색</h1>
             <p>궁금한 보험 내용을 자연어로 질문해보세요!</p>
-            {% if user.is_authenticated %}
-            <form action="{% url 'logout' %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="nav-btn logout-btn">로그아웃</button>
-            </form>
-            {% endif %}
-
-            <div style="margin-top: 16px;">
+            
+            <div class="nav-bar">
+                {% if user.is_authenticated %}
+                <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-btn logout-btn">로그아웃</button>
+                </form>
+                {% endif %}
                 <a href="{% url 'home' %}" class="nav-btn">홈으로</a>
                 <a href="{% url 'recommend_insurance' %}" class="nav-btn">보험료 계산</a>
             </div>
         </div>
 
-        <div class="search-section">
-            <div class="search-box">
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    class="search-input" 
-                    placeholder="예: 음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?"
-                    onkeypress="handleKeyPress(event)"
-                >
-                <button id="searchBtn" class="search-btn" onclick="searchClauses()">
-                    검색
-                </button>
-            </div>
+        <div class="content">
+            {% if user.is_authenticated %}
+                <div class="user-info-card">
+                    <h3>👤 {{ user.username }}님, 안녕하세요!</h3>
+                    <p>AI 기반 보험 약관 검색을 통해 궁금한 내용을 쉽게 찾아보세요.</p>
+                </div>
+            {% endif %}
 
-            <div id="loading" class="loading">
-                <div class="spinner"></div>
-                AI가 관련 약관을 찾고 있습니다...
+            <div class="form-section">
+                <h3 style="margin-bottom: 20px; color: #2c3e50;">💬 자연어 질문 검색</h3>
+                <div class="search-box">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="search-input" 
+                        placeholder="예: 음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?"
+                        onkeypress="handleKeyPress(event)"
+                    >
+                    <button id="searchBtn" class="search-btn" onclick="searchClauses()">
+                        검색
+                    </button>
+                </div>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <h3>AI가 관련 약관을 찾고 있습니다...</h3>
+                    <p>잠시만 기다려주세요. 최적의 답변을 준비하고 있어요! 💡</p>
+                </div>
             </div>
 
             <div id="results" class="results">
@@ -296,12 +438,19 @@
                 <div class="example-query" onclick="setQuery('면책사항에는 어떤 것들이 있나요?')">
                     면책사항 조회
                 </div>
+                <div class="example-query" onclick="setQuery('가족 특약은 어떤 혜택이 있나요?')">
+                    가족 특약 혜택
+                </div>
+                <div class="example-query" onclick="setQuery('자동차 도난 시 보상은 어떻게 되나요?')">
+                    차량 도난 보상
+                </div>
             </div>
         </div>
     </div>
 
     <div class="footer">
         <p>🤖 AI 기반 보험 약관 검색 시스템 | RAG + Pinecone + LLM</p>
+        <p style="margin-top: 5px; font-size: 0.85em; opacity: 0.7;">정확한 보험 가입 전 반드시 약관을 직접 확인하세요.</p>
     </div>
 
     <script>
@@ -361,28 +510,43 @@
         function displayResults(results) {
             const resultsList = document.getElementById('resultsList');
             const resultsDiv = document.getElementById('results');
-            
-            if (results.length === 0) {
+
+            if (!results || results.length === 0) {
                 displayNoResults();
                 return;
             }
 
+            // 1. 보험사별로 가장 점수 높은 결과만 남기기
+            const bestByCompany = {};
+            results.forEach(result => {
+                // 회사명 기준: document(또는 company 필드, 없으면 '기타')
+                const company = result.document || result.company || '기타';
+                if (!bestByCompany[company] || (result.score > bestByCompany[company].score)) {
+                    bestByCompany[company] = result;
+                }
+            });
+
+            // 2. 추출된 결과만 배열로 변환
+            const uniqueResults = Object.values(bestByCompany);
+
             let html = '';
-            results.forEach((result, index) => {
+            uniqueResults.forEach((result, index) => {
                 const score = (result.score * 100).toFixed(1);
                 html += `
                     <div class="result-item" style="animation-delay: ${index * 0.1}s">
                         <div class="result-header">
-                            <div class="document-name">${result.document}</div>
+                            <div class="document-name">${result.document || result.company || '보험사'}</div>
                             <div class="similarity-score">유사도 ${score}%</div>
                         </div>
-                        <div class="result-text">${result.text}</div>
+                        <div class="result-text">${result.text || result.chunk}</div>
+                        ${result.page ? `<div style="margin-top: 10px; font-size: 0.9em; color: #666;">페이지: ${result.page}</div>` : ''}
                     </div>
                 `;
             });
 
             resultsList.innerHTML = html;
             resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
         }
 
         function displayNoResults() {
@@ -392,10 +556,11 @@
             resultsList.innerHTML = `
                 <div class="no-results">
                     <h3>😔 검색 결과가 없습니다</h3>
-                    <p>다른 키워드로 다시 검색해보세요.</p>
+                    <p>다른 키워드로 다시 검색해보시거나<br>예시 질문을 참고해주세요.</p>
                 </div>
             `;
             resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
         }
 
         function getCookie(name) {

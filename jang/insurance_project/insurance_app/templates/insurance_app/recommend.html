@@ -302,6 +302,10 @@
             <button type="submit" class="nav-btn logout-btn">로그아웃</button>
             </form>
             {% endif %}
+            <div class="back-link">
+                <a href="{% url 'home' %}">🏠 홈으로 돌아가기</a> |
+                <a href="{% url 'insurance_recommendation' %}">🔍 AI 약관 검색</a>
+            </div>
         </div>
 
         <div class="content">
@@ -407,10 +411,7 @@
             </div>
             <!-- ======================== 약관 검색 추가 끝 ======================= -->
 
-            <div class="back-link">
-                <a href="{% url 'home' %}">🏠 홈으로 돌아가기</a> |
-                <a href="{% url 'insurance_recommendation' %}">🔍 AI 약관 검색</a>
-            </div>
+            
         </div>
     </div>
 

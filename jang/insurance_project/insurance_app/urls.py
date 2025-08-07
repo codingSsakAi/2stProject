@@ -13,4 +13,6 @@ urlpatterns = [
     path('api/search/', views.insurance_clause_search, name='insurance_clause_search'),
     path('api/qa/', views.insurance_clause_qa, name='insurance_clause_qa'),
     path('logout/', views.logout_view, name='logout'),  # 수정된 부분
+    path('mypage/', views.mypage, name='mypage'),
+    path('home', views.home, name='home'),
 ]
