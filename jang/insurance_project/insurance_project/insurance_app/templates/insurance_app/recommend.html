@@ -261,6 +261,34 @@
             font-size: 0.92em;
             color: #888;
         }
+        .nav-bar {
+    margin-top: 18px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.nav-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 1em;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+}
+.nav-btn:hover {
+    background: linear-gradient(135deg, #2980b9, #3498db);
+    transform: translateY(-2px) scale(1.04);
+}
+.logout-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+.logout-btn:hover {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+}
     </style>
 </head>
 <body>
@@ -268,6 +296,12 @@
         <div class="header">
             <h1>💰 스마트 보험료 계산기</h1>
             <p>11개 주요 보험사 견적을 한 번에 비교하세요!</p>
+            {% if user.is_authenticated %}
+            <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+            <button type="submit" class="nav-btn logout-btn">로그아웃</button>
+            </form>
+            {% endif %}
         </div>
 
         <div class="content">
@@ -336,6 +370,12 @@
                 <div class="spinner"></div>
                 <h3>11개 보험사 견적을 계산하고 있습니다...</h3>
                 <p>잠시만 기다려주세요. 최적의 보험료를 찾고 있어요! 💡</p>
+                {% if user.is_authenticated %}
+                <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="nav-btn logout-btn">로그아웃</button>
+                </form>
+                {% endif %}
             </div>
 
             <div id="results" class="results"></div>
@@ -375,6 +415,7 @@
     </div>
 
     <script>
+        console.log('보험 추천 JS 새로 로딩됨!');
         // ================== 보험료 견적 기존 코드 ==================
         document.getElementById('insuranceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -409,12 +450,81 @@
         });
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
-            // ... (기존 보험료 결과 렌더링 코드 그대로)
-            // (본문 생략, 위 코드 참고)
-            resultsDiv.innerHTML = " ... (기존 결과 랜더링) ...";
+            if (!data || !data.quotes || data.quotes.length === 0) {
+                resultsDiv.innerHTML = '<div>결과가 없습니다.</div>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            // 사용자 정보 카드
+            let html = '';
+            html += `
+                <div class="user-info-card">
+                    <h3>👤 사용자 분석</h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                        <div>연령대: ${data.user_info.age_category}</div>
+                        <div>위험도: ${data.user_info.risk_level}</div>
+                        <div>추천 보장: ${data.user_info.recommended_coverage}</div>
+                    </div>
+                </div>
+            `;
+
+            // 시장 분석 정보
+            if (data.market_analysis) {
+                html += `
+                    <div class="market-summary">
+                        <b>시장 분석</b><br>
+                        최저 보험료: <b>${data.market_analysis.lowest_premium.toLocaleString()}원</b> /
+                        최고: <b>${data.market_analysis.highest_premium.toLocaleString()}원</b> /
+                        평균: <b>${data.market_analysis.average_premium.toLocaleString()}원</b> /
+                        가성비 최고: <b>${data.market_analysis.best_value}</b>
+                    </div>
+                `;
+            }
+
+            // 각 보험사별 견적
+            data.quotes.forEach((q, idx) => {
+                html += `
+                <div class="quote-card${(data.market_analysis && data.market_analysis.best_value === q.company) ? ' best' : ''}">
+                    ${(data.market_analysis && data.market_analysis.best_value === q.company) ? '<span class="best-badge">가성비최고</span>' : ''}
+                    <div class="company-header">
+                        <span class="company-name">${q.company}</span>
+                        <div class="premium-display">
+                            <span class="annual-premium">${q.annual_premium.toLocaleString()}원</span>
+                            <div class="monthly-premium">(월 ${q.monthly_premium.toLocaleString()}원)</div>
+                        </div>
+                    </div>
+                    <div class="quote-details">
+                        <div class="detail-section">
+                            <div class="detail-title">보장 내용</div>
+                            ${Object.entries(q.coverage_details).map(([k, v]) =>
+                                `<div class="coverage-item"><span>${k}</span><span>${v}</span></div>`).join('')}
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-title">자기부담금</div>
+                            ${Object.entries(q.deductible).map(([k, v]) =>
+                                `<div class="coverage-item"><span>${k}</span><span>${v.toLocaleString()}원</span></div>`).join('')}
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-title">혜택/특전</div>
+                            ${q.additional_benefits.map(b => `<span class="benefit-tag">${b}</span>`).join('')}
+                            ${q.special_discount ? `<div class="special-discount">특별할인: ${q.special_discount}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="rating-display">
+                        <div class="rating-item">고객만족도<br><span class="rating-score">${q.customer_satisfaction}/5.0</span></div>
+                        <div class="rating-item">클레임 서비스<br><span class="rating-score">${q.claim_service_rating}/5.0</span></div>
+                        <div class="rating-item">경력 할인<br><span class="rating-score">${q.discount_rate}</span></div>
+                        <div class="rating-item">사고 할증<br><span class="rating-score">${q.penalty_rate}</span></div>
+                    </div>
+                </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
             resultsDiv.style.display = 'block';
             resultsDiv.scrollIntoView({ behavior: 'smooth' });
         }
+
 
         // ============== Pinecone 약관 검색 추가 코드 ==============
         document.getElementById('clauseLoading').style.display = 'none';

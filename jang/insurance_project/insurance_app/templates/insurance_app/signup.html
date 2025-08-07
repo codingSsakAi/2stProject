@@ -1,6 +1,97 @@
-<h2>회원가입</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">가입하기</button>
-</form>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>회원가입 - 보험 추천 시스템</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            margin: 60px auto;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 10px 32px rgba(0,0,0,0.10);
+            padding: 40px 32px;
+        }
+        .header {
+            text-align: center;
+            color: #3d437a;
+            margin-bottom: 28px;
+        }
+        h2 {
+            margin-bottom: 10px;
+            font-weight: 700;
+            font-size: 2em;
+        }
+        .signup-form label {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .signup-form input, .signup-form select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 18px;
+            transition: border 0.3s;
+        }
+        .signup-form input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        .btn-signup {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: box-shadow 0.3s, transform 0.3s;
+            width: 100%;
+        }
+        .btn-signup:hover {
+            box-shadow: 0 6px 16px rgba(102,126,234,0.14);
+            transform: translateY(-2px);
+        }
+        .back-link {
+            margin-top: 24px;
+            text-align: center;
+        }
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>회원가입</h2>
+            <p>아직 계정이 없으신가요? 필수 정보를 입력하세요.</p>
+        </div>
+        <form method="post" class="signup-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-signup">가입하기</button>
+        </form>
+        <div class="back-link">
+            <a href="{% url 'login' %}">이미 계정이 있으신가요? 로그인</a>
+        </div>
+        <div class="back-link" style="margin-top:8px;">
+            <a href="{% url 'home' %}">홈으로 돌아가기</a>
+        </div>
+    </div>
+</body>
+</html>

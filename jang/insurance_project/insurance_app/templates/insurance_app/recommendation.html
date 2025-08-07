@@ -10,7 +10,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -229,6 +228,16 @@
             font-size: 0.9em;
             opacity: 0.8;
         }
+        .nav-btn:hover {
+    background: linear-gradient(135deg, #2980b9, #3498db);
+    transform: translateY(-2px) scale(1.04);
+}
+.logout-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+.logout-btn:hover {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+}
     </style>
 </head>
 <body>
@@ -236,6 +245,17 @@
         <div class="header">
             <h1>🔍 보험 약관 AI 검색</h1>
             <p>궁금한 보험 내용을 자연어로 질문해보세요!</p>
+            {% if user.is_authenticated %}
+            <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="nav-btn logout-btn">로그아웃</button>
+            </form>
+            {% endif %}
+
+            <div style="margin-top: 16px;">
+                <a href="{% url 'home' %}" class="nav-btn">홈으로</a>
+                <a href="{% url 'recommend_insurance' %}" class="nav-btn">보험료 계산</a>
+            </div>
         </div>
 
         <div class="search-section">
