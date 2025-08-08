@@ -8,13 +8,11 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import CustomUser
 from .forms import CustomUserCreationForm
 from .pdf_processor import EnhancedPDFProcessor
-from .pinecone_search import retrieve_insurance_clauses   # Pinecone 연동 함수
+from .pinecone_search import retrieve_insurance_clauses
 import json
 from django.views.decorators.http import require_http_methods
-from .pinecone_search import retrieve_insurance_clauses
 from .insurance_mock_server import InsuranceService
-from .forms import UserProfileChangeForm
-from .forms import EmailPasswordChangeForm
+from .forms import UserProfileChangeForm, EmailPasswordChangeForm
 
 def home(request):
     return render(request, 'insurance_app/home.html')
@@ -54,7 +52,6 @@ def login_view(request):
 def recommend_insurance(request):
     if request.method == 'POST':
         try:
-            # FormData에서 값 추출 (user model의 필드 직접 접근, 없는 건 default)
             user_profile = {
                 'birth_date': str(getattr(request.user, 'birth_date', '1990-01-01')),
                 'gender': getattr(request.user, 'gender', 'M'),
@@ -85,9 +82,7 @@ def recommend_insurance(request):
 
 @csrf_exempt
 def get_company_detail(request, company_name):
-    # 실제 구현 시 Pinecone 메타 또는 DB에서 상세 추출 가능
     try:
-        # 임시 예시
         return JsonResponse({"company_name": company_name, "detail": f"{company_name} 보험사 상세 정보"})
     except Exception as e:
         return JsonResponse({
@@ -95,18 +90,40 @@ def get_company_detail(request, company_name):
         }, status=500)
 
 def get_market_analysis(request):
-    # 마찬가지로 메타데이터 기반 보험 시장 분석 반환
     return JsonResponse({
         "market_summary": "자동차보험 시장 동향 및 보험사별 경쟁력 분석 예시"
     })
 
 def clause_summary(request, clause_id):
-    # Pinecone에서 clause_id로 벡터/메타 추출해 요약 반환 가능
     return JsonResponse({
         'success': True,
         'clause_id': clause_id,
         'summary': f'약관 {clause_id}번에 대한 요약입니다.'
     })
+
+### --- [핵심 필터 함수] --- ###
+def filter_results_by_keyword_and_company(results, keywords, max_per_company=1):
+    """
+    회사별로 keyword가 들어간 대표 청크(max_per_company개)만 반환
+    """
+    keyword_filtered = []
+    for r in results:
+        text = r.get("text", "") or r.get("chunk", "") or r.get("metadata", {}).get("text", "")
+        if any(k in text for k in keywords):
+            keyword_filtered.append(r)
+    company_counts = {}
+    final_results = []
+    for r in keyword_filtered:
+        company = r.get("company", "") or r.get("metadata", {}).get("company", "")
+        if not company:
+            continue
+        if company not in company_counts:
+            company_counts[company] = 0
+        if company_counts[company] < max_per_company:
+            final_results.append(r)
+            company_counts[company] += 1
+    return final_results
+### ----------------------- ###
 
 @csrf_exempt
 def insurance_recommendation(request):
@@ -115,16 +132,17 @@ def insurance_recommendation(request):
         data = json.loads(request.body)
         query = data.get('query', '')
         company_name = data.get('company', None)
-        
+
         if query:
-            # Pinecone 실전 검색 함수로 직접 검색
-            results = retrieve_insurance_clauses(query, top_k=5, company=company_name)
-            # Pinecone 검색 결과를 그대로 반환
+            # 넉넉히 top_k 받아와서 후처리(중복/키워드)
+            results = retrieve_insurance_clauses(query, top_k=30, company=company_name)
+            keywords = ['면책', '보상하지 않는 손해', '지급하지 않는다', '보상하지', '제외', '면책사항']
+            filtered_results = filter_results_by_keyword_and_company(results, keywords, max_per_company=1)
             return JsonResponse({
                 'success': True,
-                'results': results,
+                'results': filtered_results,
                 'searched_company': company_name,
-                'total_results': len(results)
+                'total_results': len(filtered_results)
             })
         else:
             return JsonResponse({
@@ -132,7 +150,6 @@ def insurance_recommendation(request):
                 'error': '검색어를 입력해주세요.'
             })
 
-    # GET 요청시 보험사 목록과 문서 통계 제공
     processor = EnhancedPDFProcessor()
     company_stats = processor.get_company_statistics()
     context = {
@@ -144,36 +161,26 @@ def insurance_recommendation(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def insurance_clause_search(request):
-    import json
     data = json.loads(request.body)
     query = data.get("query", "")
     company = data.get("company", None)
-    from .pinecone_search import retrieve_insurance_clauses
-    results = retrieve_insurance_clauses(query, top_k=5, company=company)
-    return JsonResponse({"success": True, "results": results})
-
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-import json
-from django.http import JsonResponse
-from .pinecone_search import retrieve_insurance_clauses
+    results = retrieve_insurance_clauses(query, top_k=30, company=company)
+    keywords = ['면책', '보상하지 않는 손해', '지급하지 않는다', '보상하지', '제외', '면책사항']
+    filtered_results = filter_results_by_keyword_and_company(results, keywords, max_per_company=1)
+    return JsonResponse({"success": True, "results": filtered_results})
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def insurance_clause_qa(request):
-    """
-    POST: { "question": "음주운전 보상 되나요?", "company": "DB손해보험" }
-    → Pinecone 검색 후 LLM 컨텍스트 자동 생성 예시 (실제 LLM 연동은 아래에서 커스텀)
-    """
     data = json.loads(request.body)
     question = data.get("question", "")
     company = data.get("company", None)
-    top_matches = retrieve_insurance_clauses(question, top_k=3, company=company)
-
-    # LLM 컨텍스트 예시 생성 (여기에 LLM 호출/응답도 바로 추가 가능)
+    top_matches = retrieve_insurance_clauses(question, top_k=30, company=company)
+    keywords = ['면책', '보상하지 않는 손해', '지급하지 않는다', '보상하지', '제외', '면책사항']
+    filtered_matches = filter_results_by_keyword_and_company(top_matches, keywords, max_per_company=1)
     llm_context = "\n".join([
-        f"[{m['company']}] {m['file']} p.{m['page']}\n{m['chunk'][:200]}..."
-        for m in top_matches
+        f"[{m['company']}] {m['file']} p.{m['page']}\n{m.get('text', m.get('chunk', ''))[:200]}..."
+        for m in filtered_matches
     ])
     prompt = f"""
 다음은 '{company or '전체'}' 보험사 약관 중 사용자의 질문과 유사한 조항입니다.
@@ -189,18 +196,15 @@ def insurance_clause_qa(request):
     return JsonResponse({
         "success": True,
         "llm_prompt": prompt,
-        "top_matches": top_matches
+        "top_matches": filtered_matches
     })
 
 def logout_view(request):
-    """로그아웃 시 메시지 삭제 후 로그아웃 처리"""
     if request.method == 'POST':
-        # 기존 메시지들을 모두 삭제
         storage = messages.get_messages(request)
         for message in storage:
-            pass  # 메시지를 순회하면서 삭제
-        storage.used = True  # 메시지 스토리지를 비움
-        
+            pass
+        storage.used = True
         logout(request)
         return redirect('login')
     return redirect('home')
