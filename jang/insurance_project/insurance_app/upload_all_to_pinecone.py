@@ -8,6 +8,7 @@ from tqdm import tqdm
 import hashlib
 import unicodedata
 import re
+import pandas as pd
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -15,18 +16,18 @@ import dotenv
 dotenv.load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-# 환경변수로 인덱스 이름 관리
 INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "insurance-clauses-new")
 DOC_ROOT = os.path.join(os.path.dirname(__file__), "documents")
+pc = Pinecone(api_key=PINECONE_API_KEY)
+index = pc.Index(INDEX_NAME)
 
-# 1. 임베딩 모델 준비
+# 1. 인덱스 초기화
+# index.delete(deleteAll=True)
+# print(f"인덱스 [{INDEX_NAME}]의 모든 벡터 데이터가 삭제되었습니다.")
+
 EMBED_MODEL = "jhgan/ko-sroberta-multitask"
 model = SentenceTransformer(EMBED_MODEL)
 
-# 2. Pinecone 최신 방식 초기화
-pc = Pinecone(api_key=PINECONE_API_KEY)
-
-# 인덱스 존재 확인 및 생성
 existing_indexes = [index_info["name"] for index_info in pc.list_indexes()]
 if INDEX_NAME not in existing_indexes:
     pc.create_index(
@@ -39,48 +40,25 @@ if INDEX_NAME not in existing_indexes:
         )
     )
 
-index = pc.Index(INDEX_NAME)
-
 def sanitize_for_ascii_id(text):
-    """
-    한글 및 특수문자를 ASCII 안전한 형태로 변환
-    """
-    # 1. 유니코드 정규화 (NFD: 분해형태)
     text = unicodedata.normalize('NFD', text)
-    
-    # 2. ASCII가 아닌 문자들을 제거하고 안전한 문자로 대체
-    # 한글, 특수문자 등을 언더스코어로 대체
     ascii_text = re.sub(r'[^a-zA-Z0-9_-]', '_', text)
-    
-    # 3. 연속된 언더스코어를 하나로 축약
     ascii_text = re.sub(r'_+', '_', ascii_text)
-    
-    # 4. 앞뒤 언더스코어 제거
     ascii_text = ascii_text.strip('_')
-    
-    # 5. 빈 문자열인 경우 기본값 설정
     if not ascii_text:
         ascii_text = "unknown"
-    
     return ascii_text
 
-def create_safe_vector_id(company, doc_name, page_num, chunk_idx):
+def create_safe_vector_id(company, doc_name, page_num, chunk_idx, chunk_type):
     """
-    ASCII 안전한 벡터 ID 생성
+    type까지 id에 포함시켜 유니크하게 만듭니다.
     """
-    # 회사명과 문서명을 ASCII 안전하게 변환
     safe_company = sanitize_for_ascii_id(company)
     safe_doc_name = sanitize_for_ascii_id(doc_name)
-    
-    # 기본 ID 생성
-    base_id = f"{safe_company}_{safe_doc_name}_{page_num}_{chunk_idx}"
-    
-    # ID가 너무 길면 해시로 축약 (Pinecone ID 길이 제한 고려)
+    base_id = f"{safe_company}_{safe_doc_name}_{page_num}_{chunk_type}_{chunk_idx}"
     if len(base_id) > 100:
-        # 원본 정보의 해시값 생성
-        hash_part = hashlib.md5(f"{company}_{doc_name}".encode('utf-8')).hexdigest()[:8]
-        base_id = f"{safe_company[:20]}_{hash_part}_{page_num}_{chunk_idx}"
-    
+        hash_part = hashlib.md5(f"{company}_{doc_name}_{chunk_type}".encode('utf-8')).hexdigest()[:8]
+        base_id = f"{safe_company[:20]}_{hash_part}_{page_num}_{chunk_type}_{chunk_idx}"
     return base_id
 
 def chunk_text(text, max_length=500, overlap=50):
@@ -95,39 +73,71 @@ def chunk_text(text, max_length=500, overlap=50):
         start += max_length - overlap
     return chunks
 
+def clean_ocr_text(text):
+    text = re.sub(r'(\w)\1{2,}', r'\1', text)
+    text = re.sub(r'(지급){2,}', '지급', text)
+    text = re.sub(r'[\s]{3,}', ' ', text)
+    text = re.sub(r'[^\w\s.,;:?!()-]', '', text)
+    return text.strip()
+
 def process_pdf(company, pdf_path):
     doc_name = os.path.splitext(os.path.basename(pdf_path))[0]
     vectors = []
-
-    # PDF 이미지 페이지 변환 (전체 미리 변환)
     images = convert_from_path(pdf_path, dpi=200)
 
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, 1):
+            # 1. 표 추출
+            tables = page.extract_tables()
+            for t_idx, table in enumerate(tables):
+                try:
+                    df = pd.DataFrame(table)
+                    table_md = df.to_markdown(index=False)
+                    meta = {
+                        "company": company,
+                        "file": doc_name,
+                        "page": page_num,
+                        "chunk_idx": t_idx,
+                        "type": "table"
+                    }
+                    vec_id = create_safe_vector_id(company, doc_name, page_num, t_idx, "table")
+                    vectors.append((vec_id, table_md, meta))
+                except Exception as e:
+                    print(f"[표 파싱 오류] {company}, {doc_name}, p.{page_num}: {e}")
+
+            # 2. 본문 텍스트
             text = page.extract_text() or ""
-            # OCR: 이미지 → 텍스트
-            ocr_text = ""
-            try:
-                img = images[page_num - 1]
-                ocr_text = pytesseract.image_to_string(img, lang="kor+eng")
-            except Exception:
-                ocr_text = ""
-            if ocr_text.strip():
-                text += "\n" + ocr_text.strip()
-            if not text or len(text.strip()) < 50:
-                continue
-            page_chunks = chunk_text(text)
-            for idx, chunk in enumerate(page_chunks):
-                meta = {
-                    "company": company,  # 원본 한글명은 메타데이터에 보존
-                    "file": doc_name,    # 원본 파일명도 메타데이터에 보존
-                    "page": page_num,
-                    "chunk_idx": idx,
-                    "text": chunk  # metadata에 텍스트도 저장
-                }
-                # ASCII 안전한 벡터 ID 생성
-                vec_id = create_safe_vector_id(company, doc_name, page_num, idx)
-                vectors.append((vec_id, chunk, meta))
+            if text and len(text.strip()) > 50:
+                page_chunks = chunk_text(text)
+                for idx, chunk in enumerate(page_chunks):
+                    meta = {
+                        "company": company,
+                        "file": doc_name,
+                        "page": page_num,
+                        "chunk_idx": idx,
+                        "type": "text"
+                    }
+                    vec_id = create_safe_vector_id(company, doc_name, page_num, idx, "text")
+                    vectors.append((vec_id, chunk, meta))
+
+            # 3. OCR (본문/표 모두 거의 없을 때만)
+            if (not text or len(text.strip()) < 50) and not tables:
+                try:
+                    img = images[page_num - 1]
+                    ocr_text = pytesseract.image_to_string(img, lang="kor+eng")
+                    ocr_text = clean_ocr_text(ocr_text)
+                except Exception:
+                    ocr_text = ""
+                if ocr_text and len(ocr_text.strip()) > 30:
+                    meta = {
+                        "company": company,
+                        "file": doc_name,
+                        "page": page_num,
+                        "chunk_idx": 0,
+                        "type": "ocr"
+                    }
+                    vec_id = create_safe_vector_id(company, doc_name, page_num, 0, "ocr")
+                    vectors.append((vec_id, ocr_text, meta))
     return vectors
 
 def upload_vectors_to_pinecone(vectors, batch_size=32):
@@ -137,6 +147,7 @@ def upload_vectors_to_pinecone(vectors, batch_size=32):
         texts = [v[1] for v in batch]
         metas = [v[2] for v in batch]
         embs = model.encode(texts, show_progress_bar=False)
+        # Pinecone metadata에 text(본문)는 절대 넣지 않습니다!
         index.upsert(
             vectors=[
                 {"id": id, "values": emb.tolist(), "metadata": meta}
@@ -155,15 +166,13 @@ def main():
             pdf_path = os.path.join(company_path, pdf_file)
             vectors = process_pdf(company, pdf_path)
             all_vectors.extend(vectors)
-    
+
     print(f"총 청크 개수: {len(all_vectors)}")
-    
-    # 벡터 ID 중복 검사 (선택사항)
     vector_ids = [v[0] for v in all_vectors]
     unique_ids = set(vector_ids)
     if len(vector_ids) != len(unique_ids):
         print(f"경고: 중복된 벡터 ID가 {len(vector_ids) - len(unique_ids)}개 발견되었습니다.")
-    
+
     upload_vectors_to_pinecone(all_vectors)
     print(f"Pinecone 업로드 완료 - 인덱스: {INDEX_NAME}")
 
