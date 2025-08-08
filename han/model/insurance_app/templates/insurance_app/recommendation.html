@@ -177,9 +177,7 @@
 
             <div style="margin-top: 16px;">
                 <a href="{% url 'home' %}" class="nav-btn">홈으로</a>
-                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#weeklyModal">
-                자동차 주간 보험정보 보기
-                </button>
+                <a href="/weekly/" class="nav-btn" target="_blank" rel="noopener">자동차 주간 보험정보 보기</a>
                 <a href="{% url 'recommend_insurance' %}" class="nav-btn">보험료 계산</a>
             </div>
             
@@ -240,6 +238,20 @@
                 <div class="clause-search-results" id="faultRatioResults"></div>
             </div>
             <!-- === 과실비율 인정기준 검색 추가 끝 === -->
+            <div class="modal fade" id="weeklyModal" tabindex="-1" aria-labelledby="weeklyModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="weeklyModalLabel">자동차 주간 보험정보</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                </div>
+                <div class="modal-body" id="weeklyModalBody">
+                    <!-- 보험정보가 여기에 비동기로 로딩됨 -->
+                </div>
+                </div>
+            </div>
+            </div>
+
         </div>
     </div>
 
@@ -451,13 +463,26 @@
             html += `</div>`;
             resultArea.innerHTML = html;
         }
-        document.getElementById('weeklyModal').addEventListener('show.bs.modal', function () {
-            fetch('/weekly/partial/')
-                .then(res => res.text())
-                .then(html => {
-                document.getElementById('weeklyModalBody').innerHTML = html;
+            document.addEventListener('DOMContentLoaded', function () {
+            var modalBtn = document.querySelector('[data-bs-target="#weeklyModal"]');
+            if (modalBtn) {
+                modalBtn.addEventListener('click', function(e) {
+                e.preventDefault();  // ★ 이 한 줄이 매우 중요!
                 });
+            }
+            var modal = document.getElementById('weeklyModal');
+            if (modal) {
+                modal.addEventListener('show.bs.modal', function () {
+                fetch('/weekly/partial/')
+                    .then(res => res.text())
+                    .then(html => {
+                    document.getElementById('weeklyModalBody').innerHTML = html;
+                    });
+                });
+            }
             });
+
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
