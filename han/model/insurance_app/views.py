@@ -17,6 +17,7 @@ from .pinecone_search_fault import retrieve_fault_ratio
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 import os
+from openai import OpenAI
 
 def home(request):
     return render(request, 'insurance_app/home.html')
@@ -195,107 +196,158 @@ def insurance_clause_qa(request):
     })
 
 @csrf_exempt
-def fault_ratio_search(request):
-    if request.method == 'POST':
-        import json
-        from openai import OpenAI
-        
+@require_http_methods(["POST"])
+def chatbot_ask(request):
+    """
+    대화형 과실비율 상담:
+    입력: { "messages": [{"role":"user"|"assistant","content":"..."}] }
+    출력: 
+      {
+        success: true,
+        need_more: bool,                           # 추가 질문 필요 여부
+        clarifying_questions: [str, ...],         # 추가 질문(최대 2개)
+        representative_answer: str,               # 매 턴 간단 요약/대표 답변(2~3문장)
+        examples: [str, ...],                     # 대표 예시 1~3개
+        final_answer: str,                        # 충분할 때만 상세 최종 답변
+        top_matches: [                            # 유사도 상위 3개 간단 요약
+          {score:"82.6%", file:"...", page:"...", snippet:"..."},
+          ...
+        ]
+      }
+    """
+    try:
         data = json.loads(request.body)
-        query = data.get('query', '')
-        
-        if not query:
-            return JsonResponse({'success': False, 'error': '검색어를 입력해주세요.'})
-        
-        try:
-            # Pinecone에서 상위 10개 결과 검색
-            results = retrieve_fault_ratio(query, top_k=10)
-            
-            if not results:
-                return JsonResponse({'success': False, 'error': '관련 근거를 찾지 못했습니다.'})
+        messages = data.get("messages", [])
+        if not messages:
+            return JsonResponse({"success": False, "error": "messages가 비어있습니다."}, status=400)
 
-            # 상위 3개 결과만 선택 (이미 유사도 순으로 정렬됨)
-            top_3_results = results[:3]
-            
-            # 상위 3개 결과를 컨텍스트로 구성
-            context_str = ""
-            for i, match in enumerate(top_3_results):
-                context_str += f"""
-{i+1}번째 근거 (유사도: {match['score']:.4f})
-파일: {match['file']}
-페이지: {match['page']}
-내용: {match['text']}
+        # 마지막 사용자 메시지
+        last_user_msg = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                last_user_msg = m.get("content", "").strip()
+                break
+        if not last_user_msg:
+            return JsonResponse({"success": False, "error": "user 메시지가 없습니다."}, status=400)
 
+        # 1) Pinecone 검색
+        results = retrieve_fault_ratio(last_user_msg, top_k=10)  # 상위10
+        top3 = results[:3]
+        context_str = ""
+        for i, r in enumerate(top3, 1):
+            context_str += (
+                f"[{i}] score={r['score']:.4f} file={r.get('file','')} page={r.get('page','')}\n"
+                f"{(r.get('text') or r.get('chunk') or '')[:450]}\n\n"
+            )
+
+        # 2) LLM에 '모호성 판단 + 추가질문 + 대표답변/예시/최종답변' JSON 생성 요청
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+        history_text = ""
+        for m in messages[-10:]:  # 최근 10턴만 압축
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            history_text += f"{role.upper()}: {content}\n"
+
+        # 예시 시나리오 가이드(사용자께서 주신 패턴 반영)
+        scenario_guide = """
+사고 시나리오 예:
+- 정차 중 후방추돌: 정차 사유(신호/정체/주차 등), 급정차 여부, 감속 정도, 정차 지속시간
+- 우회전 보행자 사고: 우회전 신호 유무/상태, 보행자 신호, 일시정지 여부, 속도, 주/야간
+- 차선변경/끼어들기: 방향지시등, 안전거리, 상대차의 위치, 속도 차이, 서행/급차선변경 여부
+- 교차로 직진/좌우회전 충돌: 신호 현시, 선진입 여부, 속도, 시야, 우선순위
 """
-            
-            # OpenAI GPT-4o-mini를 사용하여 AI 요약 생성
-            client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            
-            prompt = f"""
-다음은 자동차 사고 과실비율과 관련된 검색 결과입니다.
 
-사용자 질문: "{query}"
+        # 임계치: 상위 1위 유사도 낮으면 모호할 가능성↑(휴리스틱)
+        top1 = results[0]["score"] if results else 0.0
+        heuristic_hint = "low_score" if top1 < 0.70 else "ok_score"
 
-검색된 근거 자료:
+        system_prompt = (
+            "너는 자동차 사고 과실비율 상담 챗봇이다. "
+            "대화 내역과 검색된 근거를 바탕으로 사용자가 원하는 답으로 안내한다. "
+            "반드시 JSON만 반환한다."
+        )
+
+        user_prompt = f"""
+[대화 내역]
+{history_text}
+
+[현재 사용자 질문]
+{last_user_msg}
+
+[검색 상위3 근거]
 {context_str}
 
-위 검색 결과를 바탕으로 다음 요구사항에 맞게 답변해 주세요:
-1. 사용자의 질문에 대한 명확하고 이해하기 쉬운 답변을 제공
-2. 각 근거 자료의 유사도 점수와 출처 정보는 무슨 법 몇조에 해당 되는지와 해당 내용은 뭔지 설명
-3. 과실비율에 대한 구체적인 정보가 있다면 명시
-4. 추가 주의사항이나 예외사항이 있다면 언급
-5. 해당 되는 법과 몇 조인지 근거 자료 제일 처음에 문단에 명시
-6. 근거 자료의 내용에는 해당 되는 내용과 해당 내용의 과실 비율이 왜 그렇게 나왔는지 설명
-7. 근저 자료에 표가 있으면 표는 표 구조를 유지한체 보여주고, 표 내용은 정보를 출력
+[시나리오 가이드]
+{scenario_guide}
 
-답변 형식:
-## 과실비율 분석 결과
+요구사항:
+1) 질문이 모호하면 need_more=true 로 설정하고, 사용자가 즉시 답할 수 있는 추가질문 1~2개를 'clarifying_questions'에 한국어로 제시.
+    - 질문은 짧고 구체적으로. 선택지 유도 OK(예: "급정차였나요, 서서히 정차였나요?")
+2) 질문이 충분히 구체적이면 need_more=false 로 설정하고 'final_answer'에 과실비율 판단 논리를 근거와 함께 자세히 제시.
+3) 매 턴 'representative_answer'에는 2~3문장으로 간단 요약을 제공.
+4) 'examples'에는 유사 사례/판단 포인트 1~3개를 짧게 bullet형 문장으로 제공.
+5) JSON 키만 사용하고 그 외 텍스트 금지.
+6) 휴리스틱 힌트: {heuristic_hint}
 
-**질문에 대한 답변:**
-[여기에 명확한 답변]
-
-**근거 자료:**
-[각 근거별로 유사도와 함께 정리]
-
-**주의사항:**
-[추가 고려사항이나 제한사항]
+반환 JSON 스키마:
+{{
+    "need_more": true|false,
+    "clarifying_questions": ["...", "..."],
+    "representative_answer": "...",
+    "examples": ["...", "..."],
+    "final_answer": "..."   // need_more=true이면 빈 문자열
+}}
 """
-            
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "당신은 자동차 보험 과실비율 전문가입니다. 제공된 자료를 바탕으로 정확하고 이해하기 쉬운 답변을 제공해주세요."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1500,
-                temperature=0.3
-            )
-            
-            ai_summary = response.choices[0].message.content
-            
-            return JsonResponse({
-                'success': True,
-                'query': query,
-                'ai_summary': ai_summary,
-                'top_matches': [
-                    {
-                        'score': f"{match['score']:.4f}",
-                        'similarity_percentage': f"{match['score'] * 100:.1f}%",
-                        'file': match['file'],
-                        'page': match['page'],
-                        'text': match['text'][:300] + "..." if len(match['text']) > 300 else match['text'],
-                        'full_text': match['text']
-                    } for match in top_3_results
-                ],
-                'total_searched': len(results)
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=900,
+        )
+        content = resp.choices[0].message.content.strip()
+
+        # JSON 파싱
+        try:
+            llm_json = json.loads(content)
+        except Exception:
+            # 혹시 JSON이 아니면 안전하게 기본값
+            llm_json = {
+                "need_more": True,
+                "clarifying_questions": ["사고 상황을 조금 더 구체적으로 알려주세요."],
+                "representative_answer": "현재 질문만으로는 판단이 어려워 추가 정보가 필요합니다.",
+                "examples": [],
+                "final_answer": ""
+            }
+
+        # 3) 상위 3개 간단 요약(유사도/출처/요약문)
+        top_matches_payload = []
+        for r in top3:
+            text = (r.get("text") or r.get("chunk") or "").replace("\n", " ")
+            snippet = text[:200] + ("..." if len(text) > 200 else "")
+            top_matches_payload.append({
+                "score": f"{r['score'] * 100:.1f}%",
+                "file": r.get("file", ""),
+                "page": r.get("page", ""),
+                "snippet": snippet
             })
-            
-        except Exception as e:
-            return JsonResponse({
-                'success': False, 
-                'error': f'검색 중 오류가 발생했습니다: {str(e)}'
-            })
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다.'})
+
+        return JsonResponse({
+            "success": True,
+            "need_more": bool(llm_json.get("need_more", True)),
+            "clarifying_questions": llm_json.get("clarifying_questions", [])[:2],
+            "representative_answer": llm_json.get("representative_answer", ""),
+            "examples": llm_json.get("examples", [])[:3],
+            "final_answer": llm_json.get("final_answer", ""),
+            "top_matches": top_matches_payload
+        })
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
 
 def weekly_articles(request):
     # JSON 경로는 앱 내부를 기준으로
