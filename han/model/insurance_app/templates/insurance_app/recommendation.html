@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>보험 약관 검색 - AI 추천 시스템</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -16,14 +15,14 @@
         .container {
             max-width: 800px;
             margin: 0 auto;
-            background: white;
+            background: #fff;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
         }
         .header {
             background: linear-gradient(135deg, #2c3e50, #3498db);
-            color: white;
+            color: #fff;
             padding: 30px;
             text-align: center;
         }
@@ -34,7 +33,7 @@
             margin: 0 8px;
             padding: 8px 22px;
             background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
+            color: #fff;
             font-weight: bold;
             border-radius: 25px;
             text-decoration: none;
@@ -58,302 +57,176 @@
         }
         .search-btn {
             position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-            background: linear-gradient(135deg, #3498db, #2980b9); color: white;
+            background: linear-gradient(135deg, #3498db, #2980b9); color: #fff;
             border: none; padding: 15px 20px; border-radius: 50px; cursor: pointer;
             transition: all 0.3s ease; font-weight: bold;
         }
-        .search-btn:hover {
-            transform: translateY(-50%) scale(1.05);
-            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
-        }
-        .search-btn:disabled {
-            opacity: 0.6; cursor: not-allowed; transform: translateY(-50%);
-        }
+        .search-btn:hover { transform: translateY(-50%) scale(1.05); box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3); }
+        .search-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: translateY(-50%); }
         .loading { display: none; text-align: center; padding: 20px; color: #666; }
-        .spinner {
-            display: inline-block; width: 20px; height: 20px;
-            border: 3px solid #f3f3f3; border-top: 3px solid #3498db;
-            border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
         .results { display: none; }
-        .result-item {
-            background: #f8f9fa;
-            border-left: 5px solid #3498db;
-            margin-bottom: 20px;
-            padding: 25px;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-            animation: slideIn 0.5s ease forwards;
-        }
-        .result-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px);}
-            to   { opacity: 1; transform: translateY(0);}
-        }
-        .result-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .similarity-score {
-            background: linear-gradient(135deg, #27ae60, #2ecc71);
-            color: white; padding: 8px 15px; border-radius: 20px;
-            font-size: 0.9em; font-weight: bold; margin-left: auto;
-        }
-        .document-name {
-            color: #3498db; font-weight: bold; font-size: 0.9em;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
+        .result-item { background: #f8f9fa; border-left: 5px solid #3498db; margin-bottom: 20px; padding: 25px; border-radius: 10px; transition: all 0.3s ease; animation: slideIn 0.5s ease forwards; }
+        .result-item:hover { transform: translateX(5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px);} to { opacity: 1; transform: translateY(0);} }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .similarity-score { background: linear-gradient(135deg, #27ae60, #2ecc71); color: #fff; padding: 8px 15px; border-radius: 20px; font-size: 0.9em; font-weight: bold; margin-left: auto; }
+        .document-name { color: #3498db; font-weight: bold; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
         .result-text { color: #2c3e50; line-height: 1.6; font-size: 1.05em; }
-        .no-results {
-            text-align: center; padding: 40px; color: #666; font-size: 1.1em;
-        }
-        .example-queries {
-            background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;
-        }
-        .example-queries h3 {
-            color: #2c3e50; margin-bottom: 15px; font-size: 1.2em;
-        }
-        .example-query {
-            display: inline-block; background: white; color: #3498db;
-            padding: 8px 15px; margin: 5px; border-radius: 20px;
-            cursor: pointer; transition: all 0.3s ease; border: 2px solid #3498db; font-size: 0.9em;
-        }
-        .example-query:hover {
-            background: #3498db; color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-        }
-        .footer {
-            background: #2c3e50; color: white; text-align: center;
-            padding: 20px; font-size: 0.9em; opacity: 0.8;
-        }
-        .nav-bar {
-    margin-top: 18px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
+        .no-results { text-align: center; padding: 40px; color: #666; font-size: 1.1em; }
+        .example-queries { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .example-queries h3 { color: #2c3e50; margin-bottom: 15px; font-size: 1.2em; }
+        .example-query { display: inline-block; background: #fff; color: #3498db; padding: 8px 15px; margin: 5px; border-radius: 20px; cursor: pointer; transition: all 0.3s ease; border: 2px solid #3498db; font-size: 0.9em; }
+        .example-query:hover { background: #3498db; color: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3); }
+        .footer { background: #2c3e50; color: #fff; text-align: center; padding: 20px; font-size: 0.9em; opacity: 0.8; }
 
-.nav-btn {
-    display: inline-block;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    padding: 8px 18px;
-    border-radius: 30px;
-    font-size: 1em;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background 0.2s, transform 0.2s;
-}
-.nav-btn:hover {
-    background: linear-gradient(135deg, #2980b9, #3498db);
-    transform: translateY(-2px) scale(1.04);
-}
-.logout-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-.logout-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #e74c3c);
-}
+        /* 우측 플로팅 챗봇 */
+        #chatbot-fab { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); width: 80px; height: 80px; border-radius: 50%; background: #3498db; color: #fff; display:flex; align-items:center; justify-content:center; cursor: pointer; z-index: 9998; box-shadow: 0 8px 20px rgba(0,0,0,0.2); font-weight:600; }
+        #chatbot-container { position: fixed; right: 20px; bottom: 86px; width: 360px; height: 520px; background: #fff; border-radius: 12px; box-shadow: 0 12px 28px rgba(0,0,0,0.18); display: none; flex-direction: column; overflow: auto; z-index: 9999; resize: both; min-width: 280px; min-height: 360px; max-width: 90vw; max-height: 90vh; }
+        #chatbot-header { padding: 10px 12px; background: #2c3e50; color: #fff; font-weight: 600; display:flex; align-items:center; justify-content:space-between; cursor: move; }
+        #chatbot-messages { flex: 1; padding: 12px; overflow-y: auto; background:#f7f9fc; }
+        .msg { margin-bottom: 12px; max-width: 85%; line-height:1.5; }
+        .user { margin-left:auto; background:#e9f2ff; border:1px solid #c9e0ff; padding:8px 10px; border-radius:10px; }
+        .bot { margin-right:auto; background:#fff; border:1px solid #e6e6e6; padding:8px 10px; border-radius:10px; }
+        .meta { font-size:12px; color:#777; margin-top: 6px; }
+        #chatbot-input { display:flex; border-top:1px solid #e6e6e6; }
+        #chatbot-input input { flex:1; border:none; padding:12px; font-size:14px; outline:none; }
+        #chatbot-input button { width:86px; background:#3498db; color:#fff; border:none; font-weight:600; }
+        .clarify-list button { margin-right:6px; margin-top:6px; padding:6px 8px; border:1px solid #d0d7de; background:#fff; border-radius:8px; cursor:pointer; }
+        details.source { background:#fff; border:1px solid #e6e6e6; border-radius:8px; padding:8px 10px; margin-top:8px; }
+        .bot table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        .bot th, .bot td { border: 1px solid #e6e6e6; padding: 6px 8px; font-size: 13px; }
+        .bot th { background: #f2f6ff; text-align: left; }
+        /* 주간 정보 플로팅 버튼 */
+        #weekly-fab {
+        position: fixed;
+        right: 20px;
+        top: calc(50% - 120px);
+        height: 60px;
+        padding: 0 14px;
+        border-radius: 20px;
+        background: #ffffff;
+        color: #3498db;
+        border: 2px solid #3498db;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 9998;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        text-decoration: none;
+        }
+        #weekly-fab:hover {
+        background: #3498db;
+        color: #fff;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 보험 약관 AI 검색</h1>
-            <p>궁금한 보험 내용을 자연어로 질문해보세요!</p>
+            <h1>보험 약관 AI 검색</h1>
+            <p>궁금한 보험 내용을 자연어로 질문해보세요.</p>
             {% if user.is_authenticated %}
             <form action="{% url 'logout' %}" method="post" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="nav-btn logout-btn">로그아웃</button>
             </form>
             {% endif %}
-
             <div style="margin-top: 16px;">
                 <a href="{% url 'home' %}" class="nav-btn">홈으로</a>
-                <a href="/weekly/" class="nav-btn" target="_blank" rel="noopener">자동차 주간 보험정보 보기</a>
                 <a href="{% url 'recommend_insurance' %}" class="nav-btn">보험료 계산</a>
             </div>
-            
         </div>
 
         <div class="search-section">
             <div class="search-box">
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    class="search-input" 
-                    placeholder="예: 음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?"
-                    onkeypress="handleKeyPress(event)"
-                >
-                <button id="searchBtn" class="search-btn" onclick="searchClauses()">
-                    검색
-                </button>
+                <input type="text" id="searchInput" class="search-input" placeholder="예: 음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?" onkeypress="handleKeyPress(event)" />
+                <button id="searchBtn" class="search-btn" onclick="searchClauses()">검색</button>
             </div>
-
-            <div id="loading" class="loading">
-                <div class="spinner"></div>
-                AI가 관련 약관을 찾고 있습니다...
-            </div>
-
-            <div id="results" class="results">
-                <h3>📋 검색 결과</h3>
-                <div id="resultsList"></div>
-            </div>
+            <div id="loading" class="loading"><span class="spinner"></span>AI가 관련 약관을 찾고 있습니다...</div>
+            <div id="results" class="results"><h3>검색 결과</h3><div id="resultsList"></div></div>
 
             <div class="example-queries">
-                <h3>💡 예시 질문</h3>
-                <div class="example-query" onclick="setQuery('음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?')">
-                    음주운전 사고 시 보험 적용 여부
-                </div>
-                <div class="example-query" onclick="setQuery('무사고 할인 혜택이 있나요?')">
-                    무사고 할인 혜택
-                </div>
-                <div class="example-query" onclick="setQuery('의료비는 어떻게 보장되나요?')">
-                    의료비 보장 범위
-                </div>
-                <div class="example-query" onclick="setQuery('면책사항에는 어떤 것들이 있나요?')">
-                    면책사항 조회
-                </div>
+                <h3>예시 질문</h3>
+                <div class="example-query" onclick="setQuery('음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?')">음주운전 사고 시 보험 적용 여부</div>
+                <div class="example-query" onclick="setQuery('무사고 할인 혜택이 있나요?')">무사고 할인 혜택</div>
+                <div class="example-query" onclick="setQuery('의료비는 어떻게 보장되나요?')">의료비 보장 범위</div>
+                <div class="example-query" onclick="setQuery('면책사항에는 어떤 것들이 있나요?')">면책사항 조회</div>
             </div>
-            <div class="clause-search-section" style="margin-top: 30px;">
-                <h3>🚗 과실비율 인정기준 검색</h3>
-                <form id="faultRatioForm" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-                    <div style="flex:1; min-width: 220px;">
-                        <label for="faultRatioQuery">사고 상황</label>
-                        <input type="text" id="faultRatioQuery" name="faultRatioQuery" placeholder="예: 차선 변경 중 추돌, 신호 위반 사고 등" style="width:100%; padding:12px; border-radius:8px;">
-                    </div>
-                    <button type="submit" class="btn" style="max-width:220px;">과실비율 검색</button>
-                </form>
-                <div id="faultRatioLoading" class="loading" style="padding: 16px 0;">
-                    <div class="spinner"></div>
-                    <p>과실비율을 검색하고 있습니다...</p>
-                </div>
-                <div class="clause-search-results" id="faultRatioResults"></div>
-            </div>
-            <!-- === 과실비율 인정기준 검색 추가 끝 === -->
-            <div class="modal fade" id="weeklyModal" tabindex="-1" aria-labelledby="weeklyModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="weeklyModalLabel">자동차 주간 보험정보</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
-                </div>
-                <div class="modal-body" id="weeklyModalBody">
-                    <!-- 보험정보가 여기에 비동기로 로딩됨 -->
-                </div>
-                </div>
-            </div>
-            </div>
-
         </div>
     </div>
 
     <div class="footer">
-        <p>🤖 AI 기반 보험 약관 검색 시스템 | RAG + Pinecone + LLM<br>
-        </p>
+        <p>AI 기반 보험 약관 검색 시스템 | RAG + Pinecone + LLM</p>
     </div>
 
+    <a id="weekly-fab" href="/weekly/" target="_blank" rel="noopener">보험상식</a>
+
+    <!-- 우측 하단 플로팅 챗봇 UI -->
+    <div id="chatbot-fab" title="보험 약관 챗봇">챗봇</div>
+    <div id="chatbot-container">
+        <div id="chatbot-header">
+            <span>보험 약관 상담</span>
+            <button id="chatbot-close" style="background:transparent;border:none;color:#fff;">닫기</button>
+        </div>
+        <div id="chatbot-messages"></div>
+        <div id="chatbot-input">
+            <input id="chatbot-text" type="text" placeholder="사고 상황을 입력하세요. 예) 정차 중 뒤에서 박음" />
+            <button id="chatbot-send">전송</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
     <script>
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                searchClauses();
-            }
-        }
-
-        function setQuery(query) {
-            document.getElementById('searchInput').value = query;
-            searchClauses();
-        }
-
+        function handleKeyPress(event) { if (event.key === 'Enter') { searchClauses(); } }
+        function setQuery(query) { document.getElementById('searchInput').value = query; searchClauses(); }
         async function searchClauses() {
             const query = document.getElementById('searchInput').value.trim();
-            if (!query) {
-                alert('검색어를 입력해주세요!');
-                return;
-            }
-
+            if (!query) { alert('검색어를 입력해주세요.'); return; }
             const searchBtn = document.getElementById('searchBtn');
             const loading = document.getElementById('loading');
             const results = document.getElementById('results');
-            
-            // UI 상태 변경
-            searchBtn.disabled = true;
-            loading.style.display = 'block';
-            results.style.display = 'none';
-
+            searchBtn.disabled = true; loading.style.display = 'block'; results.style.display = 'none';
             try {
                 const response = await fetch('/insurance-recommendation/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ query: query })
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ query })
                 });
-
                 const data = await response.json();
-                
-                if (data.success && data.results) {
-                    displayResults(data.results);
-                } else {
-                    displayNoResults();
-                }
-            } catch (error) {
-                console.error('검색 오류:', error);
-                alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
-            } finally {
-                searchBtn.disabled = false;
-                loading.style.display = 'none';
-            }
+                if (data.success && data.results) { displayResults(data.results); } else { displayNoResults(); }
+            } catch (e) {
+                console.error('검색 오류:', e); alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+            } finally { searchBtn.disabled = false; loading.style.display = 'none'; }
         }
-
         function displayResults(results) {
             const resultsList = document.getElementById('resultsList');
             const resultsDiv = document.getElementById('results');
-            
-            if (results.length === 0) {
-                displayNoResults();
-                return;
-            }
-
+            if (!results || results.length === 0) { displayNoResults(); return; }
             let html = '';
             results.forEach((result, index) => {
                 const score = (result.score * 100).toFixed(1);
-                html += `
-                    <div class="result-item" style="animation-delay: ${index * 0.1}s">
-                        <div class="result-header">
-                            <div class="document-name">${result.document}</div>
-                            <div class="similarity-score">유사도 ${score}%</div>
-                        </div>
-                        <div class="result-text">${result.text}</div>
-                    </div>
-                `;
+                html += `<div class="result-item" style="animation-delay:${index * 0.1}s">
+                            <div class="result-header">
+                                <div class="document-name">${result.document}</div>
+                                <div class="similarity-score">유사도 ${score}%</div>
+                            </div>
+                            <div class="result-text">${result.text}</div>
+                         </div>`;
             });
-
-            resultsList.innerHTML = html;
-            resultsDiv.style.display = 'block';
+            resultsList.innerHTML = html; resultsDiv.style.display = 'block';
         }
-
         function displayNoResults() {
             const resultsList = document.getElementById('resultsList');
             const resultsDiv = document.getElementById('results');
-            
-            resultsList.innerHTML = `
-                <div class="no-results">
-                    <h3>😔 검색 결과가 없습니다</h3>
-                    <p>다른 키워드로 다시 검색해보세요.</p>
-                </div>
-            `;
+            resultsList.innerHTML = '<div class="no-results"><h3>검색 결과가 없습니다</h3><p>다른 키워드로 다시 검색해보세요.</p></div>';
             resultsDiv.style.display = 'block';
         }
-
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -368,121 +241,154 @@
             }
             return cookieValue;
         }
-                        // ============== 과실비율 검색 JS 추가 코드 ==============
-        document.getElementById('faultRatioLoading').style.display = 'none';
-        document.getElementById('faultRatioForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const query = document.getElementById('faultRatioQuery').value.trim();
-            const loading = document.getElementById('faultRatioLoading');
-            const resultArea = document.getElementById('faultRatioResults');
-            
-            if (!query) {
-                alert('검색어를 입력해주세요.');
-                return;
-            }
-            
-            loading.style.display = 'block';
-            resultArea.innerHTML = '';
-            
-            try {
-                const res = await fetch('/fault_ratio_search/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({query: query})
-                });
-                const data = await res.json();
-                loading.style.display = 'none';
-                
-                if (data.success) {
-                    displayFaultRatioResults(data);
-                } else {
-                    resultArea.innerHTML = `<div style="padding: 18px; color: #e74c3c;">오류: ${data.error}</div>`;
-                }
-            } catch (error) {
-                loading.style.display = 'none';
-                resultArea.innerHTML = '<div style="padding: 18px; color: #e74c3c;">검색 오류가 발생했습니다.</div>';
-                console.error('과실비율 검색 오류:', error);
-            }
-        });
 
-        // 과실비율 검색 결과 표시 함수 (새로 추가)
-        function displayFaultRatioResults(data) {
-            const resultArea = document.getElementById('faultRatioResults');
-            
-            if (!data.top_matches || data.top_matches.length === 0) {
-                resultArea.innerHTML = '<div style="padding: 18px;">검색 결과가 없습니다.</div>';
-                return;
-            }
-            
-            let html = `
-                <div class="search-summary" style="background: #e8f4f8; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h3 style="color: #2c3e50; margin-bottom: 10px;">🔍 검색 질문: "${data.query}"</h3>
-                    <p style="color: #7f8c8d;">총 ${data.total_searched || 10}개 문서 중 상위 3개 결과</p>
-                </div>
-            `;
-            
-            // AI 요약이 있다면 표시
-            if (data.ai_summary) {
-                html += `
-                    <div class="ai-summary" style="background: #f0f8ff; border: 2px solid #3498db; border-radius: 15px; padding: 25px; margin-bottom: 25px;">
-                        <h4 style="color: #2980b9; margin-bottom: 15px; display: flex; align-items: center;">
-                            🤖 <span style="margin-left: 8px;">AI 분석 결과</span>
-                        </h4>
-                        <div class="summary-content" style="line-height: 1.6; color: #2c3e50;">
-                            ${data.ai_summary.replace(/\n/g, '<br>')}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // 상세 검색 결과
-            html += `<div class="detailed-matches"><h4 style="color: #2c3e50; margin-bottom: 15px;">📋 상세 검색 결과</h4>`;
-            
-            data.top_matches.forEach((match, index) => {
-                const rankBadge = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-                html += `
-                    <div class="match-item" style="background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
-                        <div class="match-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                            <span class="rank" style="background: #3498db; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold;">
-                                ${rankBadge} ${index + 1}위
-                            </span>
-                            <span class="similarity" style="background: #27ae60; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold;">
-                                유사도: ${match.similarity_percentage || (match.score * 100).toFixed(1) + '%'}
-                            </span>
-                            <span class="source" style="color: #7f8c8d; font-size: 0.9em;">
-                                📄 ${match.file || '문서'} ${match.page ? `(p.${match.page})` : ''}
-                            </span>
-                        </div>
-                        <div class="match-content" style="color: #2c3e50; line-height: 1.6;">
-                            <p>${match.text || match.chunk}</p>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += `</div>`;
-            resultArea.innerHTML = html;
-        }
-            document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function () {
             var modalBtn = document.querySelector('[data-bs-target="#weeklyModal"]');
-            if (modalBtn) {
-                modalBtn.addEventListener('click', function(e) {
-                e.preventDefault();  // ★ 이 한 줄이 매우 중요!
-                });
-            }
+            if (modalBtn) { modalBtn.addEventListener('click', function(e) { e.preventDefault(); }); }
             var modal = document.getElementById('weeklyModal');
             if (modal) {
                 modal.addEventListener('show.bs.modal', function () {
-                fetch('/weekly/partial/')
-                    .then(res => res.text())
-                    .then(html => {
-                    document.getElementById('weeklyModalBody').innerHTML = html;
+                    fetch('/weekly/partial/').then(res => res.text()).then(html => {
+                        document.getElementById('weeklyModalBody').innerHTML = html;
                     });
                 });
             }
+        });
+
+        (function(){
+            const fab = document.getElementById('chatbot-fab');
+            const box = document.getElementById('chatbot-container');
+            const closeBtn = document.getElementById('chatbot-close');
+            const messagesEl = document.getElementById('chatbot-messages');
+            const inputEl = document.getElementById('chatbot-text');
+            const sendBtn = document.getElementById('chatbot-send');
+            let history = [];
+            const headerEl = document.getElementById('chatbot-header');
+            let isDragging = false, offsetX = 0, offsetY = 0, expanded = false;
+
+            restoreState();
+
+            headerEl.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                const rect = box.getBoundingClientRect();
+                if (!box.style.left && !box.style.top) {
+                    box.style.left = rect.left + 'px';
+                    box.style.top = rect.top + 'px';
+                    box.style.right = '';
+                    box.style.bottom = '';
+                }
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                document.body.style.userSelect = 'none';
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                let x = e.clientX - offsetX;
+                let y = e.clientY - offsetY;
+                const maxX = window.innerWidth - box.offsetWidth;
+                const maxY = window.innerHeight - box.offsetHeight;
+                if (x < 0) x = 0; if (y < 0) y = 0;
+                if (x > maxX) x = maxX; if (y > maxY) y = maxY;
+                box.style.left = x + 'px';
+                box.style.top = y + 'px';
+            });
+            document.addEventListener('mouseup', () => {
+                if (isDragging) { document.body.style.userSelect = ''; saveState(); }
+                isDragging = false;
             });
 
+            headerEl.addEventListener('dblclick', () => {
+                if (!expanded) { box.style.width = '520px'; box.style.height = '720px'; }
+                else { box.style.width = '360px'; box.style.height = '520px'; }
+                expanded = !expanded;
+                saveState();
+            });
+
+            function saveState(){
+                try {
+                    const st = { width: box.style.width, height: box.style.height, left: box.style.left, top: box.style.top };
+                    localStorage.setItem('chatbot_box_state', JSON.stringify(st));
+                } catch(_) {}
+            }
+            function restoreState(){
+                try {
+                    const raw = localStorage.getItem('chatbot_box_state');
+                    if (!raw) return;
+                    const st = JSON.parse(raw);
+                    if (st.width) box.style.width = st.width;
+                    if (st.height) box.style.height = st.height;
+                    if (st.left && st.top) { box.style.left = st.left; box.style.top = st.top; box.style.right = ''; box.style.bottom = ''; }
+                } catch(_) {}
+            }
+            if (window.ResizeObserver) { new ResizeObserver(() => saveState()).observe(box); }
+
+            function scrollBottom(){ messagesEl.scrollTop = messagesEl.scrollHeight; }
+            function addMsg(role, html){ const div = document.createElement('div'); div.className = 'msg ' + (role === 'user' ? 'user' : 'bot'); div.innerHTML = html; messagesEl.appendChild(div); scrollBottom(); }
+            function renderTopMatches(top){
+                if(!top || !top.length) return '';
+                let inner = top.map(t => { return `<div class="meta">유사도 ${t.score} · ${t.file}${t.page ? ' p.'+t.page : ''}<br>${t.snippet}</div>`; }).join('');
+                return `<details class="source"><summary>상위 근거 3개 요약</summary>${inner}</details>`;
+            }
+            async function ask(){
+                const text = inputEl.value.trim();
+                if(!text) return;
+                addMsg('user', text);
+                inputEl.value = '';
+                history.push({role:'user', content:text});
+                const loadingId = 'loading-' + Date.now();
+                addMsg('bot', `<span id="${loadingId}">분석 중...</span>`);
+                try {
+                    const res = await fetch('/api/chatbot/ask', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({messages: history}) });
+                    const data = await res.json();
+                    const loader = document.getElementById(loadingId);
+                    if (loader) loader.parentElement.remove();
+                    if(!data.success){ addMsg('bot', '오류가 발생했습니다: ' + (data.error || '')); return; }
+                    let block = `<div>${data.representative_answer}</div>`;
+                    if (data.examples && data.examples.length){ block += `<div class="meta">예시<br>• ${data.examples.join('<br>• ')}</div>`; }
+                    block += renderTopMatches(data.top_matches);
+                    addMsg('bot', block);
+                    if (data.need_more){
+                        if (data.clarifying_questions && data.clarifying_questions.length){
+                            const wrap = document.createElement('div'); wrap.className = 'bot msg clarify-list';
+                            data.clarifying_questions.forEach(q => { const b = document.createElement('button'); b.textContent = q; b.onclick = () => { inputEl.value = q; ask(); }; wrap.appendChild(b); });
+                            messagesEl.appendChild(wrap); scrollBottom();
+                        }
+                        history.push({role:'assistant', content: (data.clarifying_questions || []).join(' ') || data.representative_answer});
+                    } else {
+                        if (data.final_answer){
+                            let html;
+                            try {
+                                marked.setOptions({ gfm: true, breaks: true });
+                                html = DOMPurify.sanitize(marked.parse(data.final_answer || ''));
+                            } catch(_) {
+                                html = (data.final_answer || '').split('\n').join('<br>');
+                            }
+                            html += `<div style="font-size: 0.8em; color: #777; margin-top: 8px;">
+                                        안내 내용은 법적 효력이 없으며 실제 과실비율과 차이가 있을 수 있습니다.
+                                    </div>`;
+                            addMsg('bot', html);
+                            history.push({role:'assistant', content: data.final_answer});
+                        }
+                    }
+                } catch(e){
+                    const loader = document.getElementById(loadingId);
+                    if (loader) loader.parentElement.remove();
+                    addMsg('bot', '네트워크 오류가 발생했습니다.');
+                    console.error(e);
+                }
+            }
+            fab.onclick = () => { box.style.display = 'flex'; };
+            closeBtn.onclick = () => { box.style.display = 'none'; };
+            sendBtn.onclick = ask;
+            inputEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') ask(); });
+            addMsg(
+                'bot',
+                `사고 상황을 입력하면 필요한 정보를 단계적으로 물어보고 최종 과실비율 판단 논리를 안내합니다.
+                <br><small style="color:#888;">※ 안내 드리는 내용은 법적인 효력이 없으며 실제 비율과는 다를 수 있습니다.</small>`
+                );
+        })();
     </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
