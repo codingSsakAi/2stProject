@@ -1,3 +1,5 @@
+# insurance_app/urls.py
+
 from django.urls import path
 from . import views
 
@@ -6,13 +8,17 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('login/', views.login_view, name='login'),
     path('recommend/', views.recommend_insurance, name='recommend_insurance'),
+
     path('clause-summary/<int:clause_id>/', views.clause_summary, name='clause_summary'),
     path('insurance-recommendation/', views.insurance_recommendation, name='insurance_recommendation'),
-    path('company-detail/<str:company_name>/', views.get_company_detail, name='company_detail'),  # 추가
-    path('market-analysis/', views.get_market_analysis, name='market_analysis'),  # 추가
+
+    path('company-detail/<str:company_name>/', views.get_company_detail, name='company_detail'),
+    path('market-analysis/', views.get_market_analysis, name='market_analysis'),
+
     path('api/search/', views.insurance_clause_search, name='insurance_clause_search'),
     path('api/qa/', views.insurance_clause_qa, name='insurance_clause_qa'),
-    path('logout/', views.logout_view, name='logout'),  # 수정된 부분
+
+    path('logout/', views.logout_view, name='logout'),
     path('mypage/', views.mypage, name='mypage'),
     path('home', views.home, name='home'),
 ]
