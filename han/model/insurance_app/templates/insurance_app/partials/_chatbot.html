@@ -1,24 +1,4 @@
-<!-- 챗봇: 플로팅 FAB + 패널 -->
-<style>
-  #chatbot-fab{ position:fixed; right:20px; top:50%; transform:translateY(-50%); width:80px; height:80px; border-radius:50%; background:#3498db; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:9998; box-shadow:0 8px 20px rgba(0,0,0,.2); font-weight:600; }
-  #chatbot-container{ position:fixed; right:20px; bottom:86px; width:360px; height:520px; background:#fff; border-radius:12px; box-shadow:0 12px 28px rgba(0,0,0,.18); display:none; flex-direction:column; overflow:auto; z-index:9999; resize:both; min-width:280px; min-height:360px; max-width:90vw; max-height:90vh; }
-  #chatbot-header{ padding:10px 12px; background:#2c3e50; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:space-between; cursor:move; }
-  #chatbot-messages{ flex:1; padding:12px; overflow-y:auto; background:#f7f9fc; }
-  .msg{ margin-bottom:12px; max-width:85%; line-height:1.5; }
-  .user{ margin-left:auto; background:#e9f2ff; border:1px solid #c9e0ff; padding:8px 10px; border-radius:10px; }
-  .bot{ margin-right:auto; background:#fff; border:1px solid #e6e6e6; padding:8px 10px; border-radius:10px; }
-  .meta{ font-size:12px; color:#777; margin-top:6px; }
-  #chatbot-input{ display:flex; border-top:1px solid #e6e6e6; }
-  #chatbot-input input{ flex:1; border:none; padding:12px; font-size:14px; outline:none; }
-  #chatbot-input button{ width:86px; background:#3498db; color:#fff; border:none; font-weight:600; }
-  .clarify-list button{ margin-right:6px; margin-top:6px; padding:6px 8px; border:1px solid #d0d7de; background:#fff; border-radius:8px; cursor:pointer; }
-  details.source{ background:#fff; border:1px solid #e6e6e6; border-radius:8px; padding:8px 10px; margin-top:8px; }
-  .bot table{ width:100%; border-collapse:collapse; margin-top:6px; }
-  .bot th,.bot td{ border:1px solid #e6e6e6; padding:6px 8px; font-size:13px; }
-  .bot th{ background:#f2f6ff; text-align:left; }
-</style>
-
-<div id="chatbot-fab" title="보험 약관 챗봇">챗봇</div>
+<!-- templates/insurance_app/partials/_chatbot.html -->
 <div id="chatbot-container">
   <div id="chatbot-header">
     <span>보험 약관 상담</span>
@@ -30,60 +10,3 @@
     <button id="chatbot-send">전송</button>
   </div>
 </div>
-
-<!-- 필요 라이브러리(챗봇 전용) -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
-
-<script>
-(function(){
-  const fab = document.getElementById('chatbot-fab');
-  const box = document.getElementById('chatbot-container');
-  const closeBtn = document.getElementById('chatbot-close');
-  const messagesEl = document.getElementById('chatbot-messages');
-  const inputEl = document.getElementById('chatbot-text');
-  const sendBtn = document.getElementById('chatbot-send');
-  const headerEl = document.getElementById('chatbot-header');
-  let history = [];
-  let isDragging=false, offsetX=0, offsetY=0, expanded=false;
-
-  function saveState(){ try{const st={width:box.style.width,height:box.style.height,left:box.style.left,top:box.style.top}; localStorage.setItem('chatbot_box_state',JSON.stringify(st));}catch(_){}} 
-  function restoreState(){ try{ const raw=localStorage.getItem('chatbot_box_state'); if(!raw) return; const st=JSON.parse(raw); if(st.width) box.style.width=st.width; if(st.height) box.style.height=st.height; if(st.left&&st.top){ box.style.left=st.left; box.style.top=st.top; box.style.right=''; box.style.bottom=''; } }catch(_){}} 
-  if(window.ResizeObserver) new ResizeObserver(()=>saveState()).observe(box);
-  restoreState();
-
-  headerEl.addEventListener('mousedown',(e)=>{ isDragging=true; const r=box.getBoundingClientRect(); if(!box.style.left&&!box.style.top){ box.style.left=r.left+'px'; box.style.top=r.top+'px'; box.style.right=''; box.style.bottom=''; } offsetX=e.clientX-r.left; offsetY=e.clientY-r.top; document.body.style.userSelect='none'; });
-  document.addEventListener('mousemove',(e)=>{ if(!isDragging) return; let x=e.clientX-offsetX, y=e.clientY-offsetY; const maxX=window.innerWidth-box.offsetWidth, maxY=window.innerHeight-box.offsetHeight; x=Math.max(0,Math.min(x,maxX)); y=Math.max(0,Math.min(y,maxY)); box.style.left=x+'px'; box.style.top=y+'px'; });
-  document.addEventListener('mouseup',()=>{ if(isDragging){ document.body.style.userSelect=''; saveState(); } isDragging=false; });
-  headerEl.addEventListener('dblclick',()=>{ if(!expanded){ box.style.width='520px'; box.style.height='720px'; } else { box.style.width='360px'; box.style.height='520px'; } expanded=!expanded; saveState(); });
-
-  function scrollBottom(){ messagesEl.scrollTop = messagesEl.scrollHeight; }
-  function addMsg(role, html){ const div=document.createElement('div'); div.className='msg ' + (role==='user'?'user':'bot'); div.innerHTML=html; messagesEl.appendChild(div); scrollBottom(); }
-  function renderTopMatches(top){ if(!top?.length) return ''; const inner=top.map(t=>`<div class="meta">유사도 ${t.score} · ${t.file}${t.page?' p.'+t.page:''}<br>${t.snippet}</div>`).join(''); return `<details class="source"><summary>상위 근거 3개 요약</summary>${inner}</details>`; }
-
-  async function ask(){
-    const text=inputEl.value.trim(); if(!text) return;
-    addMsg('user', text); inputEl.value=''; history.push({role:'user', content:text});
-    const loadingId='loading-'+Date.now(); addMsg('bot', `<span id="${loadingId}">분석 중...</span>`);
-    try{
-      const res=await fetch('/api/chatbot/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
-      const data=await res.json(); const loader=document.getElementById(loadingId); if(loader) loader.parentElement.remove();
-      if(!data.success){ addMsg('bot','오류: '+(data.error||'')); return; }
-      let block=`<div>${data.representative_answer}</div>`; if(data.examples?.length){ block+=`<div class="meta">예시<br>• ${data.examples.join('<br>• ')}</div>`; } block+=renderTopMatches(data.top_matches); addMsg('bot',block);
-      if(data.need_more){
-        if(data.clarifying_questions?.length){ const wrap=document.createElement('div'); wrap.className='bot msg clarify-list'; data.clarifying_questions.forEach(q=>{ const b=document.createElement('button'); b.textContent=q; b.onclick=()=>{ inputEl.value=q; ask(); }; wrap.appendChild(b); }); messagesEl.appendChild(wrap); scrollBottom(); }
-        history.push({role:'assistant', content:(data.clarifying_questions||[]).join(' ')||data.representative_answer});
-      }else if(data.final_answer){
-        let html; try{ marked.setOptions({gfm:true,breaks:true}); html=DOMPurify.sanitize(marked.parse(data.final_answer||'')); }catch(_){ html=(data.final_answer||'').replaceAll('\n','<br>'); }
-        html += `<div style="font-size:.8em;color:#777;margin-top:8px;">안내 내용은 법적 효력이 없으며 실제 과실비율과 차이가 있을 수 있습니다.</div>`;
-        addMsg('bot', html); history.push({role:'assistant', content:data.final_answer});
-      }
-    }catch(e){ const loader=document.getElementById(loadingId); if(loader) loader.parentElement.remove(); addMsg('bot','네트워크 오류가 발생했습니다.'); console.error(e); }
-  }
-  fab.onclick = ()=>{ box.style.display='flex'; };
-  document.getElementById('chatbot-close').onclick = ()=>{ box.style.display='none'; };
-  document.getElementById('chatbot-send').onclick = ask;
-  document.getElementById('chatbot-text').addEventListener('keydown',(e)=>{ if(e.key==='Enter') ask(); });
-  addMsg('bot', `사고 상황을 입력하면 필요한 정보를 단계적으로 물어보고 최종 과실비율 판단 논리를 안내합니다.<br><small style="color:#888;">※ 본 안내는 법적 효력이 없을 수 있습니다.</small>`);
-})();
-</script>
