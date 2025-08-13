@@ -1,5 +1,4 @@
 # insurance_app/urls.py
-
 from django.urls import path
 from . import views
 
@@ -11,7 +10,6 @@ urlpatterns = [
 
     path('clause-summary/<int:clause_id>/', views.clause_summary, name='clause_summary'),
     path('insurance-recommendation/', views.insurance_recommendation, name='insurance_recommendation'),
-
     path('company-detail/<str:company_name>/', views.get_company_detail, name='company_detail'),
     path('market-analysis/', views.get_market_analysis, name='market_analysis'),
 

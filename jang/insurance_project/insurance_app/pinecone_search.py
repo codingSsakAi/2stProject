@@ -1,16 +1,14 @@
-# insurance_app/pinecone_search.py
-
 import os
 import re
 import unicodedata
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=True)
 
-# -----------------------
-# 임베더 어댑터
-# -----------------------
+# ────────────────────────────────────────────────────────────────────────────────
+# 임베딩 어댑터
+# ────────────────────────────────────────────────────────────────────────────────
 USE_BACKEND = os.getenv("EMBED_BACKEND", "st").lower()  # "st" | "openai"
 EMBED_MODEL = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-large")
 
@@ -40,23 +38,22 @@ Q_PREFIX   = "query: "   if (USE_BACKEND == "st" and is_e5(EMBED_MODEL)) else ""
 
 embedder = Embedder(USE_BACKEND, EMBED_MODEL)
 
-# -----------------------
+# ────────────────────────────────────────────────────────────────────────────────
 # Pinecone
-# -----------------------
+# ────────────────────────────────────────────────────────────────────────────────
 from pinecone import Pinecone
+
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY") or ""
-INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "insurance-clauses-new")
+INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "insurance-clauses-second")
 NAMESPACE = os.getenv("NAMESPACE") or None
+
 if not PINECONE_API_KEY:
     raise RuntimeError("PINECONE_API_KEY가 비어 있습니다.")
-
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(INDEX_NAME)
 
-# -----------------------
-# 선택적 재랭커
-# -----------------------
-USE_RERANKER = os.getenv("USE_RERANKER", "1") == "1"
+# (선택) 재랭커: 점수는 rerank_score에만 반영하고, 클라이언트 노출 score는 Pinecone 점수 유지
+USE_RERANKER = os.getenv("USE_RERANKER", "0") == "1"
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "jinaai/jina-reranker-v2-base-multilingual")
 reranker = None
 if USE_RERANKER:
@@ -66,76 +63,96 @@ if USE_RERANKER:
     except Exception:
         reranker = None
 
-# -----------------------
-# 유틸/필터
-# -----------------------
-def normalize(s: str) -> str:
+# ────────────────────────────────────────────────────────────────────────────────
+# 경량 텍스트 정리(과하지 않게)
+# ────────────────────────────────────────────────────────────────────────────────
+def _normalize(s: str) -> str:
     s = unicodedata.normalize("NFC", s or "")
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
-def is_noise(text: str) -> bool:
-    if not text: 
-        return True
-    t = text.strip()
-    if len(t) < 25:
-        return True
-    toks = t.split()
-    if toks:
-        single_ko = sum(1 for w in toks if len(w) == 1 and re.match(r"[가-힣]", w))
-        if single_ko / len(toks) > 0.30:
-            return True
-        if (len(set(toks)) / len(toks)) < 0.42:
-            return True
-    if re.search(r"(\b[\w가-힣]{1,20}\b)(?:\s+\1){2,}", t):  # 반복 어절
-        return True
-    punct_runs = re.findall(r"(?:[^\w\s가-힣]){3,}", t)
-    if len(punct_runs) >= 2:
-        return True
-    digits = sum(ch.isdigit() for ch in t)
-    if digits / len(t) > 0.35 and not re.search(r"[가-힣]{3,}", t):
-        return True
-    return False
+# "무 면 허" / "뺑 소 니" 같은 2~3글자 쪼개짐만 붙여주기
+def _join_short_chopped_hangul(s: str) -> str:
+    def _join_once(txt: str, n: int) -> str:
+        pattern = r"(?:\b[가-힣]\b(?:\s+\b[가-힣]\b){" + str(n-1) + r"})"
+        def repl(m): return re.sub(r"\s+", "", m.group(0))
+        return re.sub(pattern, repl, txt)
+    s = _join_once(s, 3)
+    s = _join_once(s, 2)
+    return s
 
-def _looks_spaced_hangul(s: str, thresh: float = 0.28) -> bool:
-    toks = s.split()
-    if not toks: return False
-    single_ko = sum(1 for t in toks if len(t) == 1 and re.match(r"[가-힣]", t))
-    return (single_ko / max(len(toks), 1)) >= thresh
+# 인접한 동일 단어(2글자 이상 한/영)만 1회로 축소
+def _collapse_adjacent_word_dups(s: str) -> str:
+    return re.sub(r"\b([가-힣A-Za-z]{2,})\b(?:\s+\1\b)+", r"\1", s)
 
-def _display_clean(s: str) -> str:
-    if not s: return s
-    if _looks_spaced_hangul(s, 0.28):
-        s = re.sub(r"(?<=[가-힣])\s+(?=[가-힣])", "", s)
-    s = re.sub(r"(\b[\w가-힣]{1,20}\b)(?:\s+\1){2,}", r"\1 \1", s)
-    s = re.sub(r"(?:[^\w\s가-힣]){3,}", " ", s)
+def _clean_for_display(s: str) -> str:
+    if not s:
+        return s
+    s = _join_short_chopped_hangul(s)
+    s = _collapse_adjacent_word_dups(s)
     s = re.sub(r"\s{2,}", " ", s).strip()
     return s
 
-# -----------------------
-# 검색
-# -----------------------
-def retrieve(query: str, top_k: int = 5, candidate_k: int = 20, company: str | None = None, min_score: float = 0.0) -> List[Dict]:
-    q_emb = embedder.encode_one(Q_PREFIX + normalize(query))
-    filt = {"company": company} if company else None
+# 너무 짧은/노이즈성 청크만 컷 (보수적)
+def _is_noise(text: str) -> bool:
+    if not text:
+        return True
+    t = text.strip()
+    if len(t) < 20:
+        return True
+    toks = t.split()
+    if not toks:
+        return True
+    # 한글 단글자 토큰 비중이 과도하게 크면 컷
+    single_ko = sum(1 for w in toks if len(w) == 1 and re.match(r"[가-힣]", w))
+    if len(toks) >= 10 and (single_ko / len(toks) > 0.40):
+        return True
+    return False
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 검색 (키워드 게이트/가점 없음 = 순수 RAG)
+# ────────────────────────────────────────────────────────────────────────────────
+def retrieve(
+    query: str,
+    top_k: int = 10,
+    candidate_k: int = 40,
+    company: Optional[str] = None,
+    filters: Optional[Dict[str, Any]] = None,
+    min_score: float = 0.0
+) -> List[Dict[str, Any]]:
+    """
+    - 임베딩 기반 최근접 검색만 사용 (키워드 게이트/가점 제거)
+    - 필요 시 CrossEncoder로 rerank_score만 계산 (score는 Pinecone 점수 그대로 유지)
+    """
+    q = _normalize(query)
+    q_emb = embedder.encode_one(Q_PREFIX + q)
+
+    pine_filter = {}
+    if company:
+        pine_filter["company"] = {"$eq": company}
+    if isinstance(filters, dict):
+        pine_filter.update(filters)
+    if not pine_filter:
+        pine_filter = None
 
     res = index.query(
         vector=q_emb,
         top_k=max(candidate_k, top_k),
         include_metadata=True,
-        filter=filt,
+        filter=pine_filter,
         namespace=NAMESPACE
     )
 
-    matches = []
+    prelim: List[Dict[str, Any]] = []
     for m in res.get("matches", []):
         meta = m.get("metadata", {}) or {}
-        text = meta.get("text") or meta.get("chunk") or ""
-        if is_noise(text):
+        raw = meta.get("text") or meta.get("chunk") or ""
+        if _is_noise(raw):
             continue
-        matches.append({
-            "score": float(m.get("score", 0.0)),
-            "text": _display_clean(text),   # 보기용 정리
+        cleaned = _clean_for_display(raw)
+        prelim.append({
+            "score": float(m.get("score", 0.0)),  # 그대로 노출
+            "text": cleaned,
             "company": meta.get("company", ""),
             "file": meta.get("file", ""),
             "page": meta.get("page", ""),
@@ -144,22 +161,46 @@ def retrieve(query: str, top_k: int = 5, candidate_k: int = 20, company: str | N
         })
 
     if min_score > 0:
-        matches = [r for r in matches if r["score"] >= min_score]
+        prelim = [r for r in prelim if r["score"] >= min_score]
 
-    final = matches
-    if reranker and len(matches) > top_k:
-        pairs = [(query, r["text"]) for r in matches]
+    if not prelim:
+        return []
+
+    # (선택) CrossEncoder 재랭크: rerank_score만 부여, 최종 선택은 rerank_score 우선
+    final = prelim
+    if reranker and len(prelim) > top_k:
         try:
-            scores = reranker.predict(pairs).tolist()
-            for r, s in zip(matches, scores):
-                r["rerank_score"] = float(s)
-            final = sorted(matches, key=lambda x: x["rerank_score"], reverse=True)[:top_k]
+            ce_scores = reranker.predict([(q, r["text"]) for r in prelim]).tolist()
         except Exception:
-            final = matches[:top_k]
+            ce_scores = [0.0] * len(prelim)
+
+        # 배치 내 min-max 정규화 (0~1). score에는 손대지 않음.
+        mn, mx = float(min(ce_scores)), float(max(ce_scores))
+        span = (mx - mn) if (mx > mn) else 1.0
+        for r, s in zip(prelim, ce_scores):
+            r["rerank_score"] = (float(s) - mn) / span
+
+        final = sorted(prelim, key=lambda x: x.get("rerank_score", 0.0), reverse=True)[:top_k]
     else:
-        final = matches[:top_k]
+        # reranker 미사용: pinecone score로 컷
+        final = sorted(prelim, key=lambda x: x["score"], reverse=True)[:top_k]
+
     return final
 
-# 뷰 호환 alias
-def retrieve_insurance_clauses(query: str, top_k: int = 5, company: str | None = None, candidate_k: int = 20, min_score: float = 0.0):
-    return retrieve(query, top_k=top_k, candidate_k=candidate_k, company=company, min_score=min_score)
+# 뷰에서 쓰는 래퍼
+def retrieve_insurance_clauses(
+    query: str,
+    top_k: int = 10,
+    company: Optional[str] = None,
+    candidate_k: int = 40,
+    filters: Optional[Dict[str, Any]] = None,
+    min_score: float = 0.0
+) -> List[Dict[str, Any]]:
+    return retrieve(
+        query=query,
+        top_k=top_k,
+        candidate_k=candidate_k,
+        company=company,
+        filters=filters,
+        min_score=min_score
+    )
