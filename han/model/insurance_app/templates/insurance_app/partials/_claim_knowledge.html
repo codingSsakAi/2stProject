@@ -1,0 +1,26 @@
+<!-- templates/insurance_app/partials/_claim_knowledge.html -->
+<div id="claim-knowledge-modal" role="dialog" aria-modal="true" aria-labelledby="claim-knowledge-title" hidden>
+  <div class="ckm-backdrop"></div>
+  <div class="ckm-dialog" role="document">
+    <div class="ckm-header">
+      <div class="ckm-title-wrap">
+        <div class="ckm-subtitle"><h4>사례로 알아보는</h4></div>
+        <h1 id="claim-knowledge-title" class="ckm-title"><h2>자동차 사고 보상상식</h2></h1>
+      </div>
+      <button class="ckm-close" type="button" aria-label="닫기" title="닫기">&times;</button>
+    </div>
+
+    <div class="ckm-tabs" role="tablist" aria-label="분류 선택">
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 차" aria-selected="true">차 vs. 차</button>
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 사람" aria-selected="false">차 vs. 사람</button>
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 기타" aria-selected="false">차 vs. 기타</button>
+    </div>
+
+    <div class="ckm-body">
+      <div class="ckm-list" id="ckm-list" aria-label="사례 목록" role="listbox"></div>
+      <div class="ckm-detail" id="ckm-detail" aria-live="polite">
+        <div class="ckm-empty">좌측에서 사례를 선택하세요.</div>
+      </div>
+    </div>
+  </div>
+</div>

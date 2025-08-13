@@ -1,26 +1,27 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
+from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.conf import settings
+
+import os
+import json
+
 from .models import CustomUser
 from .forms import CustomUserCreationForm
 from .pdf_processor import EnhancedPDFProcessor
-from .pinecone_search import retrieve_insurance_clauses   # Pinecone 연동 함수
-import json
-from django.views.decorators.http import require_http_methods
 from .pinecone_search import retrieve_insurance_clauses
-from .insurance_mock_server import InsuranceService
 from .pinecone_search_fault import retrieve_fault_ratio
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-import os
+from .insurance_mock_server import InsuranceService
 from openai import OpenAI
+
 
 def home(request):
     return render(request, 'insurance_app/home.html')
+
 
 def signup(request):
     if request.method == 'POST':
@@ -33,6 +34,7 @@ def signup(request):
     else:
         form = CustomUserCreationForm()
     return render(request, 'insurance_app/signup.html', {'form': form})
+
 
 def login_view(request):
     if request.method == 'POST':
@@ -52,6 +54,7 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'insurance_app/login.html', {'form': form})
+
 
 @login_required
 def recommend_insurance(request):
@@ -86,56 +89,53 @@ def recommend_insurance(request):
         }
         return render(request, 'insurance_app/recommend.html', context)
 
-@csrf_exempt
+
+@require_http_methods(["GET"])
 def get_company_detail(request, company_name):
     # 실제 구현 시 Pinecone 메타 또는 DB에서 상세 추출 가능
     try:
-        # 임시 예시
         return JsonResponse({"company_name": company_name, "detail": f"{company_name} 보험사 상세 정보"})
     except Exception as e:
-        return JsonResponse({
-            'error': f'보험사 정보 조회 중 오류: {str(e)}'
-        }, status=500)
+        return JsonResponse({'error': f'보험사 정보 조회 중 오류: {str(e)}'}, status=500)
 
+
+@require_http_methods(["GET"])
 def get_market_analysis(request):
-    # 마찬가지로 메타데이터 기반 보험 시장 분석 반환
-    return JsonResponse({
-        "market_summary": "자동차보험 시장 동향 및 보험사별 경쟁력 분석 예시"
-    })
+    # 메타데이터 기반 보험 시장 분석 반환 (예시)
+    return JsonResponse({"market_summary": "자동차보험 시장 동향 및 보험사별 경쟁력 분석 예시"})
 
+
+@require_http_methods(["GET"])
 def clause_summary(request, clause_id):
-    # Pinecone에서 clause_id로 벡터/메타 추출해 요약 반환 가능
-    return JsonResponse({
-        'success': True,
-        'clause_id': clause_id,
-        'summary': f'약관 {clause_id}번에 대한 요약입니다.'
-    })
+    # Pinecone에서 clause_id로 벡터/메타 추출해 요약 반환 가능(예시)
+    return JsonResponse({'success': True, 'clause_id': clause_id, 'summary': f'약관 {clause_id}번에 대한 요약입니다.'})
 
-@csrf_exempt
+
+@require_http_methods(["GET", "POST"])
 def insurance_recommendation(request):
-    """AI 기반 보험 약관 검색 (Pinecone 검색 사용)"""
+    """
+    GET  : recommendation.html 렌더(회사 통계 등)
+    POST : 약관 검색 API (통합 엔드포인트)
+    """
     if request.method == 'POST':
-        data = json.loads(request.body)
-        query = data.get('query', '')
-        company_name = data.get('company', None)
-        
-        if query:
-            # Pinecone 실전 검색 함수로 직접 검색
+        try:
+            data = json.loads(request.body)
+            query = data.get('query', '').strip()
+            company_name = data.get('company')
+            if not query:
+                return JsonResponse({'success': False, 'error': '검색어를 입력해주세요.'}, status=400)
+
             results = retrieve_insurance_clauses(query, top_k=5, company=company_name)
-            # Pinecone 검색 결과를 그대로 반환
             return JsonResponse({
                 'success': True,
                 'results': results,
                 'searched_company': company_name,
                 'total_results': len(results)
             })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': '검색어를 입력해주세요.'
-            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-    # GET 요청시 보험사 목록과 문서 통계 제공
+    # GET
     processor = EnhancedPDFProcessor()
     company_stats = processor.get_company_statistics()
     context = {
@@ -144,76 +144,12 @@ def insurance_recommendation(request):
     }
     return render(request, 'insurance_app/recommendation.html', context)
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def insurance_clause_search(request):
-    import json
-    data = json.loads(request.body)
-    query = data.get("query", "")
-    company = data.get("company", None)
-    from .pinecone_search import retrieve_insurance_clauses
-    results = retrieve_insurance_clauses(query, top_k=5, company=company)
-    return JsonResponse({"success": True, "results": results})
 
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-import json
-from django.http import JsonResponse
-from .pinecone_search import retrieve_insurance_clauses
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def insurance_clause_qa(request):
-    """
-    POST: { "question": "음주운전 보상 되나요?", "company": "DB손해보험" }
-    → Pinecone 검색 후 LLM 컨텍스트 자동 생성 예시 (실제 LLM 연동은 아래에서 커스텀)
-    """
-    data = json.loads(request.body)
-    question = data.get("question", "")
-    company = data.get("company", None)
-    top_matches = retrieve_insurance_clauses(question, top_k=3, company=company)
-
-    # LLM 컨텍스트 예시 생성 (여기에 LLM 호출/응답도 바로 추가 가능)
-    llm_context = "\n".join([
-        f"[{m['company']}] {m['file']} p.{m['page']}\n{m['chunk'][:200]}..."
-        for m in top_matches
-    ])
-    prompt = f"""
-다음은 '{company or '전체'}' 보험사 약관 중 사용자의 질문과 유사한 조항입니다.
-
-질문: {question}
-
---- 근거 조항 ---
-{llm_context}
-
-위 내용을 바탕으로 정확하고 쉽게 설명해 주세요. 실제 약관 내용이 불확실하거나 조건이 있다면 명시해 주세요.
-"""
-
-    return JsonResponse({
-        "success": True,
-        "llm_prompt": prompt,
-        "top_matches": top_matches
-    })
-
-@csrf_exempt
 @require_http_methods(["POST"])
 def chatbot_ask(request):
     """
     대화형 과실비율 상담:
     입력: { "messages": [{"role":"user"|"assistant","content":"..."}] }
-    출력: 
-      {
-        success: true,
-        need_more: bool,                           # 추가 질문 필요 여부
-        clarifying_questions: [str, ...],         # 추가 질문(최대 2개)
-        representative_answer: str,               # 매 턴 간단 요약/대표 답변(2~3문장)
-        examples: [str, ...],                     # 대표 예시 1~3개
-        final_answer: str,                        # 충분할 때만 상세 최종 답변
-        top_matches: [                            # 유사도 상위 3개 간단 요약
-          {score:"82.6%", file:"...", page:"...", snippet:"..."},
-          ...
-        ]
-      }
     """
     try:
         data = json.loads(request.body)
@@ -231,7 +167,7 @@ def chatbot_ask(request):
             return JsonResponse({"success": False, "error": "user 메시지가 없습니다."}, status=400)
 
         # 1) Pinecone 검색
-        results = retrieve_fault_ratio(last_user_msg, top_k=10)  # 상위10
+        results = retrieve_fault_ratio(last_user_msg, top_k=10)  # 상위 10
         top3 = results[:3]
         context_str = ""
         for i, r in enumerate(top3, 1):
@@ -240,7 +176,9 @@ def chatbot_ask(request):
                 f"{(r.get('text') or r.get('chunk') or '')[:450]}\n\n"
             )
 
-        # 2) LLM에 '모호성 판단 + 추가질문 + 대표답변/예시/최종답변' JSON 생성 요청
+        # 2) LLM 호출 준비
+        if not settings.OPENAI_API_KEY:
+            return JsonResponse({"success": False, "error": "OpenAI API Key 미설정"}, status=500)
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
         history_text = ""
@@ -249,7 +187,6 @@ def chatbot_ask(request):
             content = m.get("content", "")
             history_text += f"{role.upper()}: {content}\n"
 
-        # 예시 시나리오 가이드(사용자께서 주신 패턴 반영)
         scenario_guide = """
 사고 시나리오 예:
 - 정차 중 후방추돌: 정차 사유(신호/정체/주차 등), 급정차 여부, 감속 정도, 정차 지속시간
@@ -257,8 +194,6 @@ def chatbot_ask(request):
 - 차선변경/끼어들기: 방향지시등, 안전거리, 상대차의 위치, 속도 차이, 서행/급차선변경 여부
 - 교차로 직진/좌우회전 충돌: 신호 현시, 선진입 여부, 속도, 시야, 우선순위
 """
-
-        # 임계치: 상위 1위 유사도 낮으면 모호할 가능성↑(휴리스틱)
         top1 = results[0]["score"] if results else 0.0
         heuristic_hint = "low_score" if top1 < 0.70 else "ok_score"
 
@@ -314,7 +249,6 @@ def chatbot_ask(request):
         try:
             llm_json = json.loads(content)
         except Exception:
-            # 혹시 JSON이 아니면 안전하게 기본값
             llm_json = {
                 "need_more": True,
                 "clarifying_questions": ["사고 상황을 조금 더 구체적으로 알려주세요."],
@@ -359,6 +293,7 @@ def weekly_articles(request):
         articles = []
 
     return render(request, 'insurance_app/weekly.html', {'articles': articles})
+
 
 def weekly_articles_partial(request):
     json_path = os.path.join(os.path.dirname(__file__), 'weekly_articles.json')
