@@ -1,0 +1,268 @@
+/* insurance_portal/static/insurance_portal/css/portal.css */
+
+/* ====== 공통 ====== */
+body {
+    font-family: "Noto Sans KR", sans-serif;
+    margin: 0;
+    background: #f8fafc;
+}
+h1, h2, h3, h4 {
+    margin: 0;
+    font-weight: 700;
+}
+.close-btn {
+    border: 1px solid #e2e8f0;
+    background: #f7fafc;
+    border-radius: 10px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+/* ====== 모달 공통 ====== */
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1002;
+}
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+}
+.modal-content {
+    position: relative;
+    width: min(1000px, 94vw);
+    max-height: 90vh;
+    overflow: auto;
+    margin: 5vh auto 0;
+    background: #fff;
+    border-radius: 16px;
+}
+
+/* ====== 플로팅 버튼 ====== */
+.fab-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 1100;
+    box-shadow: 0 4px 10px rgba(0,0,0,.2);
+}
+.fab-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ====== 과실 챗봇 ====== */
+#chatbot-container {
+    display: none;
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    width: 320px;
+    height: 420px;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+    flex-direction: column;
+    z-index: 1100;
+}
+#chatbot-header {
+    background: #2f5bd3;
+    color: #fff;
+    padding: 10px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#chatbot-messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 14px;
+    background: #f1f5f9;
+}
+#chatbot-input {
+    display: flex;
+    border-top: 1px solid #e2e8f0;
+}
+#chatbot-input input {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    outline: none;
+}
+#chatbot-input button {
+    background: #2f5bd3;
+    color: #fff;
+    border: none;
+    padding: 0 16px;
+    cursor: pointer;
+}
+
+/* ====== 보험상식 ====== */
+.weekly-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1002;
+}
+.weekly-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+}
+.weekly-content {
+    position: relative;
+    width: min(800px, 90vw);
+    max-height: 90vh;
+    overflow: auto;
+    margin: 5vh auto 0;
+    background: #fff;
+    border-radius: 16px;
+}
+.weekly-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #edf2f7;
+}
+.weekly-body {
+    padding: 16px;
+}
+.weekly-item {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 0;
+}
+.weekly-item h4 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+.weekly-item p {
+    font-size: 14px;
+    color: #4a5568;
+    line-height: 1.6;
+}
+
+/* ====== 사고 처리 가이드 ====== */
+.tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #edf2f7;
+}
+.tab-btn {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 999px;
+    cursor: pointer;
+}
+.tab-btn.active {
+    background: #2f5bd3;
+    color: #fff;
+    border-color: #2f5bd3;
+}
+.panel { display: none; padding: 16px; }
+.panel.active { display: block; }
+
+.guide-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+@media (max-width: 640px) {
+    .guide-grid { grid-template-columns: 1fr; }
+}
+.guide-card {
+    background: #fff;
+    border: 1px solid #e8ebf0;
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.guide-card .thumb {
+    position: relative;
+    aspect-ratio: 1/1;
+    overflow: hidden;
+}
+.guide-card .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.guide-card .badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(255,255,255,.92);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-weight: 800;
+    font-size: 14px;
+    border: 1px solid #e2e8f0;
+}
+.guide-card .body { padding: 12px 14px; }
+.guide-card .title { font-weight: 700; margin-bottom: 4px; }
+.guide-card .subtitle { color: #4a5568; font-size: 13px; margin-bottom: 8px; }
+.guide-card .desc { color: #4a5568; font-size: 14px; line-height: 1.6; }
+.desc ul { margin: 8px 0 0 16px; }
+
+.evidence-wrap { padding: 8px 6px; }
+.evidence-list { margin: 8px 0 0 18px; line-height: 1.8; color: #334155; }
+
+.pill-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 12px; }
+.pill-tabs .pill { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 999px; cursor: pointer; }
+.pill-tabs .pill.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+
+.section-block { border: 1px solid #e8ebf0; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.section-block h4 { margin: 0 0 8px; }
+.flow { display: grid; gap: 10px; }
+.flow-item { border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px; }
+.flow-item .step { font-weight: 800; margin-right: 6px; color: #2f5bd3; }
+.note { color: #475569; font-size: 13px; margin-top: 6px; }
+
+/* ====== 보상상식 ====== */
+.claim-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1002;
+}
+.claim-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+}
+.claim-content {
+    position: relative;
+    width: min(920px, 92vw);
+    max-height: 90vh;
+    overflow: auto;
+    margin: 5vh auto 0;
+    background: #fff;
+    border-radius: 16px;
+}
+.claim-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #edf2f7;
+}
+.claim-body { padding: 16px; }
+.claim-item { border-bottom: 1px solid #e2e8f0; padding: 10px 0; }
+.claim-item h4 { margin: 0 0 6px; font-size: 16px; }
+.claim-item p { margin: 0; font-size: 14px; color: #4a5568; line-height: 1.6; }

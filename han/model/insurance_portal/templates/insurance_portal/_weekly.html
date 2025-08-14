@@ -1,0 +1,23 @@
+{% load static %}
+
+<!-- === 보험상식 모달 === -->
+<div id="weekly-modal" class="weekly-modal" style="display:none;">
+    <div class="weekly-backdrop"></div>
+    <div class="weekly-content">
+        <div class="weekly-header">
+            <h2>보험상식</h2>
+            <button id="weekly-close" class="close-btn">×</button>
+        </div>
+        <div id="weeklyBody" class="weekly-body">
+            <!-- JS에서 목록 주입 -->
+        </div>
+    </div>
+</div>
+
+<!-- 플로팅 버튼 -->
+<div id="weekly-fab">
+    <img src="{% static 'insurance_portal/img/weekly_icon.png' %}" alt="보험상식" />
+</div>
+
+<!-- 외부 JS 연결 -->
+<script src="{% static 'insurance_portal/js/weekly.js' %}"></script>

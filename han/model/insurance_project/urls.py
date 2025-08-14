@@ -20,5 +20,6 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('insurance_app.urls')),  # 앱 URL 연결
+    path("", include(("insurance_portal.urls", "insurance_portal"), namespace="ins")),
 ]
 

@@ -1,0 +1,45 @@
+{% load static %}
+
+<!-- === 보상상식 모달 === -->
+<div id="claim-knowledge-modal" class="claim-modal" style="display:none;">
+    <div class="claim-backdrop"></div>
+    <div class="claim-content">
+        <div class="claim-header">
+            <h2>보상상식</h2>
+            <button id="claim-close" class="close-btn">×</button>
+        </div>
+        <div id="claimBody" class="claim-body">
+            <!-- JS에서 목록 주입 -->
+        </div>
+    </div>
+</div>
+
+<!-- 플로팅 버튼 -->
+<div id="claim-fab" title="보상상식">
+    <img src="{% static 'insurance_portal/img/claim_icon.png' %}" alt="보상상식" />
+</div>
+
+<style>
+.claim-modal{ position:fixed; inset:0; z-index:1002; }
+.claim-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.45); }
+.claim-content{
+    position:relative; width:min(920px,92vw); max-height:90vh; overflow:auto;
+    margin:5vh auto 0; background:#fff; border-radius:16px;
+}
+.claim-header{
+    position:sticky; top:0; background:#fff; z-index:1;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; border-bottom:1px solid #edf2f7;
+}
+.close-btn{
+    border:0; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px;
+    padding:6px 10px; cursor:pointer;
+}
+.claim-body{ padding:16px; }
+.claim-item{ border-bottom:1px solid #e2e8f0; padding:10px 0; }
+.claim-item h4{ margin:0 0 6px; font-size:16px; }
+.claim-item p{ margin:0; font-size:14px; color:#4a5568; line-height:1.6; }
+</style>
+
+<!-- 외부 JS 연결 -->
+<script src="{% static 'insurance_portal/js/claim_knowledge.js' %}"></script>
