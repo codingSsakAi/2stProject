@@ -1,4 +1,5 @@
 # 보험용어사전 웹크롤링 - 완전판
+# 보험협회빅데이터
 
 import requests
 from bs4 import BeautifulSoup
