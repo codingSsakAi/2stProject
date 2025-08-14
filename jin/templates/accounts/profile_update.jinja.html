@@ -1,0 +1,188 @@
+{% extends 'base/base.jinja.html' %}
+
+{% block title %}프로필 수정 - 자동차 보험 추천 챗봇{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil"></i> 프로필 수정
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate autocomplete="off">
+                    {% csrf_token %}
+                    
+                    <!-- 기본 사용자 정보 -->
+                    <h5 class="mb-3 text-primary">기본 정보</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ user_form.last_name.id_for_label }}" class="form-label">{{ user_form.last_name.label }}</label>
+                            {{ user_form.last_name }}
+                            {% if user_form.last_name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in user_form.last_name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ user_form.first_name.id_for_label }}" class="form-label">{{ user_form.first_name.label }}</label>
+                            {{ user_form.first_name }}
+                            {% if user_form.first_name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in user_form.first_name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ user_form.email.id_for_label }}" class="form-label">{{ user_form.email.label }}</label>
+                        {{ user_form.email }}
+                        {% if user_form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in user_form.email.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- 보험 추천 관련 정보 -->
+                    <h5 class="mb-3 text-primary mt-4">보험 추천 정보</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.birth_date.id_for_label }}" class="form-label">{{ profile_form.birth_date.label }}</label>
+                            {{ profile_form.birth_date }}
+                            {% if profile_form.birth_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.birth_date.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.gender.id_for_label }}" class="form-label">{{ profile_form.gender.label }}</label>
+                            {{ profile_form.gender }}
+                            {% if profile_form.gender.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.gender.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.residence_area.id_for_label }}" class="form-label">{{ profile_form.residence_area.label }}</label>
+                            {{ profile_form.residence_area }}
+                            {% if profile_form.residence_area.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.residence_area.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.driving_experience.id_for_label }}" class="form-label">{{ profile_form.driving_experience.label }}</label>
+                            {{ profile_form.driving_experience }}
+                            {% if profile_form.driving_experience.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.driving_experience.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.car_type.id_for_label }}" class="form-label">{{ profile_form.car_type.label }}</label>
+                            {{ profile_form.car_type }}
+                            {% if profile_form.car_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.car_type.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.annual_mileage.id_for_label }}" class="form-label">{{ profile_form.annual_mileage.label }}</label>
+                            {{ profile_form.annual_mileage }}
+                            {% if profile_form.annual_mileage.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.annual_mileage.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.accident_history.id_for_label }}" class="form-label">{{ profile_form.accident_history.label }}</label>
+                            {{ profile_form.accident_history }}
+                            {% if profile_form.accident_history.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.accident_history.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ profile_form.coverage_level.id_for_label }}" class="form-label">{{ profile_form.coverage_level.label }}</label>
+                            {{ profile_form.coverage_level }}
+                            {% if profile_form.coverage_level.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in profile_form.coverage_level.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ profile_form.additional_coverage_interest }}
+                                <label class="form-check-label" for="{{ profile_form.additional_coverage_interest.id_for_label }}">
+                                    {{ profile_form.additional_coverage_interest.label }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> 수정 완료
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> 프로필로 돌아가기
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

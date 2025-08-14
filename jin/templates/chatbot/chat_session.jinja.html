@@ -1,0 +1,159 @@
+{% extends 'base/base.jinja.html' %}
+{% load markdown_extras %}
+
+{% block title %}{{ title }} - 자동차 보험 추천 챗봇{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-comments text-primary"></i>
+                    채팅 세션
+                </h2>
+                <div>
+                    <a href="{% url 'chatbot:chat' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        목록으로
+                    </a>
+                    <a href="{% url 'chatbot:chat_delete' chat_session.id %}" class="btn btn-danger">
+                        <i class="fas fa-trash"></i>
+                        세션 삭제
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 세션 정보 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        세션 정보
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>제목:</strong> {{ chat_session.title }}</p>
+                            <p><strong>생성일:</strong> {{ chat_session.created_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>마지막 업데이트:</strong> {{ chat_session.updated_at|date:"Y-m-d H:i" }}</p>
+                            <p><strong>대화 수:</strong> {{ chat_history|length }}개</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 채팅 대화 내용 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comment-dots"></i>
+                        대화 내용
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if chat_history %}
+                        <div class="chat-container">
+                            {% for message in chat_history %}
+                                <div class="chat-message mb-4 {% if message.is_user %}user-message{% else %}bot-message{% endif %}">
+                                    <div class="d-flex {% if message.is_user %}justify-content-end{% endif %}">
+                                        <div class="chat-bubble {% if message.is_user %}user-bubble{% else %}bot-bubble{% endif %}">
+                                            <div class="message-header mb-2">
+                                                <span class="badge {% if message.is_user %}bg-primary{% else %}bg-success{% endif %}">
+                                                    {% if message.is_user %}
+                                                        <i class="fas fa-user"></i> 사용자
+                                                    {% else %}
+                                                        <i class="fas fa-robot"></i> 챗봇
+                                                    {% endif %}
+                                                </span>
+                                                <small class="text-muted ms-2">
+                                                    {{ message.created_at|date:"H:i" }}
+                                                </small>
+                                            </div>
+                                            
+                                            <div class="message-content">
+                                                {{ message.message|format_chat_message }}
+                                            </div>
+                                            
+                                            {% if not message.is_user and message.metadata %}
+                                                <div class="message-metadata mt-2">
+                                                    <details>
+                                                        <summary class="text-muted small">
+                                                            <i class="fas fa-info-circle"></i>
+                                                            답변 정보
+                                                        </summary>
+                                                        <div class="mt-2 p-2 bg-light rounded">
+                                                            <small>
+                                                                <strong>사용된 문서:</strong> {{ message.metadata.relevant_chunks_count }}개<br>
+                                                                <strong>모델:</strong> {{ message.metadata.model_used }}<br>
+                                                                <strong>생성 시간:</strong> {{ message.metadata.formatted_time|default:"시간 정보 없음" }}
+                                                            </small>
+                                                        </div>
+                                                    </details>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">대화 내용이 없습니다</h5>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.chat-bubble {
+    max-width: 80%;
+    padding: 15px;
+    border-radius: 15px;
+    word-wrap: break-word;
+}
+
+.user-bubble {
+    background-color: #007bff;
+    color: white;
+}
+
+.bot-bubble {
+    background-color: #f8f9fa;
+    color: #212529;
+    border: 1px solid #dee2e6;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+}
+
+.message-content {
+    line-height: 1.5;
+}
+
+.message-metadata summary {
+    cursor: pointer;
+    user-select: none;
+}
+
+.message-metadata summary:hover {
+    color: #6c757d;
+}
+</style>
+{% endblock %}

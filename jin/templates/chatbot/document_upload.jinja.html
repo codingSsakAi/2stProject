@@ -1,0 +1,170 @@
+{% extends 'base/base.jinja.html' %}
+
+{% block title %}PDF 문서 업로드 - 자동차 보험 추천 챗봇{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white text-center">
+        <h4 class="mb-0">
+          <i class="bi bi-upload"></i>
+          PDF 문서 업로드
+        </h4>
+      </div>
+      <div class="card-body p-4">
+        <!-- 업로드 안내 -->
+        <div class="alert alert-info">
+          <h5>
+            <i class="bi bi-info-circle"></i>
+            업로드 안내
+          </h5>
+          <ul class="mb-0">
+            <li>문서 제목과 보험사를 선택해주세요.</li>
+            <li>PDF 파일만 업로드 가능합니다.</li>
+            <li>업로드된 파일은 보험사별 폴더에 정리됩니다.</li>
+            <li>텍스트 기반 PDF와 이미지 기반 PDF 모두 지원합니다.</li>
+            <li>OCR을 통해 이미지에서도 텍스트를 추출합니다.</li>
+            <li>최대 파일 크기: 10MB</li>
+          </ul>
+        </div>
+
+        <!-- 업로드 폼 -->
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+          {% csrf_token %}
+
+          <div class="mb-4">
+            <label for="{{ form.title.id_for_label }}" class="form-label">
+              <strong>문서 제목</strong>
+            </label>
+            {{ form.title }}
+            {% if form.title.errors %}
+            <div class="text-danger">
+              {% for error in form.title.errors %}
+              <small>{{ error }}</small>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label for="{{ form.insurance_company.id_for_label }}" class="form-label">
+              <strong>보험사 선택</strong>
+            </label>
+            {{ form.insurance_company }}
+            {% if form.insurance_company.errors %}
+            <div class="text-danger">
+              {% for error in form.insurance_company.errors %}
+              <small>{{ error }}</small>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label for="{{ form.pdf_file.id_for_label }}" class="form-label">
+              <strong>PDF 파일 선택</strong>
+            </label>
+            {{ form.pdf_file }}
+            {% if form.pdf_file.errors %}
+            <div class="text-danger">
+              {% for error in form.pdf_file.errors %}
+              <small>{{ error }}</small>
+              {% endfor %}
+            </div>
+            {% endif %}
+            <div class="form-text">PDF 파일을 선택하세요. 이미지가 포함된 PDF는 OCR을 통해 텍스트를 추출합니다.</div>
+          </div>
+
+          <!-- 업로드 버튼 -->
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn">
+              <i class="bi bi-cloud-upload"></i>
+              파일 업로드 및 처리
+            </button>
+          </div>
+        </form>
+
+        <!-- 처리 상태 표시 -->
+        <div id="processingStatus" class="mt-4" style="display: none">
+          <div class="alert alert-warning">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">처리중...</span>
+              </div>
+              <span>PDF 파일을 처리하고 있습니다. 잠시만 기다려주세요...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 링크 -->
+        <div class="text-center mt-4">
+          <a href="{% url 'chatbot:document_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-list"></i>
+            문서 목록 보기
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기능 설명 -->
+    <div class="card shadow mt-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">
+          <i class="bi bi-gear"></i>
+          처리 과정
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3 text-center">
+            <div class="mb-3">
+              <i class="bi bi-file-earmark-pdf display-4 text-danger"></i>
+            </div>
+            <h6>1. PDF 업로드</h6>
+            <p class="text-muted small">보험사별 폴더에 저장</p>
+          </div>
+          <div class="col-md-3 text-center">
+            <div class="mb-3">
+              <i class="bi bi-arrow-left-right display-4 text-primary"></i>
+            </div>
+            <h6>2. 텍스트 추출</h6>
+            <p class="text-muted small">OCR 포함 텍스트 추출</p>
+          </div>
+          <div class="col-md-3 text-center">
+            <div class="mb-3">
+              <i class="bi bi-file-text display-4 text-success"></i>
+            </div>
+            <h6>3. 텍스트 정리</h6>
+            <p class="text-muted small">불필요한 문자 제거</p>
+          </div>
+          <div class="col-md-3 text-center">
+            <div class="mb-3">
+              <i class="bi bi-puzzle display-4 text-warning"></i>
+            </div>
+            <h6>4. 청크 분할</h6>
+            <p class="text-muted small">RAG용 텍스트 분할</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const uploadForm = document.getElementById('uploadForm');
+    const processingStatus = document.getElementById('processingStatus');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    // 폼 제출 시 처리 상태 표시
+    uploadForm.addEventListener('submit', function () {
+      processingStatus.style.display = 'block';
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 처리중...';
+    });
+  });
+</script>
+{% endblock %}

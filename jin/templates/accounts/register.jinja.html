@@ -1,0 +1,190 @@
+{% extends 'base/base.jinja.html' %} {% block title %}회원가입 - 자동차 보험 추천 챗봇{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white text-center">
+        <h4 class="mb-0">
+          <i class="bi bi-person-plus"></i>
+          회원가입
+        </h4>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" novalidate autocomplete="off">
+          {% csrf_token %}
+
+          <!-- 기본 사용자 정보 -->
+          <h5 class="mb-3 text-primary">기본 정보</h5>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+              {{ form.last_name }} {% if form.last_name.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.last_name.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+              {{ form.first_name }} {% if form.first_name.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.first_name.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.username.id_for_label }}" class="form-label">{{ form.username.label }}</label>
+            {{ form.username }} {% if form.username.help_text %}
+            <div class="form-text">{{ form.username.help_text }}</div>
+            {% endif %} {% if form.username.errors %}
+            <div class="invalid-feedback d-block">{% for error in form.username.errors %} {{ error }} {% endfor %}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+            {{ form.email }} {% if form.email.errors %}
+            <div class="invalid-feedback d-block">{% for error in form.email.errors %} {{ error }} {% endfor %}</div>
+            {% endif %}
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="{{ form.password1.id_for_label }}" class="form-label">{{ form.password1.label }}</label>
+              {{ form.password1 }} {% if form.password1.help_text %}
+              <div class="form-text">{{ form.password1.help_text }}</div>
+              {% endif %} {% if form.password1.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.password1.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <label for="{{ form.password2.id_for_label }}" class="form-label">{{ form.password2.label }}</label>
+              {{ form.password2 }} {% if form.password2.help_text %}
+              <div class="form-text">{{ form.password2.help_text }}</div>
+              {% endif %} {% if form.password2.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.password2.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- 보험 추천 관련 정보 -->
+          <h5 class="mb-3 text-primary mt-4">보험 추천 정보</h5>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="{{ form.birth_date.id_for_label }}" class="form-label">{{ form.birth_date.label }}</label>
+              {{ form.birth_date }} {% if form.birth_date.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.birth_date.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <label for="{{ form.gender.id_for_label }}" class="form-label">{{ form.gender.label }}</label>
+              {{ form.gender }} {% if form.gender.errors %}
+              <div class="invalid-feedback d-block">{% for error in form.gender.errors %} {{ error }} {% endfor %}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="{{ form.residence_area.id_for_label }}" class="form-label">{{ form.residence_area.label }}</label>
+              {{ form.residence_area }} {% if form.residence_area.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.residence_area.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <label for="{{ form.driving_experience.id_for_label }}" class="form-label">
+                {{ form.driving_experience.label }}
+              </label>
+              {{ form.driving_experience }} {% if form.driving_experience.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.driving_experience.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="{{ form.car_type.id_for_label }}" class="form-label">{{ form.car_type.label }}</label>
+              {{ form.car_type }} {% if form.car_type.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.car_type.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <label for="{{ form.annual_mileage.id_for_label }}" class="form-label">
+                {{ form.annual_mileage.label }}
+              </label>
+              {{ form.annual_mileage }} {% if form.annual_mileage.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.annual_mileage.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="{{ form.accident_history.id_for_label }}" class="form-label">
+                {{ form.accident_history.label }}
+              </label>
+              {{ form.accident_history }} {% if form.accident_history.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.accident_history.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <label for="{{ form.coverage_level.id_for_label }}" class="form-label">
+                {{ form.coverage_level.label }}
+              </label>
+              {{ form.coverage_level }} {% if form.coverage_level.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.coverage_level.errors %} {{ error }} {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.additional_coverage_interest }}
+                <label class="form-check-label" for="{{ form.additional_coverage_interest.id_for_label }}">
+                  {{ form.additional_coverage_interest.label }}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-person-plus"></i>
+              회원가입
+            </button>
+          </div>
+        </form>
+
+        <div class="text-center mt-3">
+          <p class="text-muted">
+            이미 계정이 있으신가요?
+            <a href="{% url 'accounts:login' %}" class="text-decoration-none">로그인</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
