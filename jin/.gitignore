@@ -1,11 +1,73 @@
-.env
-policy_documents/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# 가상환경
 .venv/
 venv/
-develop_workflow.md
-env_template.txt
-insurance_project_ppt_v2.md
-work_session_summary.md
-__pycache__/
-*/__pycache__/
-*.pyc
+ENV/
+env/
+
+# 환경변수
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 데이터 파일
+data/
+*.pdf
+*.txt
+*.csv
+
+# 로그 파일
+logs/
+*.log
+
+# 임시 파일
+tmp/
+temp/

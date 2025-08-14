@@ -1,0 +1,1132 @@
+{% extends 'base/base.jinja.html' %}
+{% load markdown_extras %}
+
+{% block title %}{{ title }} - 자동차 보험 추천 챗봇{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mb-4">
+        <i class="fas fa-robot text-primary"></i>
+        자동차 보험 상담 챗봇
+      </h2>
+
+      <!-- 챗봇 설명 -->
+      <div class="alert alert-info">
+        <h5>
+          <i class="fas fa-info-circle"></i>
+          챗봇 사용법
+        </h5>
+        <p class="mb-0">
+          자동차 보험에 대한 질문을 입력하시면, 업로드된 보험 문서를 바탕으로 정확한 답변을 제공합니다. 보험 가입, 보장
+          범위, 할인 혜택 등 궁금한 점을 자유롭게 물어보세요.
+        </p>
+      </div>
+
+      <!-- 실시간 채팅 인터페이스 -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-comments"></i>
+            실시간 채팅
+          </h5>
+        </div>
+        <div class="card-body">
+          <!-- 채팅 메시지 영역 -->
+          <div id="chat-messages" class="chat-messages-container mb-3">
+            {% if latest_chat_history %}
+              {% for message in latest_chat_history %}
+                <div class="chat-message mb-3 {% if message.is_user %}user-message{% else %}bot-message{% endif %}">
+                  <div class="d-flex {% if message.is_user %}justify-content-end{% endif %}">
+                    <div class="chat-bubble {% if message.is_user %}user-bubble{% else %}bot-bubble{% endif %}">
+                      <div class="message-header mb-2">
+                        <span class="badge {% if message.is_user %}bg-primary{% else %}bg-success{% endif %}">
+                          {% if message.is_user %}
+                            <i class="fas fa-user"></i>
+                            사용자
+                          {% else %}
+                            <i class="fas fa-robot"></i>
+                            챗봇
+                          {% endif %}
+                        </span>
+                        <small class="text-muted ms-2">{{ message.created_at|date:"H:i" }}</small>
+                      </div>
+
+                      <div class="message-content">{{ message.message|format_chat_message }}</div>
+
+                      {% if not message.is_user and message.metadata %}
+                        <div class="message-metadata mt-2">
+                          <details>
+                            <summary class="text-muted small">
+                              <i class="fas fa-info-circle"></i>
+                              답변 정보
+                            </summary>
+                            <div class="mt-2 p-2 bg-light rounded">
+                              <small>
+                                <strong>사용된 문서:</strong>
+                                {{ message.metadata.relevant_chunks_count }}개
+                                <br />
+                                <strong>모델:</strong>
+                                {{ message.metadata.model_used }}
+                                <br />
+                                <strong>생성 시간:</strong>
+                                {{ message.metadata.formatted_time|default:"시간 정보 없음" }}
+                              </small>
+                            </div>
+                          </details>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="text-center py-4">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">채팅을 시작해보세요!</h5>
+                <p class="text-muted">아래 입력창에 질문을 입력하고 첫 번째 대화를 시작하세요.</p>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- 보험 추천 프로필 입력 말풍선 -->
+          <div id="profile-input-bubble" class="profile-input-bubble" style="display: none;">
+            <div class="card border-primary">
+              <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">
+                  <i class="fas fa-user-edit"></i>
+                  보험 추천 정보 입력
+                </h6>
+              </div>
+              <div class="card-body">
+                <form id="profile-form">
+                  {% csrf_token %}
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="birth_date" class="form-label">생년월일 *</label>
+                      <input type="date" class="form-control" id="birth_date" name="birth_date" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="gender" class="form-label">성별 *</label>
+                      <select class="form-control" id="gender" name="gender" required>
+                        <option value="">선택하세요</option>
+                        <option value="M">남성</option>
+                        <option value="F">여성</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="residence_area" class="form-label">거주 지역 *</label>
+                      <select class="form-control" id="residence_area" name="residence_area" required>
+                        <option value="">선택하세요</option>
+                        <option value="서울">서울</option>
+                        <option value="부산">부산</option>
+                        <option value="대구">대구</option>
+                        <option value="인천">인천</option>
+                        <option value="광주">광주</option>
+                        <option value="대전">대전</option>
+                        <option value="울산">울산</option>
+                        <option value="세종">세종</option>
+                        <option value="기타">기타</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="driving_experience" class="form-label">운전 경력 (년) *</label>
+                      <input type="number" class="form-control" id="driving_experience" name="driving_experience" min="0" max="50" required>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="car_type" class="form-label">차종 *</label>
+                      <select class="form-control" id="car_type" name="car_type" required>
+                        <option value="">선택하세요</option>
+                        <option value="경차">경차</option>
+                        <option value="소형">소형</option>
+                        <option value="준중형">준중형</option>
+                        <option value="중형">중형</option>
+                        <option value="대형">대형</option>
+                        <option value="SUV">SUV</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="annual_mileage" class="form-label">연간 주행거리 (km) *</label>
+                      <input type="number" class="form-control" id="annual_mileage" name="annual_mileage" min="1000" max="100000" required>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="accident_history" class="form-label">사고 경력 (횟수) *</label>
+                      <input type="number" class="form-control" id="accident_history" name="accident_history" min="0" max="10" value="0" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="coverage_level" class="form-label">보장 수준 *</label>
+                      <select class="form-control" id="coverage_level" name="coverage_level" required>
+                        <option value="">선택하세요</option>
+                        <option value="기본">기본</option>
+                        <option value="표준" selected>표준</option>
+                        <option value="고급">고급</option>
+                        <option value="프리미엄">프리미엄</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="additional_coverage_interest" name="additional_coverage_interest">
+                      <label class="form-check-label" for="additional_coverage_interest">
+                        추가 특약에 관심이 있나요?
+                      </label>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary" onclick="hideProfileInput()">
+                      <i class="fas fa-times"></i>
+                      취소
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-check"></i>
+                      정보 저장 및 추천 받기
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- 질문 입력 폼 -->
+          <form id="chat-form">
+            {% csrf_token %}
+            <div class="input-group">
+              <textarea
+                class="form-control"
+                id="message"
+                name="message"
+                rows="3"
+                placeholder="자동차 보험에 대해 궁금한 점을 입력하세요..."
+                required
+              ></textarea>
+              <button class="btn btn-primary" type="submit" id="send-button">
+                <i class="fas fa-paper-plane"></i>
+                전송
+              </button>
+            </div>
+          </form>
+
+          <!-- 자동완성 제안 -->
+          <div class="mt-3">
+            <small class="text-muted">
+              <i class="fas fa-lightbulb"></i>
+              추천 질문:
+            </small>
+            <div class="mt-2">
+              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('자동차보험 추천해주세요')">
+                자동차보험 추천해주세요
+              </button>
+              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('보험금 청구 절차는 어떻게 되나요?')">
+                보험금 청구 절차
+              </button>
+              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('각 보험사의 연락처를 알려주세요')">
+                보험사 연락처
+              </button>
+              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('무보험자동차 사고시 어떻게 하나요?')">
+                무보험자동차 사고
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 채팅 세션 목록 -->
+      {% if chat_sessions %}
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="fas fa-history"></i>
+              이전 대화 기록
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="list-group">
+              {% for session in chat_sessions %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1">
+                      <a href="{% url 'chatbot:chat_session' session.id %}" class="text-decoration-none">
+                        {{ session.title }}
+                      </a>
+                    </h6>
+                    <small class="text-muted">
+                      <i class="fas fa-clock"></i>
+                      {{ session.updated_at|date:"Y-m-d H:i" }}
+                    </small>
+                  </div>
+                  <div>
+                    <a href="{% url 'chatbot:chat_session' session.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-eye"></i>
+                      보기
+                    </a>
+                    <a href="{% url 'chatbot:chat_delete' session.id %}" class="btn btn-sm btn-outline-danger">
+                      <i class="fas fa-trash"></i>
+                      삭제
+                    </a>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="card-body text-center py-5">
+            <i class="fas fa-comments fa-4x text-muted mb-4"></i>
+            <h5 class="text-muted">아직 대화 기록이 없습니다</h5>
+            <p class="text-muted">위의 질문 입력창에 질문을 입력하고 첫 번째 대화를 시작해보세요!</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .chat-messages-container {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 15px;
+    background-color: #f8f9fa;
+  }
+
+  .chat-bubble {
+    max-width: 80%;
+    padding: 15px;
+    border-radius: 15px;
+    word-wrap: break-word;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .user-bubble {
+    background-color: #007bff;
+    color: white;
+  }
+
+  .bot-bubble {
+    background-color: white;
+    color: #212529;
+    border: 1px solid #dee2e6;
+  }
+
+  .message-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .message-content {
+    line-height: 1.5;
+  }
+
+  .message-metadata summary {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .message-metadata summary:hover {
+    color: #6c757d;
+  }
+
+  .input-group textarea {
+    resize: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  /* 자동완성 스타일 */
+  .auto-complete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .auto-complete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s;
+  }
+
+  .auto-complete-item:hover,
+  .auto-complete-item.selected {
+    background-color: #f8f9fa;
+  }
+
+  .auto-complete-item:last-child {
+    border-bottom: none;
+  }
+
+  /* 배지 스타일 개선 */
+  .contact-info-badge .badge,
+  .cache-badge .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .contact-info-badge .badge {
+    background-color: #17a2b8 !important;
+  }
+
+  .cache-badge .badge {
+    background-color: #6c757d !important;
+  }
+
+  /* 마크다운 스타일링 */
+  .markdown-bold {
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  .markdown-italic {
+    font-style: italic;
+    color: #34495e;
+  }
+
+  .markdown-code {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #e74c3c;
+  }
+
+  .markdown-heading {
+    color: #2c3e50;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .markdown-paragraph {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+  }
+
+  .markdown-list {
+    margin-left: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .markdown-list-item {
+    margin-bottom: 0.25rem;
+  }
+
+  .highlight-keyword {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: bold;
+  }
+
+  /* 보험 추천 프로필 입력 말풍선 스타일 */
+  .profile-input-bubble {
+    margin-bottom: 20px;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .profile-input-bubble .card {
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.1);
+  }
+
+  .profile-input-bubble .card-header {
+    border-radius: 15px 15px 0 0 !important;
+  }
+
+  .profile-input-bubble .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+
+  .profile-input-bubble .btn {
+    border-radius: 8px;
+    font-weight: 500;
+  }
+
+  .profile-input-bubble .btn-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    border: none;
+  }
+
+  .profile-input-bubble .btn-primary:hover {
+    background: linear-gradient(45deg, #0056b3, #004085);
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // CSRF 토큰을 전역 변수로 설정
+  let csrfToken = '';
+  
+  // CSRF 토큰 초기화 함수
+  function initializeCSRFToken() {
+    // Django의 getCookie 함수
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    // 먼저 hidden input에서 시도
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (token && token.value) {
+      csrfToken = token.value;
+      
+      return;
+    }
+    
+    // 쿠키에서 시도
+    const csrftoken = getCookie('csrftoken');
+    if (csrftoken) {
+      csrfToken = csrftoken;
+      
+      return;
+    }
+    
+    console.warn('CSRF 토큰을 찾을 수 없습니다.');
+  }
+  
+  document.addEventListener('DOMContentLoaded', function () {
+    // CSRF 토큰 초기화
+    initializeCSRFToken();
+    // 마크다운을 HTML로 변환하는 함수
+    function markdownToHtml(text) {
+      if (!text) return '';
+
+      // **텍스트** -> <strong>텍스트</strong>
+      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      // *텍스트* -> <em>텍스트</em>
+      text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+      // `텍스트` -> <code>텍스트</code>
+      text = text.replace(/`(.*?)`/g, '<code class="markdown-code">$1</code>');
+
+      // 줄바꿈 처리
+      text = text.replace(/\n/g, '<br>');
+
+      return text;
+    }
+
+    // 메시지 설정 함수
+    window.setMessage = function(message) {
+      document.getElementById('message').value = message;
+      document.getElementById('message').focus();
+    };
+
+    // 채팅 폼 제출 처리
+    const chatForm = document.getElementById('chat-form');
+    const messageTextarea = document.getElementById('message');
+    const sendButton = document.getElementById('send-button');
+
+    chatForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const userMessage = messageTextarea.value.trim();
+      if (!userMessage) return;
+
+      // 입력 필드 초기화
+      messageTextarea.value = '';
+      messageTextarea.style.height = 'auto';
+
+      // 사용자 메시지 추가
+      addUserMessage(userMessage);
+
+      // 로딩 메시지 추가 (사용자 메시지 다음에)
+      setTimeout(() => {
+        addLoadingMessage();
+      }, 100);
+
+
+
+      // AJAX로 메시지 전송
+      fetch('/chatbot/api/chat/send/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          message: userMessage
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+
+        if (data.success) {
+          // 다양한 응답 구조 처리
+          let answer = '';
+          let metadata = {};
+          
+          if (data.bot_message && data.bot_message.message) {
+            answer = data.bot_message.message;
+            metadata = data.bot_message.metadata || {};
+          } else if (data.answer) {
+            answer = data.answer;
+            metadata = data.metadata || {};
+          } else if (data.message) {
+            answer = data.message;
+            metadata = data.metadata || {};
+          } else {
+
+            answer = '응답을 처리할 수 없습니다.';
+          }
+          
+          
+          replaceLoadingWithAnswer(answer, metadata);
+        } else {
+          
+          replaceLoadingWithAnswer('죄송합니다. 오류가 발생했습니다: ' + data.error);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        replaceLoadingWithAnswer('죄송합니다. 서버와의 통신 중 오류가 발생했습니다.');
+      });
+    });
+
+    // 사용자 메시지 추가
+    function addUserMessage(message) {
+      const chatMessages = document.getElementById('chat-messages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'chat-message mb-3 user-message';
+
+      messageDiv.innerHTML = `
+        <div class="d-flex justify-content-end">
+          <div class="chat-bubble user-bubble">
+            <div class="message-header mb-2">
+              <span class="badge bg-primary">
+                <i class="fas fa-user"></i>
+                사용자
+              </span>
+              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
+            </div>
+            <div class="message-content">${message}</div>
+          </div>
+        </div>
+      `;
+
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 로딩 메시지 추가
+    function addLoadingMessage() {
+      const chatMessages = document.getElementById('chat-messages');
+      const loadingDiv = document.createElement('div');
+      loadingDiv.id = 'loading-message';
+      loadingDiv.className = 'chat-message mb-3 bot-message';
+
+      loadingDiv.innerHTML = `
+        <div class="d-flex">
+          <div class="chat-bubble bot-bubble">
+            <div class="message-header mb-2">
+              <span class="badge bg-success">
+                <i class="fas fa-robot"></i>
+                챗봇
+              </span>
+              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
+            </div>
+            <div class="message-content">
+              <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                답변을 찾고 있습니다...
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      chatMessages.appendChild(loadingDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 로딩 메시지를 답변으로 교체
+    window.replaceLoadingWithAnswer = function(answer, metadata = {}) {
+      
+      
+      const loadingMessage = document.getElementById('loading-message');
+      if (!loadingMessage) {
+
+        // 로딩 메시지가 없으면 새로운 메시지로 추가
+        addBotMessage(answer, metadata);
+        return;
+      }
+
+      const formattedAnswer = markdownToHtml(answer);
+      
+      
+      loadingMessage.innerHTML = `
+        <div class="d-flex">
+          <div class="chat-bubble bot-bubble">
+            <div class="message-header mb-2">
+              <span class="badge bg-success">
+                <i class="fas fa-robot"></i>
+                챗봇
+              </span>
+              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
+            </div>
+            <div class="message-content">${formattedAnswer}</div>
+            ${metadata.relevant_chunks_count ? `
+              <div class="message-metadata mt-2">
+                <details>
+                  <summary class="text-muted small">
+                    <i class="fas fa-info-circle"></i>
+                    답변 정보
+                  </summary>
+                  <div class="mt-2 p-2 bg-light rounded">
+                    <small>
+                      <strong>사용된 문서:</strong>
+                      ${metadata.relevant_chunks_count}개
+                      <br />
+                      <strong>모델:</strong>
+                      ${metadata.model_used || 'N/A'}
+                      <br />
+                      <strong>생성 시간:</strong>
+                      ${metadata.generated_at ? new Date(metadata.generated_at).toLocaleString() : '시간 정보 없음'}
+                      ${metadata.cached ? '<br><strong>캐시:</strong> 빠른 응답' : ''}
+                      ${metadata.contact_info_used ? '<br><strong>정보:</strong> 연락처 정보 서비스' : ''}
+                    </small>
+                  </div>
+                </details>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      const chatMessages = document.getElementById('chat-messages');
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    // 자동완성 기능
+    const autoCompleteSuggestions = [
+      '자동차보험 추천해주세요',
+      '보험금 청구 절차는 어떻게 되나요?',
+      '각 보험사의 연락처를 알려주세요',
+      '무보험자동차 사고시 어떻게 하나요?',
+      '보험 해지 절차는 어떻게 되나요?',
+      '자동차보험 할인 혜택은 무엇이 있나요?',
+      '사고 발생시 신고 방법을 알려주세요',
+      '보험료 계산 방법을 알려주세요'
+    ];
+
+    let filteredSuggestions = [];
+    let currentSuggestionIndex = -1;
+
+    function showAutoCompleteSuggestions(input) {
+      const value = input.value.toLowerCase();
+      
+      if (value.length < 2) {
+        hideAutoCompleteSuggestions();
+        return;
+      }
+
+      filteredSuggestions = autoCompleteSuggestions.filter(suggestion => 
+        suggestion.toLowerCase().includes(value)
+      );
+
+      if (filteredSuggestions.length === 0) {
+        hideAutoCompleteSuggestions();
+        return;
+      }
+
+      // 기존 자동완성 제거
+      hideAutoCompleteSuggestions();
+
+      // 새로운 자동완성 생성
+      const autoCompleteDiv = document.createElement('div');
+      autoCompleteDiv.id = 'auto-complete-suggestions';
+      autoCompleteDiv.className = 'auto-complete-dropdown';
+
+      filteredSuggestions.forEach((suggestion, index) => {
+        const suggestionDiv = document.createElement('div');
+        suggestionDiv.className = 'auto-complete-item';
+        suggestionDiv.textContent = suggestion;
+        suggestionDiv.addEventListener('click', () => {
+          messageTextarea.value = suggestion;
+          hideAutoCompleteSuggestions();
+          messageTextarea.focus();
+        });
+        autoCompleteDiv.appendChild(suggestionDiv);
+      });
+
+      // 자동완성 드롭다운을 입력 필드 아래에 추가
+      const inputGroup = messageTextarea.closest('.input-group');
+      inputGroup.appendChild(autoCompleteDiv);
+    }
+
+    function hideAutoCompleteSuggestions() {
+      const existingAutoComplete = document.getElementById('auto-complete-suggestions');
+      if (existingAutoComplete) {
+        existingAutoComplete.remove();
+      }
+      currentSuggestionIndex = -1;
+    }
+
+    // 입력 필드 이벤트 리스너
+    messageTextarea.addEventListener('input', function () {
+      showAutoCompleteSuggestions(this);
+    });
+
+    messageTextarea.addEventListener('focus', function () {
+      if (this.value.length >= 2) {
+        showAutoCompleteSuggestions(this);
+      }
+    });
+
+    // 자동완성 키보드 네비게이션
+    messageTextarea.addEventListener('keydown', function (e) {
+      const autoCompleteDiv = document.getElementById('auto-complete-suggestions');
+
+      if (!autoCompleteDiv) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          chatForm.dispatchEvent(new Event('submit'));
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, filteredSuggestions.length - 1);
+          updateAutoCompleteSelection();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+          updateAutoCompleteSelection();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (currentSuggestionIndex >= 0 && filteredSuggestions[currentSuggestionIndex]) {
+            this.value = filteredSuggestions[currentSuggestionIndex];
+            hideAutoCompleteSuggestions();
+            chatForm.dispatchEvent(new Event('submit'));
+          } else {
+            chatForm.dispatchEvent(new Event('submit'));
+          }
+          break;
+        case 'Escape':
+          hideAutoCompleteSuggestions();
+          break;
+      }
+    });
+
+    function updateAutoCompleteSelection() {
+      const items = document.querySelectorAll('.auto-complete-item');
+      items.forEach((item, index) => {
+        if (index === currentSuggestionIndex) {
+          item.classList.add('selected');
+        } else {
+          item.classList.remove('selected');
+        }
+      });
+    }
+
+    // 클릭 시 자동완성 숨기기
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.input-group')) {
+        hideAutoCompleteSuggestions();
+      }
+    });
+
+    // 보험 추천 프로필 입력 관련 함수들
+    window.showProfileInput = function() {
+      document.getElementById('profile-input-bubble').style.display = 'block';
+      document.getElementById('profile-input-bubble').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    window.hideProfileInput = function() {
+      document.getElementById('profile-input-bubble').style.display = 'none';
+    };
+
+    // 프로필 폼 제출 처리
+    document.getElementById('profile-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(this);
+      const profileData = {};
+      
+      for (let [key, value] of formData.entries()) {
+        if (key === 'additional_coverage_interest') {
+          profileData[key] = value === 'on';
+        } else {
+          profileData[key] = value;
+        }
+      }
+
+      // 프로필 정보 저장 및 보험 추천 요청
+      fetch('/chatbot/api/insurance/profile/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(profileData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // 말풍선 숨기기
+          hideProfileInput();
+          
+          // 보험 추천 결과를 채팅에 추가
+          if (data.recommendation) {
+            const formattedResponse = formatInsuranceRecommendation(data.recommendation);
+            addBotMessage(formattedResponse, {
+              insurance_recommendation_requested: true,
+              session_id: data.recommendation.session_id,
+              recommendation_id: data.recommendation.recommendation_id,
+              quotes_count: data.recommendation.quotes ? data.recommendation.quotes.length : 0,
+              model_used: 'insurance_service',
+              generated_at: new Date().toISOString()
+            });
+          }
+          
+          // 성공 메시지 표시
+          showAlert('프로필 정보가 저장되었습니다. 맞춤형 보험 추천을 제공해드립니다.', 'success');
+        } else {
+          showAlert('프로필 저장 중 오류가 발생했습니다: ' + data.error, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showAlert('프로필 저장 중 오류가 발생했습니다.', 'danger');
+      });
+    });
+
+    // 보험 추천 결과 포맷팅 함수
+    function formatInsuranceRecommendation(result) {
+      const quotes = result.quotes || [];
+      if (quotes.length === 0) {
+        return "죄송합니다. 적절한 보험 상품을 찾을 수 없습니다.";
+      }
+
+      const topQuotes = quotes.slice(0, 3);
+      let response = "🔍 **자동차보험 추천 결과**\n\n";
+
+      topQuotes.forEach((quote, index) => {
+        response += `**${index + 1}. ${quote.company}**\n`;
+        response += `   💰 연간 보험료: ${quote.annual_premium.toLocaleString()}원\n`;
+        response += `   📅 월 납입액: ${quote.monthly_premium.toLocaleString()}원\n`;
+        response += `   🛡️ 보장 수준: ${quote.coverage_level}\n`;
+        response += `   ⭐ 고객 만족도: ${quote.customer_satisfaction}/5.0\n`;
+        
+        if (quote.special_discount) {
+          response += `   🎁 특별 할인: ${quote.special_discount}\n`;
+        }
+        response += "\n";
+      });
+
+      const marketAnalysis = result.market_analysis || {};
+      if (marketAnalysis.lowest_premium) {
+        response += "📊 **시장 분석**\n";
+        response += `   • 최저가: ${marketAnalysis.lowest_premium.toLocaleString()}원\n`;
+        response += `   • 평균가: ${marketAnalysis.average_premium.toLocaleString()}원\n`;
+        response += `   • 가성비 최고: ${marketAnalysis.best_value || 'N/A'}\n\n`;
+      }
+
+      const userInfo = result.user_info || {};
+      if (userInfo.risk_level) {
+        response += "👤 **사용자 정보**\n";
+        response += `   • 위험도: ${userInfo.risk_level}\n`;
+        response += `   • 추천 보장: ${userInfo.recommended_coverage || 'N/A'}\n\n`;
+      }
+
+      response += "💡 **추천 이유**\n";
+      response += result.recommendation_reason || "개인 맞춤형 추천";
+      response += "\n\n더 자세한 정보나 다른 보험사 견적이 필요하시면 말씀해주세요!";
+
+      return response;
+    }
+
+    // 알림 메시지 표시 함수
+    function showAlert(message, type) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      
+      const container = document.querySelector('.container');
+      container.insertBefore(alertDiv, container.firstChild);
+      
+      // 5초 후 자동으로 사라지게 설정
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          alertDiv.remove();
+        }
+      }, 5000);
+    }
+
+    // 봇 메시지 추가 함수 (기존 함수와 통합)
+    function addBotMessage(message, metadata = {}) {
+      const chatMessages = document.getElementById('chat-messages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'chat-message mb-3 bot-message';
+      
+      const formattedMessage = markdownToHtml(message);
+      
+      messageDiv.innerHTML = `
+        <div class="d-flex">
+          <div class="chat-bubble bot-bubble">
+            <div class="message-header mb-2">
+              <span class="badge bg-success">
+                <i class="fas fa-robot"></i>
+                챗봇
+              </span>
+              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
+            </div>
+            <div class="message-content">${formattedMessage}</div>
+            ${metadata.insurance_recommendation_requested ? `
+              <div class="message-metadata mt-2">
+                <span class="badge bg-info">보험 추천</span>
+                ${metadata.quotes_count ? `<span class="badge bg-secondary">${metadata.quotes_count}개 보험사</span>` : ''}
+              </div>
+            ` : ''}
+            ${metadata.relevant_chunks_count ? `
+              <div class="message-metadata mt-2">
+                <details>
+                  <summary class="text-muted small">
+                    <i class="fas fa-info-circle"></i>
+                    답변 정보
+                  </summary>
+                  <div class="mt-2 p-2 bg-light rounded">
+                    <small>
+                      <strong>사용된 문서:</strong>
+                      ${metadata.relevant_chunks_count}개
+                      <br />
+                      <strong>모델:</strong>
+                      ${metadata.model_used || 'N/A'}
+                      <br />
+                      <strong>생성 시간:</strong>
+                      ${metadata.generated_at ? new Date(metadata.generated_at).toLocaleString() : '시간 정보 없음'}
+                      ${metadata.cached ? '<br><strong>캐시:</strong> 빠른 응답' : ''}
+                      ${metadata.contact_info_used ? '<br><strong>정보:</strong> 연락처 정보 서비스' : ''}
+                    </small>
+                  </div>
+                </details>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 챗봇 응답 처리 시 말풍선 표시 로직 추가
+    const originalReplaceLoadingWithAnswer = window.replaceLoadingWithAnswer;
+    window.replaceLoadingWithAnswer = function(answer, metadata = {}) {
+      const loadingMessage = document.getElementById('loading-message');
+      if (!loadingMessage) return;
+
+      // 프로필 입력 말풍선 표시 여부 확인
+      if (metadata && metadata.show_profile_input) {
+        // 프로필 입력 말풍선 표시
+        showProfileInput();
+      }
+
+      const formattedAnswer = markdownToHtml(answer);
+      
+      loadingMessage.innerHTML = `
+        <div class="d-flex">
+          <div class="chat-bubble bot-bubble">
+            <div class="message-header mb-2">
+              <span class="badge bg-success">
+                <i class="fas fa-robot"></i>
+                챗봇
+              </span>
+              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
+            </div>
+            <div class="message-content">${formattedAnswer}</div>
+            ${metadata.relevant_chunks_count ? `
+              <div class="message-metadata mt-2">
+                <details>
+                  <summary class="text-muted small">
+                    <i class="fas fa-info-circle"></i>
+                    답변 정보
+                  </summary>
+                  <div class="mt-2 p-2 bg-light rounded">
+                    <small>
+                      <strong>사용된 문서:</strong>
+                      ${metadata.relevant_chunks_count}개
+                      <br />
+                      <strong>모델:</strong>
+                      ${metadata.model_used || 'N/A'}
+                      <br />
+                      <strong>생성 시간:</strong>
+                      ${metadata.generated_at ? new Date(metadata.generated_at).toLocaleString() : '시간 정보 없음'}
+                      ${metadata.cached ? '<br><strong>캐시:</strong> 빠른 응답' : ''}
+                      ${metadata.contact_info_used ? '<br><strong>정보:</strong> 연락처 정보 서비스' : ''}
+                    </small>
+                  </div>
+                </details>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      const chatMessages = document.getElementById('chat-messages');
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+  });
+</script>
+{% endblock %}

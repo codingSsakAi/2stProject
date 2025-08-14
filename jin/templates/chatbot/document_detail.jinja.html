@@ -1,0 +1,176 @@
+{% extends 'base/base.jinja.html' %} {% block title %}문서 상세 - {{ document.title }} - 자동차 보험 추천 챗봇{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <!-- 헤더 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>
+        <i class="bi bi-file-earmark-text"></i>
+        {{ document.title }}
+      </h2>
+      <div>
+        <a href="{% url 'chatbot:document_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i>
+          목록으로
+        </a>
+        <a href="{% url 'chatbot:document_process' document.id %}" class="btn btn-warning">
+          <i class="bi bi-arrow-clockwise"></i>
+          재처리
+        </a>
+      </div>
+    </div>
+
+    <!-- 문서 정보 -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          <i class="bi bi-info-circle"></i>
+          문서 정보
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <p>
+              <strong>제목:</strong>
+              {{ document.title }}
+            </p>
+            <p>
+              <strong>보험사:</strong>
+              {{ document.insurance_company.name }} ({{ document.insurance_company.code }})
+            </p>
+            <p>
+              <strong>업로드자:</strong>
+              {{ document.uploaded_by.username }}
+            </p>
+            <p>
+              <strong>업로드일:</strong>
+              {{ document.uploaded_at|date:"Y-m-d H:i" }}
+            </p>
+          </div>
+          <div class="col-md-6">
+            <p>
+              <strong>상태:</strong>
+              {% if document.status == 'uploaded' %}
+              <span class="badge bg-warning">업로드됨</span>
+              {% elif document.status == 'completed' %}
+              <span class="badge bg-success">완료</span>
+              {% elif document.status == 'error' %}
+              <span class="badge bg-danger">오류</span>
+              {% endif %}
+            </p>
+            <p>
+              <strong>처리일:</strong>
+              {% if document.processed_at %} {{ document.processed_at|date:"Y-m-d H:i" }} {% else %} 미처리 {% endif %}
+            </p>
+            <p>
+              <strong>청크 수:</strong>
+              {{ chunks.count }}개
+            </p>
+            {% if document.error_message %}
+            <p>
+              <strong>오류 메시지:</strong>
+              <span class="text-danger">{{ document.error_message }}</span>
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 파일 정보 -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+          <i class="bi bi-file-earmark"></i>
+          파일 정보
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6>PDF 파일</h6>
+            {% if document.pdf_file %}
+            <p>
+              <strong>파일명:</strong>
+              {{ document.pdf_file.name }}
+            </p>
+            <a href="{{ document.pdf_file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+              <i class="bi bi-download"></i>
+              PDF 다운로드
+            </a>
+            {% else %}
+            <p class="text-muted">PDF 파일이 없습니다.</p>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <h6>텍스트 파일</h6>
+            {% if document.txt_file %}
+            <p>
+              <strong>파일명:</strong>
+              {{ document.txt_file.name }}
+            </p>
+            <a href="{{ document.txt_file.url }}" class="btn btn-sm btn-outline-success" target="_blank">
+              <i class="bi bi-download"></i>
+              TXT 다운로드
+            </a>
+            {% else %}
+            <p class="text-muted">텍스트 파일이 없습니다.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 텍스트 청크 -->
+    {% if chunks %}
+    <div class="card shadow">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+          <i class="bi bi-puzzle"></i>
+          텍스트 청크 ({{ chunks.count }}개)
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="accordion" id="chunksAccordion">
+          {% for chunk in chunks %}
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="chunk{{ chunk.id }}">
+              <button
+                class="accordion-button collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse{{ chunk.id }}"
+              >
+                <strong>청크 {{ forloop.counter }}</strong>
+                <span class="ms-2 text-muted">({{ chunk.chunk_text|length }}자)</span>
+              </button>
+            </h2>
+            <div id="collapse{{ chunk.id }}" class="accordion-collapse collapse" data-bs-parent="#chunksAccordion">
+              <div class="accordion-body">
+                <div class="bg-light p-3 rounded">
+                  <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit">{{ chunk.chunk_text }}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card shadow">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-inbox display-4 text-muted"></i>
+        <h5 class="mt-3 text-muted">텍스트 청크가 없습니다</h5>
+        <p class="text-muted">문서가 아직 처리되지 않았거나 처리 중 오류가 발생했습니다.</p>
+        <a href="{% url 'chatbot:document_process' document.id %}" class="btn btn-primary">
+          <i class="bi bi-arrow-clockwise"></i>
+          문서 재처리
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

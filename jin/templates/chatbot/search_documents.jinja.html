@@ -1,0 +1,174 @@
+{% extends 'base/base.jinja.html' %}
+
+{% block title %}{{ title }} - 자동차 보험 추천 챗봇{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-search text-primary"></i>
+                문서 검색
+            </h2>
+            
+            <!-- 검색 폼 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{% url 'chatbot:search_documents' %}">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label for="q" class="form-label">
+                                        <strong>검색어</strong>
+                                    </label>
+                                    <input type="text" class="form-control" id="q" name="q" 
+                                           value="{{ query }}" placeholder="검색할 내용을 입력하세요...">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="company" class="form-label">
+                                        <strong>보험사</strong>
+                                    </label>
+                                    <select class="form-select" id="company" name="company">
+                                        <option value="">전체 보험사</option>
+                                        {% for company in companies %}
+                                        <option value="{{ company.name }}" 
+                                                {% if selected_company == company.name %}selected{% endif %}>
+                                            {{ company.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                                검색
+                            </button>
+                            <a href="{% url 'chatbot:search_documents' %}" class="btn btn-secondary">
+                                <i class="fas fa-undo"></i>
+                                초기화
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 검색 결과 -->
+            {% if query %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-alt text-success"></i>
+                            검색 결과
+                            {% if results %}
+                                <span class="badge bg-primary ms-2">{{ results|length }}개</span>
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if results %}
+                            <div class="row">
+                                {% for result in results %}
+                                <div class="col-12 mb-3">
+                                    <div class="card border-left-primary">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="card-title text-primary">
+                                                        <i class="fas fa-file-alt"></i>
+                                                        {{ result.metadata.document_title|default:"제목 없음" }}
+                                                    </h6>
+                                                    <p class="card-text">
+                                                        <strong>보험사:</strong> 
+                                                        {{ result.metadata.insurance_company|default:"알 수 없음" }}
+                                                    </p>
+                                                    <p class="card-text">
+                                                        <strong>청크 번호:</strong> 
+                                                        {{ result.metadata.chunk_index|add:1 }}
+                                                    </p>
+                                                    <p class="card-text">
+                                                        <strong>유사도 점수:</strong> 
+                                                        <span class="badge bg-info">
+                                                            {{ result.score|floatformat:3 }}
+                                                        </span>
+                                                    </p>
+                                                    <div class="mt-2">
+                                                        <details>
+                                                            <summary class="text-muted">
+                                                                <i class="fas fa-eye"></i>
+                                                                내용 보기
+                                                            </summary>
+                                                            <div class="mt-2 p-3 bg-light rounded">
+                                                                <p class="mb-0">{{ result.metadata.content|linebreaks }}</p>
+                                                            </div>
+                                                        </details>
+                                                    </div>
+                                                </div>
+                                                <div class="ms-3">
+                                                    <a href="{% url 'chatbot:document_detail' result.metadata.document_id %}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                        문서 보기
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">검색 결과가 없습니다.</h5>
+                                <p class="text-muted">다른 검색어를 시도해보세요.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <!-- 검색 안내 -->
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted">문서 검색</h4>
+                        <p class="text-muted">
+                            업로드된 보험 문서에서 원하는 내용을 검색할 수 있습니다.<br>
+                            검색어를 입력하고 검색 버튼을 클릭하세요.
+                        </p>
+                        <div class="mt-4">
+                            <div class="row justify-content-center">
+                                <div class="col-md-8">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-lightbulb"></i> 검색 팁</h6>
+                                        <ul class="mb-0 text-start">
+                                            <li>구체적인 용어를 사용하면 더 정확한 결과를 얻을 수 있습니다.</li>
+                                            <li>보험사별로 필터링하여 특정 보험사의 문서만 검색할 수 있습니다.</li>
+                                            <li>유사도 점수가 높을수록 검색어와 더 관련성이 높습니다.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- 액션 버튼 -->
+            <div class="mt-4">
+                <a href="{% url 'chatbot:embedding_stats' %}" class="btn btn-info">
+                    <i class="fas fa-chart-line"></i>
+                    Embedding 통계
+                </a>
+                <a href="{% url 'chatbot:document_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-list"></i>
+                    문서 목록
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
