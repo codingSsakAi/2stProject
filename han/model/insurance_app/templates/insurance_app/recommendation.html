@@ -52,28 +52,8 @@
     <p>AI 기반 보험 약관 검색 시스템 | RAG + Pinecone + LLM</p>
   </div>
 
-  <!-- 우측 패널 및 모달 include -->
-{% include "insurance_app/partials/_side_actions.html" %}
-{% include "insurance_app/partials/_chatbot.html" %}
-{% include "insurance_app/partials/_claim_knowledge.html" %}
-{% include "insurance_app/partials/_guide_modal.html" %}
-{% include "insurance_app/partials/_knowhow_modal.html" %}
+  {# 스크립트 로드 — 페이지 끝에서 로드 권장 #}
+<script src="{% static 'insurance_app/js/search.js' %}"></script>
 
-  <!-- Vendor JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-
-
-  <!-- Page JS (기능별 분리) -->
-  <!-- JS -->
-<script src="{% static 'insurance_app/js/chatbot.js' %}"></script>
-<script src="{% static 'insurance_app/js/claim_knowledge.js' %}"></script>
-<script src="{% static 'insurance_app/js/guide.js' %}"></script>
-
-<script>
-  // JSON 경로 주입(위에서 수정)
-  window.KNOWHOW_JSON_URL = "{% static 'json/weekly_articles.json' %}";
-</script>
-<script src="{% static 'insurance_app/js/knowhow.js' %}"></script>
 </body>
 </html>

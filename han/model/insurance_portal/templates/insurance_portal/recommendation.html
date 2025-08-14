@@ -1,0 +1,56 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>보험 상담 포털</title>
+
+    <!-- 공통 스타일 -->
+    <link rel="stylesheet" href="{% static 'insurance_portal/css/portal.css' %}">
+
+    <!-- 각 기능별 스크립트 -->
+    <script src="{% static 'insurance_portal/js/chatbot.js' %}"></script>
+    <script src="{% static 'insurance_portal/js/weekly.js' %}"></script>
+    <script src="{% static 'insurance_portal/js/guide.js' %}"></script>
+    <script src="{% static 'insurance_portal/js/claim_knowledge.js' %}"></script>
+
+    <style>
+        body {
+            font-family: "Noto Sans KR", sans-serif;
+            margin: 0;
+            background: #f8fafc;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+    </style>
+    <link rel="stylesheet" href="{% static 'insurance_portal/css/portal.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h1>보험 상담 포털</h1>
+
+    <!-- 과실 챗봇 -->
+    {% include "insurance_portal/_chatbot.html" %}
+
+    <!-- 보험상식 -->
+    {% include "insurance_portal/_weekly.html" %}
+
+    <!-- 사고 처리 가이드 -->
+    {% include "insurance_portal/_guide.html" %}
+
+    <!-- 보상상식 -->
+    {% include "insurance_portal/_claim_knowledge.html" %}
+</div>
+
+</body>
+</html>

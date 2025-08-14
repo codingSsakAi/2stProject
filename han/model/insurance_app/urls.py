@@ -19,11 +19,4 @@ urlpatterns = [
     path('clause-summary/<int:clause_id>/', views.clause_summary, name='clause_summary'),
     path('company-detail/<str:company_name>/', views.get_company_detail, name='company_detail'),
     path('market-analysis/', views.get_market_analysis, name='market_analysis'),
-
-    # 주간 기사
-    path('weekly/', views.weekly_articles, name='weekly_articles'),
-    path('weekly/partial/', views.weekly_articles_partial, name='weekly_articles_partial'),
-
-    # 챗봇
-    path('api/chatbot/ask/', views.chatbot_ask, name='chatbot_ask'),
 ]

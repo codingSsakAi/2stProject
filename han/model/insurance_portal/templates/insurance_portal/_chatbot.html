@@ -1,0 +1,27 @@
+{% load static %}
+
+<!-- === 과실 챗봇 영역 === -->
+<div id="chatbot-container" class="chatbot-widget">
+    <!-- 헤더 -->
+    <div id="chatbot-header">
+        <span>보험 약관 상담</span>
+        <button id="chatbot-close" style="background:transparent;border:none;color:#fff;">닫기</button>
+    </div>
+
+    <!-- 메시지 표시 영역 -->
+    <div id="chatbot-messages"></div>
+
+    <!-- 입력 영역 -->
+    <div id="chatbot-input">
+        <input id="chatbot-text" type="text" placeholder="과실비율에 대해 질문하세요" />
+        <button id="chatbot-send">전송</button>
+    </div>
+</div>
+
+<!-- 플로팅 버튼 -->
+<div id="chatbot-fab" title="보험 약관 챗봇">
+    <img src="{% static 'insurance_portal/img/bot.png' %}" alt="챗봇" />
+</div>
+
+<!-- 외부 JS 연결 -->
+<script src="{% static 'insurance_portal/js/chatbot.js' %}"></script>
