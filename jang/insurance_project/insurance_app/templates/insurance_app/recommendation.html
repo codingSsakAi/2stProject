@@ -34,8 +34,6 @@
     .input{flex:1;border:2px solid #e0e0e0;border-radius:12px;padding:14px 16px;font-size:1em;outline:none}
     .send-btn{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#3498db,#2980b9);color:#fff}
     .send-btn:disabled{opacity:.6;cursor:not-allowed}
-    .toolbar{display:flex;gap:8px;margin:8px 0 16px}
-    .tool-btn{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
     .examples{background:#e7f1ff;border-radius:12px;padding:16px;margin-top:16px}
     .examples h3{font-size:1.05em;margin-bottom:10px}
     .chip{display:inline-block;background:#fff;border:2px solid #3498db;color:#3498db;padding:8px 12px;margin:6px;border-radius:999px;cursor:pointer;font-weight:600}
@@ -67,15 +65,10 @@
       {% endif %}
 
       <div class="chat-wrap">
-        <div class="chat-title" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>대화</span>
-          <div class="toolbar">
-            <button class="tool-btn" onclick="clearChat()">새 대화</button>
-          </div>
-        </div>
+        <div class="chat-title">대화</div>
         <div id="chatBox" class="chat-box"></div>
         <div class="input-row">
-          <input id="chatInput" class="input" type="text" placeholder="예) 음주운전 사고 시 보상여부? / 무사고 할인 기준은?" onkeypress="if(event.key==='Enter'){sendChat()}">
+          <input id="chatInput" class="input" type="text" placeholder="예) 음주운전 사고 시 보상여부는? / 무사고 할인 기준은?" onkeypress="if(event.key==='Enter'){sendChat()}">
           <button id="chatSend" class="send-btn" onclick="sendChat()">질문하기</button>
         </div>
       </div>
@@ -84,7 +77,8 @@
         <h3>💡 예시 질문</h3>
         <span class="chip" onclick="quickAsk('음주운전으로 사고가 났을 때 보상되나요?')">음주운전 보상 여부</span>
         <span class="chip" onclick="quickAsk('무사고 할인은 어떻게 적용되나요?')">무사고 할인 기준</span>
-        <span class="chip" onclick="quickAsk('면책사항은 어떤 것들이 있나요?')">면책사항</span>
+        <!-- 면책 질문은 의도를 좁혀서 제공(잡음 방지) -->
+        <span class="chip" onclick="quickAsk('면책(자기차량손해)에서 보상 제외 항목은?')">면책(자기차량손해)</span>
         <span class="chip" onclick="quickAsk('가족 특약 혜택은 어떻게 되나요?')">가족 특약</span>
         <span class="chip" onclick="quickAsk('차량 도난 시 보상 기준은?')">도난 보상</span>
       </div>
@@ -136,15 +130,6 @@
       chatBox.scrollTop=chatBox.scrollHeight;
     }
 
-    function clearChat(){
-      chatBox.innerHTML = '';
-      greet();
-    }
-
-    function greet(){
-      appendMsg('assistant','안녕하세요! 궁금한 약관을 질문해 주세요. 예: "음주운전 사고 시 보상 범위?"');
-    }
-
     function quickAsk(q){
       const input=document.getElementById('chatInput');
       input.value=q;
@@ -182,16 +167,15 @@
           const sc = typeof s.score==='number' ? (clamp01(s.score)*100).toFixed(1)+'%' : '';
           const file = s.file || '';
           const page = s.page || '';
-          return `(${i+1}) ${s.company||'?'}${file?` | ${file}`:''}${page?` | p.${page}`:''}${sc?` <span class="meta">(${sc})</span>`:''}`;
+          return `(${i+1}) ${s.company||'?'}${file?` | ${file}`:''}${page?` | p.${page}`:''}${sc?` <span style="color:#8892a6">(${sc})</span>`:''}`;
         }).join('<br/>');
 
         const meta = [];
         if (data.used_model) meta.push(`모델: ${data.used_model}`);
         if (typeof data.total_results === 'number') meta.push(`검색수: ${data.total_results}`);
-        if (data.llm_refine) meta.push(`정제: LLM`);
 
         const html = `
-          <div>${(data.answer||'').replace(/\n/g,'<br/>')}</div>
+          <div>${(data.answer||'').replace(/\n/g,'\n')}</div>
           ${refs? `<div class="meta">근거<br/>${refs}</div>`:''}
           ${meta.length? `<div class="meta">${meta.join(' · ')}</div>`:''}
         `;
@@ -203,9 +187,6 @@
         btn.disabled=false;
       }
     }
-
-    // 최초 인사
-    greet();
   </script>
 </body>
 </html>

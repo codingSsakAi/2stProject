@@ -5,290 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>보험 추천 - 보험 추천 시스템</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .content {
-            padding: 40px;
-        }
-        .form-section {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #e74c3c;
-        }
-        .btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            width: 100%;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(231, 76, 60, 0.3);
-        }
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #e74c3c;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .results {
-            display: none;
-        }
-        .market-summary {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        .quote-card {
-            background: white;
-            border: 2px solid #e0e0e0;
-            border-radius: 15px;
-            padding: 25px;
-            margin: 20px 0;
-            transition: all 0.3s;
-            position: relative;
-        }
-        .quote-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        .quote-card.best {
-            border-color: #27ae60;
-            background: linear-gradient(135deg, #d5f4e6, #ffffff);
-        }
-        .best-badge {
-            position: absolute;
-            top: -10px;
-            right: 20px;
-            background: #27ae60;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-        .company-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .company-name {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        .premium-display {
-            text-align: right;
-        }
-        .annual-premium {
-            font-size: 2em;
-            font-weight: bold;
-            color: #e74c3c;
-        }
-        .monthly-premium {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .quote-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .detail-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-        }
-        .detail-title {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        .coverage-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .coverage-item:last-child {
-            border-bottom: none;
-        }
-        .benefit-tag {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            margin: 2px;
-        }
-        .special-discount {
-            background: #27ae60;
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-weight: bold;
-        }
-        .rating-display {
-            display: flex;
-            gap: 20px;
-            margin-top: 15px;
-        }
-        .rating-item {
-            text-align: center;
-        }
-        .rating-score {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #f39c12;
-        }
-        .user-info-card {
-            background: #e8f4f8;
-            border: 2px solid #3498db;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        .back-link {
-            text-align: center;
-            margin-top: 30px;
-        }
-        .back-link a {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .clause-search-section {
-            background: #e7f1ff;
-            border-radius: 15px;
-            margin: 40px 0 0 0;
-            padding: 30px;
-        }
-        .clause-search-results {
-            margin-top: 20px;
-        }
-        .clause-result-card {
-            background: #f3faff;
-            border: 2px solid #c8e6ff;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 16px;
-        }
-        .clause-company {
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        .clause-title {
-            font-weight: bold;
-            color: #2980b9;
-            margin-bottom: 5px;
-        }
-        .clause-meta {
-            font-size: 0.92em;
-            color: #888;
-        }
-        .nav-bar {
-    margin-top: 18px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
-
-.nav-btn {
-    display: inline-block;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    padding: 8px 18px;
-    border-radius: 30px;
-    font-size: 1em;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background 0.2s, transform 0.2s;
-}
-.nav-btn:hover {
-    background: linear-gradient(135deg, #2980b9, #3498db);
-    transform: translateY(-2px) scale(1.04);
-}
-.logout-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-.logout-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #e74c3c);
-}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px;
+               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px;
+                     box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; padding: 30px; text-align: center; }
+        .content { padding: 40px; }
+        .form-section { background: #f8f9fa; padding: 30px; border-radius: 15px; margin-bottom: 30px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        input:focus, select:focus { outline: none; border-color: #e74c3c; }
+        .btn { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 15px 30px;
+               border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; width: 100%; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(231, 76, 60, 0.3); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .loading { display: none; text-align: center; padding: 40px; }
+        .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #e74c3c;
+                   border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .results { display: none; }
+        .market-summary { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 25px; border-radius: 15px;
+                          margin-bottom: 30px; text-align: center; }
+        .quote-card { background: white; border: 2px solid #e0e0e0; border-radius: 15px; padding: 25px; margin: 20px 0;
+                      transition: all 0.3s; position: relative; }
+        .quote-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .quote-card.best { border-color: #27ae60; background: linear-gradient(135deg, #d5f4e6, #ffffff); }
+        .best-badge { position: absolute; top: -10px; right: 20px; background: #27ae60; color: white;
+                      padding: 8px 15px; border-radius: 20px; font-size: 0.9em; font-weight: bold; }
+        .company-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .company-name { font-size: 1.5em; font-weight: bold; color: #2c3e50; }
+        .premium-display { text-align: right; }
+        .annual-premium { font-size: 2em; font-weight: bold; color: #e74c3c; }
+        .monthly-premium { color: #666; font-size: 0.9em; }
+        .quote-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .detail-section { background: #f8f9fa; padding: 15px; border-radius: 10px; }
+        .detail-title { font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
+        .coverage-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e0e0e0; }
+        .coverage-item:last-child { border-bottom: none; }
+        .benefit-tag { display: inline-block; background: #3498db; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin: 2px; }
+        .special-discount { background: #27ae60; color: white; padding: 10px; border-radius: 8px; margin: 10px 0; font-weight: bold; }
+        .rating-display { display: flex; gap: 20px; margin-top: 15px; }
+        .rating-item { text-align: center; }
+        .rating-score { font-size: 1.2em; font-weight: bold; color: #f39c12; }
+        .user-info-card { background: #e8f4f8; border: 2px solid #3498db; border-radius: 15px; padding: 20px; margin-bottom: 30px; }
+        .back-link { text-align: center; margin-top: 30px; }
+        .back-link a { color: #3498db; text-decoration: none; font-weight: bold; }
+        .clause-search-section { background: #e7f1ff; border-radius: 15px; margin: 40px 0 0 0; padding: 30px; }
+        .clause-search-results { margin-top: 20px; }
+        .clause-result-card { background: #f3faff; border: 2px solid #c8e6ff; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+        .clause-company { font-weight: bold; color: #2c3e50; }
+        .clause-title { font-weight: bold; color: #2980b9; margin-bottom: 5px; }
+        .clause-meta { font-size: 0.92em; color: #888; }
+        .nav-bar { margin-top: 18px; display: flex; gap: 10px; justify-content: center; }
+        .nav-btn { display: inline-block; background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 8px 18px;
+                   border-radius: 30px; font-size: 1em; font-weight: 500; text-decoration: none; transition: background 0.2s, transform 0.2s; }
+        .nav-btn:hover { background: linear-gradient(135deg, #2980b9, #3498db); transform: translateY(-2px) scale(1.04); }
+        .logout-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .logout-btn:hover { background: linear-gradient(135deg, #c0392b, #e74c3c); }
     </style>
 </head>
 <body>
@@ -410,14 +185,13 @@
                 <div class="clause-search-results" id="clauseResults"></div>
             </div>
             <!-- ======================== 약관 검색 추가 끝 ======================= -->
-
-            
         </div>
     </div>
 
     <script>
-        console.log('보험 추천 JS 새로 로딩됨!');
-        // ================== 보험료 견적 기존 코드 ==================
+        console.log('보험 추천 JS 로딩');
+
+        // ================== 보험료 견적 ==================
         document.getElementById('insuranceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const loadingDiv = document.getElementById('loading');
@@ -426,14 +200,13 @@
             loadingDiv.style.display = 'block';
             resultsDiv.style.display = 'none';
             calculateBtn.disabled = true;
+
             const formData = new FormData(this);
             try {
                 const response = await fetch('{% url "recommend_insurance" %}', {
                     method: 'POST',
                     body: formData,
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
+                    headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -449,6 +222,7 @@
                 calculateBtn.disabled = false;
             }
         });
+
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
             if (!data || !data.quotes || data.quotes.length === 0) {
@@ -456,7 +230,15 @@
                 resultsDiv.style.display = 'block';
                 return;
             }
-            // 사용자 정보 카드
+
+            // ✅ 가성비최고 회사를 배열 맨 앞으로 이동
+            if (data.market_analysis && data.market_analysis.best_value) {
+                const best = data.quotes.find(q => q.company === data.market_analysis.best_value);
+                if (best) {
+                    data.quotes = [best, ...data.quotes.filter(q => q.company !== best.company)];
+                }
+            }
+
             let html = '';
             html += `
                 <div class="user-info-card">
@@ -469,7 +251,6 @@
                 </div>
             `;
 
-            // 시장 분석 정보
             if (data.market_analysis) {
                 html += `
                     <div class="market-summary">
@@ -482,11 +263,11 @@
                 `;
             }
 
-            // 각 보험사별 견적
-            data.quotes.forEach((q, idx) => {
+            data.quotes.forEach((q) => {
+                const isBest = data.market_analysis && data.market_analysis.best_value === q.company;
                 html += `
-                <div class="quote-card${(data.market_analysis && data.market_analysis.best_value === q.company) ? ' best' : ''}">
-                    ${(data.market_analysis && data.market_analysis.best_value === q.company) ? '<span class="best-badge">가성비최고</span>' : ''}
+                <div class="quote-card${isBest ? ' best' : ''}">
+                    ${isBest ? '<span class="best-badge">가성비최고</span>' : ''}
                     <div class="company-header">
                         <span class="company-name">${q.company}</span>
                         <div class="premium-display">
@@ -503,7 +284,7 @@
                         <div class="detail-section">
                             <div class="detail-title">자기부담금</div>
                             ${Object.entries(q.deductible).map(([k, v]) =>
-                                `<div class="coverage-item"><span>${k}</span><span>${v.toLocaleString()}원</span></div>`).join('')}
+                                `<div class="coverage-item"><span>${k}</span><span>${Number(v).toLocaleString()}원</span></div>`).join('')}
                         </div>
                         <div class="detail-section">
                             <div class="detail-title">혜택/특전</div>
@@ -526,8 +307,7 @@
             resultsDiv.scrollIntoView({ behavior: 'smooth' });
         }
 
-
-        // ============== Pinecone 약관 검색 추가 코드 ==============
+        // ============== Pinecone 약관 검색 ==============
         document.getElementById('clauseLoading').style.display = 'none';
         document.getElementById('clauseSearchForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -535,33 +315,33 @@
             const company = document.getElementById('clauseCompany').value.trim();
             const loading = document.getElementById('clauseLoading');
             const resultArea = document.getElementById('clauseResults');
-            if (!query) {
-                alert('검색어를 입력해주세요.');
-                return;
-            }
+            if (!query) { alert('검색어를 입력해주세요.'); return; }
             loading.style.display = 'block';
             resultArea.innerHTML = '';
             try {
                 const res = await fetch('/insurance-recommendation/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({query: query, company: company})
+                    body: JSON.stringify({query, company, top_k: 12})
                 });
                 const data = await res.json();
                 loading.style.display = 'none';
-                if (data.success && data.results.length) {
-                    let html = '';
-                    data.results.forEach(item => {
-                        html += `
-                            <div class="clause-result-card">
-                                <div class="clause-company">${item.company} (${item.file}, p.${item.page})</div>
-                                <div class="clause-title">${item.title ? item.title : ''}</div>
-                                <div class="clause-meta">청크 ${item.chunk_idx}</div>
-                                <div style="margin-top: 12px;">${item.chunk || item.text}</div>
-                            </div>
-                        `;
-                    });
-                    resultArea.innerHTML = html;
+
+                if (data.success) {
+                    const refs = (data.references || []).map((s,i) => {
+                        const sc = typeof s.score==='number' ? ` (${(Math.max(0, Math.min(0.999, Number(s.score)||0))*100).toFixed(1)}%)` : '';
+                        const file = s.file ? ` | ${s.file}` : '';
+                        const page = s.page ? ` | p.${s.page}` : '';
+                        return `(${i+1}) ${s.company||'?'}${file}${page}${sc}`;
+                    }).join('<br/>') || '—';
+
+                    resultArea.innerHTML = `
+                        <div class="clause-result-card">
+                            <div class="clause-title">요약 답변</div>
+                            <div style="white-space:pre-wrap">${(data.answer||'').replace(/\n/g,'\n')}</div>
+                            <div class="clause-meta" style="margin-top:10px">근거<br/>${refs}</div>
+                        </div>
+                    `;
                 } else {
                     resultArea.innerHTML = '<div style="padding: 18px;">검색 결과가 없습니다.</div>';
                 }
