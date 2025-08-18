@@ -1,112 +1,359 @@
-{% extends 'base/base.jinja.html' %} {% block title %}홈 - 자동차 보험 추천 챗봇{% endblock %} {% block content %}
-<div class="row">
-  <div class="col-lg-8 mx-auto text-center">
-    <!-- 헤더 섹션 -->
-    <div class="mb-5">
-      <h1 class="display-4 fw-bold text-primary mb-3">
-        <i class="bi bi-car-front"></i>
-        자동차 보험 추천 챗봇
-      </h1>
-      <p class="lead text-muted">AI 기반 맞춤형 자동차 보험 추천과 약관 상담을 받아보세요</p>
-    </div>
+{% extends 'base/base.jinja.html' %}
+{% block title %}홈 - 자동차 보험 추천 챗봇{% endblock %}
 
-    <!-- 주요 기능 소개 -->
-    <div class="row g-4 mb-5">
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center">
-            <div class="mb-3">
-              <i class="bi bi-robot display-4 text-primary"></i>
-            </div>
-            <h5 class="card-title">AI 챗봇 상담</h5>
-            <p class="card-text text-muted">보험 약관에 대한 질문을 자유롭게 물어보세요</p>
+{% block content %}
+<!-- 히어로 섹션 -->
+<div class="hero-section position-relative overflow-hidden">
+  <div class="container">
+    <div class="row align-items-center min-vh-50">
+      <div class="col-lg-6">
+        <div class="hero-content">
+          <h1 class="hero-title display-4 fw-bold mb-4">
+            스마트한 자동차 보험<br>
+            <span class="text-gradient">AI 상담사</span>
+          </h1>
+          <p class="hero-subtitle lead text-muted mb-4">
+            복잡한 보험 약관을 쉽게 이해하고, 개인에게 최적화된 보험을 추천받아보세요.
+            언제든지 궁금한 점을 물어보세요.
+          </p>
+          <div class="hero-actions">
+            {% if user.is_authenticated %}
+            <a href="{% url 'chatbot:chat' %}" class="btn btn-primary btn-lg me-3">
+              상담 시작하기
+            </a>
+            {% else %}
+            <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg me-3">
+              무료로 시작하기
+            </a>
+            <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary btn-lg">
+              로그인
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
-
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center">
-            <div class="mb-3">
-              <i class="bi bi-graph-up display-4 text-success"></i>
+      <div class="col-lg-6">
+        <div class="hero-visual text-center">
+          <div class="chat-illustration">
+            <div class="chat-bubble chat-bubble-1">
+              <span>자동차 보험 추천해주세요</span>
             </div>
-            <h5 class="card-title">맞춤형 추천</h5>
-            <p class="card-text text-muted">개인 상황에 맞는 최적의 보험을 추천해드립니다</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center">
-            <div class="mb-3">
-              <i class="bi bi-shield-check display-4 text-info"></i>
+            <div class="chat-bubble chat-bubble-2">
+              <span>개인 상황에 맞는 최적의 보험을 찾아드릴게요</span>
             </div>
-            <h5 class="card-title">전문 상담</h5>
-            <p class="card-text text-muted">복잡한 보험 약관을 쉽게 이해할 수 있습니다</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 액션 버튼 -->
-    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
-      {% if user.is_authenticated %}
-      <a href="{% url 'chatbot:chat' %}" class="btn btn-primary btn-lg px-4 gap-3">
-        <i class="bi bi-chat-dots"></i>
-        챗봇 상담 시작
-      </a>
-      {% if user.is_staff %}
-      <a href="{% url 'chatbot:document_list' %}" class="btn btn-outline-primary btn-lg px-4">
-        <i class="bi bi-file-earmark-text"></i>
-        문서 관리
-      </a>
-      <a href="{% url 'chatbot:search_documents' %}" class="btn btn-outline-primary btn-lg px-4">
-        <i class="bi bi-search"></i>
-        문서 검색
-      </a>
-      {% endif %} {% else %}
-      <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg px-4 gap-3">
-        <i class="bi bi-person-plus"></i>
-        회원가입
-      </a>
-      <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-lg px-4">
-        <i class="bi bi-box-arrow-in-right"></i>
-        로그인
-      </a>
-      {% endif %}
-    </div>
-
-    <!-- 서비스 특징 -->
-    <div class="mt-5 pt-5 border-top">
-      <h3 class="h4 mb-4">서비스 특징</h3>
-      <div class="row g-3 text-start">
-        <div class="col-md-6">
-          <div class="d-flex align-items-start">
-            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
-            <span>RAG 기반 정확한 약관 정보 제공</span>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="d-flex align-items-start">
-            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
-            <span>개인 맞춤형 보험 추천 알고리즘</span>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="d-flex align-items-start">
-            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
-            <span>실시간 챗봇 상담 서비스</span>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="d-flex align-items-start">
-            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
-            <span>모바일 친화적 반응형 디자인</span>
+            <div class="chat-bubble chat-bubble-3">
+              <span>정말 감사합니다!</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- 주요 기능 섹션 -->
+<section class="features-section py-5">
+  <div class="container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-8 text-center">
+        <h2 class="section-title h2 fw-bold mb-3">왜 AI 상담사를 선택해야 할까요?</h2>
+        <p class="section-subtitle text-muted">24시간 언제든지 이용 가능한 스마트한 보험 상담</p>
+      </div>
+    </div>
+    
+    <div class="row g-4">
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="feature-title h5 fw-bold mb-3">정확한 정보 제공</h3>
+          <p class="feature-description text-muted">
+            RAG 기술로 보험사별 정확한 약관 정보를 제공합니다. 
+            최신 보험 상품 정보로 신뢰할 수 있는 상담을 받으세요.
+          </p>
+        </div>
+      </div>
+      
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3 class="feature-title h5 fw-bold mb-3">맞춤형 추천</h3>
+          <p class="feature-description text-muted">
+            개인의 운전 경력, 차량 정보, 보험 이력을 분석하여 
+            최적의 보험 상품을 추천해드립니다.
+          </p>
+        </div>
+      </div>
+      
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="feature-title h5 fw-bold mb-3">24시간 상담</h3>
+          <p class="feature-description text-muted">
+            언제든지 궁금한 점을 물어보세요. 
+            복잡한 보험 용어도 쉽게 설명해드립니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 통계 섹션 -->
+<section class="stats-section py-5 bg-light">
+  <div class="container">
+    <div class="row g-4 text-center">
+      <div class="col-lg-3 col-md-6">
+        <div class="stat-item">
+          <div class="stat-number h2 fw-bold text-primary mb-2">12개</div>
+          <div class="stat-label text-muted">보험사 정보</div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <div class="stat-item">
+          <div class="stat-number h2 fw-bold text-primary mb-2">24시간</div>
+          <div class="stat-label text-muted">상담 가능</div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <div class="stat-item">
+          <div class="stat-number h2 fw-bold text-primary mb-2">AI</div>
+          <div class="stat-label text-muted">기반 분석</div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <div class="stat-item">
+          <div class="stat-number h2 fw-bold text-primary mb-2">무료</div>
+          <div class="stat-label text-muted">상담 서비스</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA 섹션 -->
+<section id="cta-section" class="cta-section py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <h2 class="cta-title h2 fw-bold mb-4">지금 바로 시작해보세요</h2>
+        <p class="cta-subtitle text-muted mb-4">
+          복잡한 보험 선택, AI가 도와드립니다. 
+          개인 맞춤형 상담으로 최적의 보험을 찾아보세요.
+        </p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'chatbot:chat' %}" class="btn btn-primary btn-lg">
+          상담 시작하기
+        </a>
+        {% else %}
+        <a href="{% url 'chatbot:chat' %}" class="btn btn-primary btn-lg me-3">
+          상담 시작하기
+        </a>
+        <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary btn-lg">
+          로그인
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 관리자 기능 (관리자만 표시) -->
+{% if user.is_authenticated and user.is_staff %}
+<section class="admin-section py-5 border-top">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <h3 class="h4 mb-4">관리자 기능</h3>
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+          <a href="{% url 'chatbot:document_list' %}" class="btn btn-outline-primary">
+            문서 관리
+          </a>
+          <a href="{% url 'chatbot:search_documents' %}" class="btn btn-outline-primary">
+            문서 검색
+          </a>
+          <a href="{% url 'chatbot:embedding_stats' %}" class="btn btn-outline-primary">
+            임베딩 통계
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<style>
+/* 히어로 섹션 스타일 */
+.hero-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  position: relative;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+  opacity: 0.3;
+}
+
+.min-vh-50 {
+  min-height: 50vh;
+}
+
+.text-gradient {
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 채팅 일러스트레이션 */
+.chat-illustration {
+  position: relative;
+  height: 200px;
+}
+
+.chat-bubble {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 12px 16px;
+  border-radius: 18px;
+  max-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  animation: float 3s ease-in-out infinite;
+}
+
+.chat-bubble-1 {
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.chat-bubble-2 {
+  top: 50%;
+  right: 10%;
+  animation-delay: 1s;
+}
+
+.chat-bubble-3 {
+  bottom: 20%;
+  left: 20%;
+  animation-delay: 2s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* 기능 카드 스타일 */
+.feature-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.feature-icon {
+  color: #667eea;
+  margin-bottom: 1.5rem;
+}
+
+.feature-title {
+  color: #2d3748;
+}
+
+/* 통계 섹션 */
+.stats-section {
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+}
+
+.stat-item {
+  padding: 1rem;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+}
+
+/* CTA 섹션 */
+.cta-section {
+  background: #f8f9fa;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .hero-section {
+    text-align: center;
+  }
+  
+  .chat-illustration {
+    height: 150px;
+    margin-top: 2rem;
+  }
+  
+  .chat-bubble {
+    max-width: 150px;
+    font-size: 0.9rem;
+  }
+  
+  .feature-card {
+    padding: 1.5rem;
+  }
+  
+  .min-vh-50 {
+    min-height: 60vh;
+  }
+}
+</style>
+
+<script>
+// CTA 섹션으로 부드럽게 스크롤하는 함수
+function scrollToCTA() {
+  const ctaSection = document.getElementById('cta-section');
+  if (ctaSection) {
+    ctaSection.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'center'
+    });
+  }
+}
+
+// 페이지 로드 시 CTA 섹션으로 스크롤하는 이벤트 리스너 추가
+document.addEventListener('DOMContentLoaded', function() {
+  // URL에 #cta가 있으면 CTA 섹션으로 스크롤
+  if (window.location.hash === '#cta') {
+    setTimeout(scrollToCTA, 100);
+  }
+});
+</script>
 {% endblock %}

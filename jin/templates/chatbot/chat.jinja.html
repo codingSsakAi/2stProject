@@ -5,296 +5,1222 @@
 
 {% block content %}
 {% csrf_token %}
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-12">
-      <h2 class="mb-4">
-        <i class="fas fa-robot text-primary"></i>
-        자동차 보험 상담 챗봇
-      </h2>
-
-      <!-- 챗봇 설명 -->
-      <div class="alert alert-info">
-        <h5>
-          <i class="fas fa-info-circle"></i>
-          챗봇 사용법
-        </h5>
-        <p class="mb-0">
-          자동차 보험에 대한 질문을 입력하시면, 업로드된 보험 문서를 바탕으로 정확한 답변을 제공합니다. 보험 가입, 보장
-          범위, 할인 혜택 등 궁금한 점을 자유롭게 물어보세요.
-        </p>
+<div class="chatbot-container">
+  <!-- 챗봇 헤더 -->
+  <div class="chatbot-header">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="chatbot-title">
+          <h1 class="h3 mb-0">
+            <i class="fas fa-robot text-primary me-2"></i>
+            AI 보험 상담사
+          </h1>
+          {% if current_session %}
+            <small class="text-muted">{{ current_session.title }}</small>
+          {% endif %}
+        </div>
+        <div class="session-controls">
+          <div class="session-controls-grid">
+            <a href="{% url 'home' %}" class="btn btn-outline-success btn-sm">
+              <i class="fas fa-home me-1"></i>
+              홈으로
+            </a>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="startNewSession()">
+              <i class="fas fa-plus me-1"></i>
+              새 대화
+            </button>
+            {% if current_session %}
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="editSessionTitle()">
+                <i class="fas fa-edit me-1"></i>
+                제목 수정
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteCurrentSession()">
+                <i class="fas fa-trash me-1"></i>
+                대화 삭제
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
       </div>
 
-      <!-- 실시간 채팅 인터페이스 -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-comments"></i>
-            실시간 채팅
-          </h5>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- 사이드바 -->
+      <div class="col-lg-4 col-xl-3">
+        <div class="chat-sidebar">
+          <!-- 이전 대화 기록 -->
+          <div class="sidebar-section">
+            <h6 class="sidebar-title">
+              <i class="fas fa-history me-2"></i>
+              이전 대화
+            </h6>
+            <div class="chat-history">
+              {% if chat_sessions %}
+                {% for session in chat_sessions %}
+                  <div class="history-item {% if session.id == current_session.id %}active{% endif %}">
+                    <a href="{% url 'chatbot:chat' %}?session_id={{ session.id }}" class="history-link">
+                      <div class="history-content">
+                        <div class="history-title">{{ session.title|default:"새로운 채팅" }}</div>
+                        <div class="history-meta">
+                          <small class="text-muted">{{ session.created_at|date:"m/d H:i" }}</small>
+                          <small class="text-muted ms-2">{{ session.message_count }}개 메시지</small>
         </div>
-        <div class="card-body">
-          <!-- 채팅 메시지 영역 -->
-          <div id="chat-messages" class="chat-messages-container mb-3">
-            {% if latest_chat_history %}
-              {% for message in latest_chat_history %}
-                <div class="chat-message mb-3 {% if message.is_user %}user-message{% else %}bot-message{% endif %}">
-                  <div class="d-flex {% if message.is_user %}justify-content-end{% endif %}">
-                    <div class="chat-bubble {% if message.is_user %}user-bubble{% else %}bot-bubble{% endif %}">
-                      <div class="message-header mb-2">
-                        <span class="badge {% if message.is_user %}bg-primary{% else %}bg-success{% endif %}">
-                          {% if message.is_user %}
-                            <i class="fas fa-user"></i>
-                            사용자
-                          {% else %}
-                            <i class="fas fa-robot"></i>
-                            챗봇
-                          {% endif %}
-                        </span>
-                        <small class="text-muted ms-2">{{ message.created_at|date:"H:i" }}</small>
                       </div>
+                    </a>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="empty-history">
+                  <p class="text-muted text-center">이전 대화가 없습니다.</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
 
-                      <div class="message-content">{{ message.message|format_chat_message }}</div>
+      <!-- 채팅 메인 영역 -->
+      <div class="col-lg-8 col-xl-9">
+        <div class="chat-main">
+          <!-- 채팅 메시지 영역 -->
+          <div id="chat-messages" class="chat-messages-container">
+            {% if chat_history %}
+              {% for message in chat_history %}
+                <div class="chat-message {% if message.is_user %}user-message{% else %}bot-message{% endif %}">
+                  <div class="message-wrapper {% if message.is_user %}user-wrapper{% else %}bot-wrapper{% endif %}">
+                    <div class="message-avatar">
+                          {% if message.is_user %}
+                        <div class="avatar user-avatar">
+                          <i class="fas fa-user-circle"></i>
+                        </div>
+                          {% else %}
+                        <div class="avatar bot-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                          {% endif %}
+                    </div>
+                    <div class="message-content">
+                      <div class="message-bubble {% if message.is_user %}user-bubble{% else %}bot-bubble{% endif %}">
+                        <div class="message-header">
+                          {% if message.is_user %}
+                            <span class="message-sender">
+                              <i class="fas fa-user me-1"></i>
+                              나
+                        </span>
+                          {% else %}
+                            <span class="message-sender">
+                              <i class="fas fa-robot me-1"></i>
+                              AI 상담사
+                            </span>
+                          {% endif %}
+                      </div>
+                        <div class="message-text">{{ message.message|format_chat_message }}</div>
 
                       {% if not message.is_user and message.metadata %}
-                        <div class="message-metadata mt-2">
-                          <details>
-                            <summary class="text-muted small">
-                              <i class="fas fa-info-circle"></i>
+                          <div class="message-metadata">
+                            <button class="btn btn-link btn-sm p-0 text-muted modern-metadata-btn" type="button" data-bs-toggle="collapse" data-bs-target="#metadata-{{ forloop.counter }}">
+                              <i class="fas fa-info-circle me-1"></i>
                               답변 정보
-                            </summary>
-                            <div class="mt-2 p-2 bg-light rounded">
-                              <small>
-                                <strong>사용된 문서:</strong>
-                                {{ message.metadata.relevant_chunks_count }}개
-                                <br />
-                                <strong>모델:</strong>
-                                {{ message.metadata.model_used }}
-                                <br />
-                                <strong>생성 시간:</strong>
-                                {{ message.metadata.formatted_time|default:"시간 정보 없음" }}
-                              </small>
+                            </button>
+                            <div class="collapse mt-2" id="metadata-{{ forloop.counter }}">
+                              <div class="metadata-content modern-metadata">
+                                <div class="row">
+                                  <div class="col-md-4">
+                                    <div class="metadata-item">
+                                      <i class="fas fa-file-alt text-primary"></i>
+                                      <small class="text-muted">사용된 문서</small>
+                                      <div class="fw-bold">{{ message.metadata.relevant_chunks_count }}개</div>
                             </div>
-                          </details>
+                                  </div>
+                                  <div class="col-md-4">
+                                    <div class="metadata-item">
+                                      <i class="fas fa-brain text-success"></i>
+                                      <small class="text-muted">모델</small>
+                                      <div class="fw-bold">{{ message.metadata.model_used }}</div>
+                                    </div>
+                                  </div>
+                                  <div class="col-md-4">
+                                    <div class="metadata-item">
+                                      <i class="fas fa-clock text-info"></i>
+                                      <small class="text-muted">생성 시간</small>
+                                      <div class="fw-bold">{{ message.metadata.formatted_time|default:"시간 정보 없음" }}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                         </div>
                       {% endif %}
+                      </div>
+                      <div class="message-time">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ message.created_at|date:"H:i" }}
+                      </div>
                     </div>
                   </div>
                 </div>
               {% endfor %}
             {% else %}
-              <div class="text-center py-4">
-                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">채팅을 시작해보세요!</h5>
-                <p class="text-muted">아래 입력창에 질문을 입력하고 첫 번째 대화를 시작하세요.</p>
+              <div class="empty-chat">
+                <div class="empty-chat-content">
+                  <div class="empty-chat-icon">
+                    <i class="fas fa-comments"></i>
+                  </div>
+                  <h4>채팅을 시작해보세요!</h4>
+                  <p>아래 입력창에 질문을 입력하고 첫 번째 대화를 시작하세요.</p>
+                </div>
               </div>
             {% endif %}
           </div>
 
-          <!-- 보험 추천 프로필 입력 말풍선 -->
-          <div id="profile-input-bubble" class="profile-input-bubble" style="display: none;">
-            <div class="card border-primary">
-              <div class="card-header bg-primary text-white">
-                <h6 class="mb-0">
-                  <i class="fas fa-user-edit"></i>
-                  보험 추천 정보 입력
-                </h6>
-              </div>
-              <div class="card-body">
-                <form id="profile-form">
-                  {% csrf_token %}
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label for="birth_date" class="form-label">생년월일 *</label>
-                      <input type="date" class="form-control" id="birth_date" name="birth_date" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                      <label for="gender" class="form-label">성별 *</label>
-                      <select class="form-control" id="gender" name="gender" required>
-                        <option value="">선택하세요</option>
-                        <option value="M">남성</option>
-                        <option value="F">여성</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label for="residence_area" class="form-label">거주 지역 *</label>
-                      <select class="form-control" id="residence_area" name="residence_area" required>
-                        <option value="">선택하세요</option>
-                        <option value="서울">서울</option>
-                        <option value="부산">부산</option>
-                        <option value="대구">대구</option>
-                        <option value="인천">인천</option>
-                        <option value="광주">광주</option>
-                        <option value="대전">대전</option>
-                        <option value="울산">울산</option>
-                        <option value="세종">세종</option>
-                        <option value="기타">기타</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                      <label for="driving_experience" class="form-label">운전 경력 (년) *</label>
-                      <input type="number" class="form-control" id="driving_experience" name="driving_experience" min="0" max="50" required>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label for="car_type" class="form-label">차종 *</label>
-                      <select class="form-control" id="car_type" name="car_type" required>
-                        <option value="">선택하세요</option>
-                        <option value="경차">경차</option>
-                        <option value="소형">소형</option>
-                        <option value="준중형">준중형</option>
-                        <option value="중형">중형</option>
-                        <option value="대형">대형</option>
-                        <option value="SUV">SUV</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                      <label for="annual_mileage" class="form-label">연간 주행거리 (km) *</label>
-                      <input type="number" class="form-control" id="annual_mileage" name="annual_mileage" min="1000" max="100000" required>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label for="accident_history" class="form-label">사고 경력 (횟수) *</label>
-                      <input type="number" class="form-control" id="accident_history" name="accident_history" min="0" max="10" value="0" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                      <label for="coverage_level" class="form-label">보장 수준 *</label>
-                      <select class="form-control" id="coverage_level" name="coverage_level" required>
-                        <option value="">선택하세요</option>
-                        <option value="기본">기본</option>
-                        <option value="표준" selected>표준</option>
-                        <option value="고급">고급</option>
-                        <option value="프리미엄">프리미엄</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="mb-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="additional_coverage_interest" name="additional_coverage_interest">
-                      <label class="form-check-label" for="additional_coverage_interest">
-                        추가 특약에 관심이 있나요?
-                      </label>
-                    </div>
-                  </div>
-                  <div class="d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-secondary" onclick="hideProfileInput()">
-                      <i class="fas fa-times"></i>
-                      취소
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                      <i class="fas fa-check"></i>
-                      정보 저장 및 추천 받기
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
 
-          <!-- 질문 입력 폼 -->
-          <form id="chat-form">
-            {% csrf_token %}
-            <div class="input-group">
+
+          <!-- 메시지 입력 영역 -->
+          <div class="message-input-container">
+            <div class="message-input-wrapper">
+              <div class="input-group modern-input-group">
+                <div class="input-icon-wrapper">
+                  <i class="fas fa-comment-dots input-icon"></i>
               <textarea
-                class="form-control"
-                id="message"
-                name="message"
-                rows="3"
-                placeholder="자동차 보험에 대해 궁금한 점을 입력하세요..."
-                required
+                    id="message-input" 
+                    class="form-control modern-message-input" 
+                    placeholder="💬 보험에 대해 궁금한 점을 물어보세요..."
+                    rows="1"
+                    maxlength="1000"
               ></textarea>
-              <button class="btn btn-primary" type="submit" id="send-button">
+                </div>
+                <button 
+                  id="send-button" 
+                  class="btn modern-send-button" 
+                  type="button"
+                  onclick="sendMessage()"
+                  disabled
+                >
                 <i class="fas fa-paper-plane"></i>
-                전송
+                  <span class="send-text">전송</span>
               </button>
             </div>
-          </form>
-
-          <!-- 자동완성 제안 -->
-          <div class="mt-3">
-            <small class="text-muted">
-              <i class="fas fa-lightbulb"></i>
-              추천 질문:
-            </small>
-            <div class="mt-2">
-              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('자동차보험 추천해주세요')">
-                자동차보험 추천해주세요
-              </button>
-              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('보험금 청구 절차는 어떻게 되나요?')">
-                보험금 청구 절차
-              </button>
-              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('각 보험사의 연락처를 알려주세요')">
-                보험사 연락처
-              </button>
-              <button class="btn btn-outline-secondary btn-sm me-2 mb-2" onclick="setMessage('무보험자동차 사고시 어떻게 하나요?')">
-                무보험자동차 사고
-              </button>
+              <div class="input-features">
+                <div class="feature-item">
+                  <i class="fas fa-shield-alt text-success"></i>
+                  <small class="text-muted">AI가 안전하게 답변합니다</small>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 채팅 세션 목록 -->
-      {% if chat_sessions %}
-        <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0">
-              <i class="fas fa-history"></i>
-              이전 대화 기록
-            </h5>
-          </div>
-          <div class="card-body">
-            <div class="list-group">
-              {% for session in chat_sessions %}
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <h6 class="mb-1">
-                      <a href="{% url 'chatbot:chat_session' session.id %}" class="text-decoration-none">
-                        {{ session.title }}
-                      </a>
-                    </h6>
-                    <small class="text-muted">
-                      <i class="fas fa-clock"></i>
-                      {{ session.updated_at|date:"Y-m-d H:i" }}
-                    </small>
-                  </div>
-                  <div>
-                    <a href="{% url 'chatbot:chat_session' session.id %}" class="btn btn-sm btn-outline-primary">
-                      <i class="fas fa-eye"></i>
-                      보기
-                    </a>
-                    <a href="{% url 'chatbot:chat_delete' session.id %}" class="btn btn-sm btn-outline-danger">
-                      <i class="fas fa-trash"></i>
-                      삭제
-                    </a>
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
+      <!-- 새로운 추천 질문 토글 버튼 -->
+      <button class="new-suggested-questions-toggle" id="new-suggested-questions-toggle">
+        <i class="fas fa-lightbulb"></i>
+        <span class="toggle-text">추천 질문</span>
+      </button>
+
+
+
+      <!-- 새로운 추천 질문 영역 -->
+      <div class="new-suggested-questions" id="new-suggested-questions-container">
+        <div class="suggested-questions-header">
+          <h6>추천 질문</h6>
+          <button class="close-suggestions" id="close-suggestions">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
-      {% else %}
-        <div class="card">
-          <div class="card-body text-center py-5">
-            <i class="fas fa-comments fa-4x text-muted mb-4"></i>
-            <h5 class="text-muted">아직 대화 기록이 없습니다</h5>
-            <p class="text-muted">위의 질문 입력창에 질문을 입력하고 첫 번째 대화를 시작해보세요!</p>
-          </div>
+        <div class="suggested-questions-list" id="new-suggested-questions">
+          <!-- 추천 질문들이 동적으로 추가됩니다 -->
         </div>
-      {% endif %}
+      </div>
     </div>
   </div>
-</div>
+
+  
+
+<style>
+/* 챗봇 컨테이너 */
+.chatbot-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* 챗봇 헤더 */
+.chatbot-header {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  padding: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+  position: sticky;
+  top: 0;
+}
+
+.chatbot-title h1 {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* 세션 컨트롤 그리드 */
+.session-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.session-controls-grid .btn {
+  width: 100%;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  /* 모바일에서 1열 레이아웃으로 변경 */
+  .col-lg-4.col-xl-3 {
+    display: none; /* 사이드바 숨김 */
+  }
+  
+  .col-lg-8.col-xl-9 {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .session-controls-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.25rem;
+  }
+  
+  .session-controls-grid .btn {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.5rem;
+  }
+  
+  /* 모바일에서 채팅 메인 영역 */
+  .chat-main {
+    height: calc(100vh - 120px); /* 모바일 키보드 대응 */
+    margin: 0.25rem;
+    border-radius: 8px;
+  }
+  
+  /* 모바일에서 채팅 메시지 컨테이너 */
+  .chat-messages-container {
+    flex: 1;
+    padding: 1rem;
+    min-height: 300px;
+  }
+  
+  /* 모바일에서 메시지 입력 영역 */
+  .message-input-container {
+    padding: 0.75rem 1rem;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+  }
+  
+  /* 모바일에서 새로운 추천 질문 영역 */
+  .new-suggested-questions {
+    bottom: 100px;
+    padding: 8px 15px;
+    display: none; /* 모바일에서는 기본적으로 숨김 */
+  }
+  
+  .new-suggested-questions-toggle {
+    bottom: 120px;
+    right: 15px;
+    width: auto;
+    min-width: 100px;
+    height: 40px;
+    padding: 0 12px;
+  }
+  
+  .new-suggested-questions-toggle .toggle-text {
+    font-size: 0.8rem;
+  }
+  
+  /* 모바일에서 메시지 버블 최적화 */
+  .message-bubble {
+    padding: 1rem 1.25rem;
+    font-size: 0.95rem;
+  }
+  
+  .message-content {
+    max-width: 85%;
+  }
+  
+  /* 모바일에서 아바타 크기 조정 */
+  .avatar {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+/* 태블릿 반응형 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* 태블릿에서도 1열 레이아웃으로 변경 */
+  .col-lg-4.col-xl-3 {
+    display: none; /* 사이드바 숨김 */
+  }
+  
+  .col-lg-8.col-xl-9 {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .chat-main {
+    height: calc(100vh - 140px);
+    margin: 0.5rem;
+  }
+  
+  .chat-messages-container {
+    flex: 1;
+    min-height: 400px;
+  }
+  
+  /* 태블릿에서 메시지 버블 최적화 */
+  .message-bubble {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .message-content {
+    max-width: 80%;
+  }
+}
+
+
+
+/* 채팅 메인 영역 */
+.chat-main {
+  height: calc(100vh - 259px);
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 12px;
+  margin: 1rem 1rem 1rem 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+/* 채팅 메시지 컨테이너 */
+.chat-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  transition: all 0.3s ease;
+  min-height: 400px; /* 최소 높이 보장 */
+}
+
+/* 메시지 스타일 */
+.chat-message {
+  margin-bottom: 1.5rem;
+}
+
+.message-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.user-wrapper {
+  flex-direction: row-reverse;
+}
+
+.bot-wrapper {
+  flex-direction: row;
+}
+
+/* 아바타 */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.bot-avatar {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+/* 메시지 콘텐츠 */
+.message-content {
+  flex: 1;
+  max-width: 70%;
+}
+
+.user-wrapper .message-content {
+  align-items: flex-end;
+}
+
+.bot-wrapper .message-content {
+  align-items: flex-start;
+}
+
+/* 메시지 헤더 */
+.message-header {
+  margin-bottom: 0.5rem;
+}
+
+.message-sender {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.user-bubble .message-sender {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.bot-bubble .message-sender {
+  color: #667eea;
+}
+
+/* 메시지 버블 */
+.message-bubble {
+  padding: 1.25rem 1.5rem;
+  border-radius: 20px;
+  position: relative;
+  word-wrap: break-word;
+  transition: all 0.3s ease;
+}
+
+.user-bubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.bot-bubble {
+  background: white;
+  color: #2d3748;
+  border: 1px solid #e9ecef;
+  border-bottom-left-radius: 6px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.bot-bubble:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* 메시지 텍스트 */
+.message-text {
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.user-bubble .message-text {
+  color: white;
+}
+
+.bot-bubble .message-text {
+  color: #2d3748;
+}
+
+/* 메시지 시간 */
+.message-time {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+  text-align: right;
+}
+
+.user-wrapper .message-time {
+  text-align: right;
+}
+
+.bot-wrapper .message-time {
+  text-align: left;
+}
+
+/* 메시지 메타데이터 */
+.message-metadata {
+  margin-top: 0.75rem;
+}
+
+.modern-metadata-btn {
+  color: #667eea !important;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.modern-metadata-btn:hover {
+  color: #764ba2 !important;
+  transform: translateY(-1px);
+}
+
+.modern-metadata {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.metadata-item {
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.metadata-item i {
+  font-size: 1.2rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+/* 타이핑 인디케이터 */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  min-height: 24px;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #667eea;
+  animation: typing 1.4s infinite ease-in-out;
+  display: inline-block;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.typing-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* 빈 채팅 */
+.empty-chat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+.empty-chat-content {
+  max-width: 400px;
+}
+
+.empty-chat-icon {
+  font-size: 4rem;
+  color: #dee2e6;
+  margin-bottom: 1rem;
+}
+
+.empty-chat h4 {
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.empty-chat p {
+  color: #adb5bd;
+}
+
+/* 프로필 입력 폼 */
+.profile-input-bubble {
+  padding: 1rem;
+}
+
+.profile-form-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.profile-form-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+}
+
+.profile-form-body {
+  padding: 1.5rem;
+}
+
+/* 메시지 입력 - 하단 고정 */
+.message-input-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 1rem 1.5rem;
+  z-index: 1000;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.message-input-wrapper {
+  max-width: 100%;
+}
+
+.modern-input-group {
+  position: relative;
+  background: white;
+  border-radius: 25px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.modern-input-group:focus-within {
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
+}
+
+.input-icon-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  color: #667eea;
+  font-size: 1.1rem;
+  z-index: 2;
+}
+
+.modern-message-input {
+  border: none;
+  border-radius: 25px;
+  padding: 1rem 1rem 1rem 3rem;
+  resize: none;
+  min-height: 60px;
+  max-height: 120px;
+  font-size: 1rem;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.modern-message-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.modern-message-input::placeholder {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.modern-send-button {
+  border-radius: 0 25px 25px 0;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.modern-send-button:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.modern-send-button:disabled {
+  background: #6c757d;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.send-text {
+  font-size: 0.9rem;
+}
+
+.input-features {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding: 0 0.5rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* 기존 스타일 유지 */
+.message-input {
+  border: none;
+  background: transparent;
+  resize: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+}
+
+.message-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.send-button {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.send-button:not(:disabled):hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 사이드바 */
+.chat-sidebar {
+  height: calc(100vh - 259px);
+  background: white;
+  border-radius: 12px;
+  margin: 1rem 1rem 1rem 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+}
+
+.sidebar-section {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 이전 대화 기록 스타일 */
+.chat-history {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.history-item:hover {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+}
+
+.history-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.history-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.history-title {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.history-meta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.empty-history {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.sidebar-title {
+  color: #2d3748;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* 새로운 추천 질문 - 토글 가능한 하단 영역 */
+.new-suggested-questions {
+  position: fixed;
+  bottom: 120px;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  padding: 15px 20px;
+  z-index: 999;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  transform: translateY(0);
+  opacity: 1;
+  display: none;
+}
+
+.new-suggested-questions.show {
+  display: block;
+}
+
+.new-suggested-questions-toggle {
+  position: fixed;
+  bottom: 140px;
+  right: 20px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  width: auto;
+  min-width: 120px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  transition: all 0.3s ease;
+  padding: 0 15px;
+}
+
+.new-suggested-questions-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+  background: linear-gradient(135deg, #ff5252 0%, #ff7043 100%);
+}
+
+.new-suggested-questions-toggle i {
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+}
+
+.new-suggested-questions-toggle .toggle-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.suggested-questions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.suggested-questions-header h6 {
+  margin: 0;
+  color: #495057;
+  font-weight: 600;
+}
+
+.close-suggestions {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-suggestions:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.suggested-questions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.question-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.question-chip {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.question-chip:hover {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 대화 기록 */
+.history-item {
+  margin-bottom: 0.5rem;
+}
+
+.history-link {
+  display: block;
+  padding: 0.75rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s ease;
+}
+
+.history-link:hover {
+  background: #f8f9fa;
+  text-decoration: none;
+  color: inherit;
+}
+
+.history-item.active .history-link {
+  background: #e3f2fd;
+  border-left: 3px solid #2196f3;
+}
+
+.history-title {
+  font-weight: 500;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.history-meta {
+  font-size: 0.8rem;
+}
+
+  .empty-history {
+    padding: 2rem 0;
+  }
+
+  /* 타이핑 인디케이터 */
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    animation: typing 1.4s infinite ease-in-out;
+  }
+
+  .typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+
+  .typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+
+  @keyframes typing {
+    0%, 80%, 100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* 자동완성 드롭다운 */
+  .auto-complete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 2px;
+  }
+
+  .auto-complete-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+    color: #495057;
+  }
+
+  .auto-complete-item:hover,
+  .auto-complete-item.selected {
+    background-color: #667eea;
+    color: white;
+  }
+
+  .auto-complete-item:last-child {
+    border-bottom: none;
+  }
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* 반응형 디자인 */
+@media (max-width: 991.98px) {
+  .chat-sidebar {
+    display: none;
+  }
+  
+  .chat-main {
+    margin: 0.5rem;
+  }
+  
+  .message-content {
+    max-width: 85%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .chatbot-header {
+    padding: 0.75rem 0;
+  }
+  
+  .chatbot-title h1 {
+    font-size: 1.25rem;
+  }
+  
+  .session-controls {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .session-controls .btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .chat-messages-container {
+    padding: 1rem;
+  }
+  
+  .message-bubble {
+    padding: 0.75rem 1rem;
+  }
+  
+  .message-content {
+    max-width: 90%;
+  }
+}
+</style>
 {% endblock %}
 
 {% block extra_css %}
 <style>
   .chat-messages-container {
-    max-height: 500px;
+    
     overflow-y: auto;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
@@ -358,25 +1284,31 @@
     left: 0;
     right: 0;
     background: white;
-    border: 1px solid #dee2e6;
-    border-top: none;
-    border-radius: 0 0 0.375rem 0.375rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
     max-height: 200px;
     overflow-y: auto;
-    z-index: 1000;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   .auto-complete-item {
-    padding: 8px 12px;
+    padding: 0.75rem 1rem;
     cursor: pointer;
     border-bottom: 1px solid #f8f9fa;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease;
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.4;
   }
 
   .auto-complete-item:hover,
   .auto-complete-item.selected {
-    background-color: #f8f9fa;
+    background-color: #667eea;
+    color: white;
   }
 
   .auto-complete-item:last-child {
@@ -447,335 +1379,570 @@
     font-weight: bold;
   }
 
-  /* 보험 추천 프로필 입력 말풍선 스타일 */
-  .profile-input-bubble {
-    margin-bottom: 20px;
-    animation: slideIn 0.3s ease-out;
-  }
 
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .profile-input-bubble .card {
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.1);
-  }
-
-  .profile-input-bubble .card-header {
-    border-radius: 15px 15px 0 0 !important;
-  }
-
-  .profile-input-bubble .form-control:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-  }
-
-  .profile-input-bubble .btn {
-    border-radius: 8px;
-    font-weight: 500;
-  }
-
-  .profile-input-bubble .btn-primary {
-    background: linear-gradient(45deg, #007bff, #0056b3);
-    border: none;
-  }
-
-  .profile-input-bubble .btn-primary:hover {
-    background: linear-gradient(45deg, #0056b3, #004085);
-  }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // CSRF 토큰을 전역 변수로 설정
-  let csrfToken = '';
-  
-  // CSRF 토큰 초기화 함수
-  function initializeCSRFToken() {
-    // Django의 getCookie 함수
-    function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-          }
-        }
-      }
-      return cookieValue;
-    }
+  document.addEventListener('DOMContentLoaded', function() {
+    // CSRF 토큰 가져오기
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
-    // 먼저 hidden input에서 시도
-    const token = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (token && token.value) {
-      csrfToken = token.value;
-      
-      return;
-    }
-    
-    // 쿠키에서 시도
-    const csrftoken = getCookie('csrftoken');
-    if (csrftoken) {
-      csrfToken = csrftoken;
-      
-      return;
-    }
-    
-    console.warn('CSRF 토큰을 찾을 수 없습니다.');
-  }
-  
-  document.addEventListener('DOMContentLoaded', function () {
-    // CSRF 토큰 초기화
-    initializeCSRFToken();
-    // 마크다운을 HTML로 변환하는 함수
-    function markdownToHtml(text) {
-      if (!text) return '';
-
-      // **텍스트** -> <strong>텍스트</strong>
-      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-      // *텍스트* -> <em>텍스트</em>
-      text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-      // `텍스트` -> <code>텍스트</code>
-      text = text.replace(/`(.*?)`/g, '<code class="markdown-code">$1</code>');
-
-      // 줄바꿈 처리
-      text = text.replace(/\n/g, '<br>');
-
-      return text;
-    }
-
-    // 메시지 설정 함수
-    window.setMessage = function(message) {
-      document.getElementById('message').value = message;
-      document.getElementById('message').focus();
-    };
-
-    // 채팅 폼 제출 처리
-    const chatForm = document.getElementById('chat-form');
-    const messageTextarea = document.getElementById('message');
+    // DOM 요소들
+    const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    
+    // 새로운 추천 질문 시스템
+    const suggestedQuestions = [
+      "자동차보험 필수 가입 항목은 무엇인가요?",
+      "자차보험과 종합보험의 차이점은?",
+      "보험료 할인 조건은 무엇인가요?",
+      "사고 발생 시 보험금 청구 방법은?",
+      "보험 갱신 시 주의사항은?",
+      "블랙박스 할인 혜택은 어떻게 받나요?",
+      "자녀 할인 조건은 무엇인가요?",
+      "초보 운전자 상품 다이렉트 vs 설계사 차이점은?",
+      "자차보험 필요성은 어느 정도인가요?",
+      "대인배상 I/II 차이점은 무엇인가요?",
+      "렌터카 특약은 필요한가요?",
+      "단기운전자 확대 특약이란?",
+      "수리기간 렌터카 특약은?",
+      "자차 미가입 시 리스크는?",
+      "법규 위반의 보험료 영향은?",
+      "주행거리 할인 체감 효과는?",
+      "연령/가족 한정 특약 차이점은?",
+      "갱신 시 유의사항은?",
+      "할증 기준은 어떻게 되나요?",
+      "무사고 최대 할인율은?",
+      "보상 처리 소요 기간은?",
+      "해외 경력 반영 여부는?",
+      "수리비 과다 대응 방법은?",
+      "보상 거절 예방 방법은?",
+      "온라인 변경 가능 항목은?",
+      "긴급출동 무료 조건은?",
+      "과실비율 보상 차이점은?",
+      "친환경 차량 특약이란?",
+      "고객만족/AS 비교는?",
+      "견적 가능 여부는?",
+      "운전자보험 vs 자동차보험 차이점은?",
+      "음주 사고 보상 제한은?"
+    ];
 
-    chatForm.addEventListener('submit', function (e) {
+    // 새로운 추천 질문 토글 함수
+    function toggleNewSuggestedQuestions() {
+      const container = document.getElementById('new-suggested-questions-container');
+      const toggle = document.getElementById('new-suggested-questions-toggle');
+      
+      if (container.classList.contains('show')) {
+        // 닫기
+        container.classList.remove('show');
+        toggle.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)';
+      } else {
+        // 열기
+        container.classList.add('show');
+        toggle.style.background = 'linear-gradient(135deg, #ff5252 0%, #ff7043 100%)';
+        renderNewSuggestedQuestions();
+      }
+    }
+
+    // 새로운 추천 질문 렌더링
+    function renderNewSuggestedQuestions() {
+      const container = document.getElementById('new-suggested-questions');
+      container.innerHTML = '';
+      
+      suggestedQuestions.forEach(question => {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'question-chip';
+        questionDiv.textContent = question;
+        questionDiv.addEventListener('click', () => {
+          selectNewSuggestedQuestion(question);
+        });
+        container.appendChild(questionDiv);
+      });
+    }
+
+    // 새로운 추천 질문 선택
+    function selectNewSuggestedQuestion(question) {
+      // 입력 필드에 질문 설정
+      document.getElementById('message-input').value = question;
+      
+      // 추천 질문 영역 닫기
+      const container = document.getElementById('new-suggested-questions-container');
+      const toggle = document.getElementById('new-suggested-questions-toggle');
+      
+      container.classList.remove('show');
+      toggle.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)';
+      
+      // 메시지 전송
+      sendMessage();
+    }
+
+    // 닫기 버튼 이벤트
+    function closeNewSuggestedQuestions() {
+      const container = document.getElementById('new-suggested-questions-container');
+      const toggle = document.getElementById('new-suggested-questions-toggle');
+      
+      container.classList.remove('show');
+      toggle.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)';
+    }
+
+
+
+    // 자동완성 관련 변수
+    let currentSuggestionIndex = -1;
+    let filteredSuggestions = [];
+
+    // 초기화
+    initializeChat();
+
+    function initializeChat() {
+      // 이벤트 리스너 설정
+      setupEventListeners();
+      
+      // 입력 필드 초기 상태 설정
+      updateSendButtonState();
+    }
+
+
+
+    function setupEventListeners() {
+      // 전송 버튼 클릭
+      if (sendButton) {
+        sendButton.addEventListener('click', sendMessage);
+      }
+
+      // Enter 키 처리
+      if (messageInput) {
+        messageInput.addEventListener('keydown', handleKeyDown);
+        messageInput.addEventListener('input', handleInput);
+        messageInput.addEventListener('focus', handleFocus);
+        messageInput.addEventListener('blur', handleBlur);
+      }
+
+      // 스크롤 이벤트 리스너
+      window.addEventListener('scroll', updateAutoCompletePosition);
+      window.addEventListener('resize', updateAutoCompletePosition);
+
+
+
+      // 새로운 추천 질문 토글 버튼
+      const newToggleButton = document.getElementById('new-suggested-questions-toggle');
+      if (newToggleButton) {
+        newToggleButton.addEventListener('click', toggleNewSuggestedQuestions);
+      }
+
+      // 닫기 버튼
+      const closeButton = document.getElementById('close-suggestions');
+      if (closeButton) {
+        closeButton.addEventListener('click', closeNewSuggestedQuestions);
+      }
+    }
+
+    function handleKeyDown(e) {
+      // Enter 키 처리 - Shift+Enter 비활성화
+      if (e.key === 'Enter') {
       e.preventDefault();
 
-      const userMessage = messageTextarea.value.trim();
-      if (!userMessage) return;
+        // 자동완성에서 선택된 항목이 있으면 선택
+        const autoCompleteDiv = document.getElementById('auto-complete-suggestions');
+        if (autoCompleteDiv) {
+          const items = autoCompleteDiv.querySelectorAll('.auto-complete-item');
+          if (currentSuggestionIndex >= 0 && items[currentSuggestionIndex]) {
+            selectAutoCompleteItem(items[currentSuggestionIndex]);
+            return;
+          }
+        }
+        
+        // 메시지 전송
+        sendMessage();
+        return;
+      }
+      
+      // 자동완성 키보드 네비게이션 처리
+      const autoCompleteDiv = document.getElementById('auto-complete-suggestions');
+      if (autoCompleteDiv) {
+        const items = autoCompleteDiv.querySelectorAll('.auto-complete-item');
+        
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, items.length - 1);
+          updateAutoCompleteSelection(items);
+          return;
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+          updateAutoCompleteSelection(items);
+          return;
+        }
+      }
+    }
+
+    function handleInput() {
+      // 자동 높이 조정
+      const textarea = this;
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+      
+      // 전송 버튼 상태 업데이트
+      updateSendButtonState();
+      
+      // 자동완성 표시
+      showAutoCompleteSuggestions(textarea);
+    }
+
+    function handleFocus() {
+      if (this.value.length >= 1) {
+        showAutoCompleteSuggestions(this);
+      }
+    }
+
+    function handleBlur() {
+      setTimeout(() => {
+        hideAutoCompleteSuggestions();
+      }, 200);
+    }
+
+    function updateSendButtonState() {
+      if (sendButton && messageInput) {
+        const hasText = messageInput.value.trim().length > 0;
+        sendButton.disabled = !hasText;
+        sendButton.style.opacity = hasText ? '1' : '0.6';
+
+      }
+    }
+
+    // 메시지 전송 함수
+    let isSending = false; // 전송 중 상태 플래그
+    
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      
+      if (!message) return;
+      
+      // 중복 전송 방지
+      if (isSending) {
+        return;
+      }
+      
+      // 전송 상태 설정
+      isSending = true;
+      
+      // 전송 버튼 비활성화
+      if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.style.opacity = '0.6';
+      }
+      
+      // 메시지 전송 처리
+      submitMessage(message);
 
       // 입력 필드 초기화
-      messageTextarea.value = '';
-      messageTextarea.style.height = 'auto';
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      updateSendButtonState();
+      hideAutoCompleteSuggestions();
+    }
 
+    // 메시지 제출 함수
+    function submitMessage(message) {
       // 사용자 메시지 추가
-      addUserMessage(userMessage);
+      addMessageToChat(message, true);
 
-      // 로딩 메시지 추가 (사용자 메시지 다음에)
-      setTimeout(() => {
-        addLoadingMessage();
-      }, 100);
+      // 로딩 표시
+      showLoading();
 
-
-
-      // AJAX로 메시지 전송
-      fetch('/chatbot/api/chat/send/', {
+      // 서버에 메시지 전송
+      fetch('{% url "chatbot:api_send_message" %}', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
+          'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({
-          message: userMessage
+          message: message,
+          session_id: '{{ current_session.id|default:"" }}',
+        }),
         })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
       })
-      .then(response => response.json())
-      .then(data => {
-
+      .then((data) => {
+        hideLoading();
+        
         if (data.success) {
-          // 다양한 응답 구조 처리
-          let answer = '';
-          let metadata = {};
-          
-          if (data.bot_message && data.bot_message.message) {
-            answer = data.bot_message.message;
-            metadata = data.bot_message.metadata || {};
-          } else if (data.answer) {
-            answer = data.answer;
-            metadata = data.metadata || {};
-          } else if (data.message) {
-            answer = data.message;
-            metadata = data.metadata || {};
-          } else {
+          // 챗봇 응답 추가 (서버 응답 형식에 맞게 수정)
+          const botMessage = data.bot_message;
+          if (botMessage && botMessage.message) {
+            addMessageToChat(botMessage.message, false, botMessage.metadata || {});
+            
 
-            answer = '응답을 처리할 수 없습니다.';
+        } else {
+            showError('서버에서 응답을 받지 못했습니다.');
           }
           
+          // 세션 정보 업데이트 (필요한 경우)
+          if (data.session_id) {
+            updateSessionInfo(data.session_id, data.session_title);
+          }
           
-          replaceLoadingWithAnswer(answer, metadata);
+          // 보험 추천 요청인 경우 프로필 입력 폼 표시 (추후 구현)
+          // if (data.show_profile_form) {
+          //   showProfileInput();
+          // }
         } else {
-          
-          replaceLoadingWithAnswer('죄송합니다. 오류가 발생했습니다: ' + data.error);
+          showError(data.error || '메시지 전송에 실패했습니다.');
+        }
+        
+        // 전송 상태 재설정
+        isSending = false;
+        
+        // 전송 버튼 재활성화
+        if (sendButton) {
+          sendButton.disabled = false;
+          sendButton.style.opacity = '1';
         }
       })
-      .catch(error => {
-        console.error('Error:', error);
-        replaceLoadingWithAnswer('죄송합니다. 서버와의 통신 중 오류가 발생했습니다.');
+      .catch((error) => {
+        hideLoading();
+        console.error('Fetch error:', error);
+        showError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+        
+        // 전송 상태 재설정
+        isSending = false;
+        
+        // 전송 버튼 재활성화
+        if (sendButton) {
+          sendButton.disabled = false;
+          sendButton.style.opacity = '1';
+        }
       });
-    });
-
-    // 사용자 메시지 추가
-    function addUserMessage(message) {
-      const chatMessages = document.getElementById('chat-messages');
-      const messageDiv = document.createElement('div');
-      messageDiv.className = 'chat-message mb-3 user-message';
-
-      messageDiv.innerHTML = `
-        <div class="d-flex justify-content-end">
-          <div class="chat-bubble user-bubble">
-            <div class="message-header mb-2">
-              <span class="badge bg-primary">
-                <i class="fas fa-user"></i>
-                사용자
-              </span>
-              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
-            </div>
-            <div class="message-content">${message}</div>
-          </div>
-        </div>
-      `;
-
-      chatMessages.appendChild(messageDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // 로딩 메시지 추가
-    function addLoadingMessage() {
-      const chatMessages = document.getElementById('chat-messages');
-      const loadingDiv = document.createElement('div');
-      loadingDiv.id = 'loading-message';
-      loadingDiv.className = 'chat-message mb-3 bot-message';
+    // 메시지를 채팅에 추가하는 함수
+    function addMessageToChat(message, isUser = false, metadata = {}) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `chat-message ${isUser ? 'user-message' : 'bot-message'}`;
 
-      loadingDiv.innerHTML = `
-        <div class="d-flex">
-          <div class="chat-bubble bot-bubble">
-            <div class="message-header mb-2">
-              <span class="badge bg-success">
-                <i class="fas fa-robot"></i>
-                챗봇
-              </span>
-              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
+      if (isUser) {
+      messageDiv.innerHTML = `
+          <div class="message-wrapper user-wrapper">
+            <div class="message-avatar">
+              <div class="avatar user-avatar">
+                <i class="fas fa-user-circle"></i>
+              </div>
             </div>
             <div class="message-content">
-              <div class="d-flex align-items-center">
-                <div class="spinner-border spinner-border-sm me-2" role="status">
-                  <span class="visually-hidden">Loading...</span>
-                </div>
-                답변을 찾고 있습니다...
+              <div class="message-bubble user-bubble">
+                <div class="message-header">
+                  <span class="message-sender">
+                    <i class="fas fa-user me-1"></i>
+                    나
+              </span>
+            </div>
+                <div class="message-text">${escapeHtml(message)}</div>
               </div>
+              <div class="message-time">
+                <i class="fas fa-clock me-1"></i>
+                ${new Date().toLocaleTimeString()}
+              </div>
+          </div>
+        </div>
+      `;
+      } else {
+        const formattedMessage = formatBotMessage(message);
+        messageDiv.innerHTML = `
+          <div class="message-wrapper bot-wrapper">
+            <div class="message-avatar">
+              <div class="avatar bot-avatar">
+                <i class="fas fa-robot"></i>
+              </div>
+            </div>
+            <div class="message-content">
+              <div class="message-bubble bot-bubble">
+                <div class="message-header">
+                  <span class="message-sender">
+                    <i class="fas fa-robot me-1"></i>
+                    AI 상담사
+                  </span>
+                </div>
+                <div class="message-text">${formattedMessage}</div>
+                ${metadata.relevant_chunks_count ? `
+                  <div class="message-metadata">
+                    <button class="btn btn-link btn-sm p-0 text-muted modern-metadata-btn" type="button" data-bs-toggle="collapse" data-bs-target="#metadata-${Date.now()}">
+                      <i class="fas fa-info-circle me-1"></i>
+                      답변 정보
+                    </button>
+                    <div class="collapse mt-2" id="metadata-${Date.now()}">
+                      <div class="metadata-content modern-metadata">
+                        <div class="row">
+                          <div class="col-md-4">
+                            <div class="metadata-item">
+                              <i class="fas fa-file-alt text-primary"></i>
+                              <small class="text-muted">사용된 문서</small>
+                              <div class="fw-bold">${metadata.relevant_chunks_count}개</div>
+              </div>
+                          </div>
+                          <div class="col-md-4">
+                            <div class="metadata-item">
+                              <i class="fas fa-brain text-success"></i>
+                              <small class="text-muted">모델</small>
+                              <div class="fw-bold">${metadata.model_used || 'N/A'}</div>
+                            </div>
+                          </div>
+                          <div class="col-md-4">
+                            <div class="metadata-item">
+                              <i class="fas fa-clock text-info"></i>
+                              <small class="text-muted">생성 시간</small>
+                              <div class="fw-bold">${new Date().toLocaleString()}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+              <div class="message-time">
+                <i class="fas fa-clock me-1"></i>
+                ${new Date().toLocaleTimeString()}
             </div>
           </div>
         </div>
       `;
-
-      chatMessages.appendChild(loadingDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    // 로딩 메시지를 답변으로 교체
-    window.replaceLoadingWithAnswer = function(answer, metadata = {}) {
-      
-      
-      const loadingMessage = document.getElementById('loading-message');
-      if (!loadingMessage) {
-
-        // 로딩 메시지가 없으면 새로운 메시지로 추가
-        addBotMessage(answer, metadata);
-        return;
       }
 
-      const formattedAnswer = markdownToHtml(answer);
-      
-      
-      loadingMessage.innerHTML = `
-        <div class="d-flex">
-          <div class="chat-bubble bot-bubble">
-            <div class="message-header mb-2">
-              <span class="badge bg-success">
+      chatMessages.appendChild(messageDiv);
+      scrollToBottom();
+    }
+
+    // 봇 메시지 포맷팅
+    function formatBotMessage(message) {
+      // 마크다운 스타일 포맷팅
+      return message
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // HTML 이스케이프
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 로딩 표시
+    function showLoading() {
+      const loadingDiv = document.createElement('div');
+      loadingDiv.id = 'loading-message';
+      loadingDiv.className = 'chat-message bot-message';
+      loadingDiv.innerHTML = `
+        <div class="message-wrapper bot-wrapper">
+          <div class="message-avatar">
+            <div class="avatar bot-avatar">
                 <i class="fas fa-robot"></i>
-                챗봇
-              </span>
-              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
             </div>
-            <div class="message-content">${formattedAnswer}</div>
-            ${metadata.relevant_chunks_count ? `
-              <div class="message-metadata mt-2">
-                <details>
-                  <summary class="text-muted small">
-                    <i class="fas fa-info-circle"></i>
-                    답변 정보
-                  </summary>
-                  <div class="mt-2 p-2 bg-light rounded">
-                    <small>
-                      <strong>사용된 문서:</strong>
-                      ${metadata.relevant_chunks_count}개
-                      <br />
-                      <strong>모델:</strong>
-                      ${metadata.model_used || 'N/A'}
-                      <br />
-                      <strong>생성 시간:</strong>
-                      ${metadata.generated_at ? new Date(metadata.generated_at).toLocaleString() : '시간 정보 없음'}
-                      ${metadata.cached ? '<br><strong>캐시:</strong> 빠른 응답' : ''}
-                      ${metadata.contact_info_used ? '<br><strong>정보:</strong> 연락처 정보 서비스' : ''}
-                    </small>
+          </div>
+          <div class="message-content">
+            <div class="message-bubble bot-bubble">
+              <div class="message-header">
+                <span class="message-sender">
+                  <i class="fas fa-robot me-1"></i>
+                  AI 상담사
+              </span>
+            </div>
+              <div class="message-text">
+                <div class="typing-indicator">
+                  <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                   </div>
-                </details>
+                  <div class="typing-text">답변을 준비하고 있습니다...</div>
               </div>
-            ` : ''}
+              </div>
+            </div>
+            <div class="message-time">
+              <i class="fas fa-clock me-1"></i>
+              ${new Date().toLocaleTimeString()}
+            </div>
           </div>
         </div>
       `;
+      chatMessages.appendChild(loadingDiv);
+      scrollToBottom();
+    }
 
-      const chatMessages = document.getElementById('chat-messages');
+    // 로딩 숨기기
+    function hideLoading() {
+      const loadingMessage = document.getElementById('loading-message');
+      if (loadingMessage) {
+        loadingMessage.remove();
+      }
+    }
+
+    // 에러 표시
+    function showError(message) {
+      addMessageToChat(`❌ ${message}`, false);
+    }
+
+    // 스크롤 함수
+    function scrollToBottom() {
+      setTimeout(() => {
       chatMessages.scrollTop = chatMessages.scrollHeight;
-    };
+      }, 100);
+    }
+
+    // 세션 정보 업데이트
+    function updateSessionInfo(sessionId, sessionTitle) {
+      if (sessionTitle) {
+        const titleElement = document.querySelector('.chatbot-title small');
+        if (titleElement) {
+          titleElement.textContent = sessionTitle;
+        }
+      }
+    }
+
+
+
+    // 알림 메시지 표시
+    function showAlert(message, type) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+      alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      
+      document.body.appendChild(alertDiv);
+      
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          alertDiv.remove();
+        }
+      }, 5000);
+    }
+
+
 
     // 자동완성 기능
-    const autoCompleteSuggestions = [
-      '자동차보험 추천해주세요',
-      '보험금 청구 절차는 어떻게 되나요?',
-      '각 보험사의 연락처를 알려주세요',
-      '무보험자동차 사고시 어떻게 하나요?',
-      '보험 해지 절차는 어떻게 되나요?',
-      '자동차보험 할인 혜택은 무엇이 있나요?',
-      '사고 발생시 신고 방법을 알려주세요',
-      '보험료 계산 방법을 알려주세요'
-    ];
-
-    let filteredSuggestions = [];
-    let currentSuggestionIndex = -1;
 
     function showAutoCompleteSuggestions(input) {
-      const value = input.value.toLowerCase();
+      const query = input.value.toLowerCase();
       
-      if (value.length < 2) {
+      if (query.length < 1) {
         hideAutoCompleteSuggestions();
         return;
       }
 
-      filteredSuggestions = autoCompleteSuggestions.filter(suggestion => 
-        suggestion.toLowerCase().includes(value)
+      filteredSuggestions = suggestedQuestions.filter(question =>
+        question.toLowerCase().includes(query)
       );
 
       if (filteredSuggestions.length === 0) {
@@ -783,29 +1950,82 @@
         return;
       }
 
-      // 기존 자동완성 제거
       hideAutoCompleteSuggestions();
 
-      // 새로운 자동완성 생성
       const autoCompleteDiv = document.createElement('div');
       autoCompleteDiv.id = 'auto-complete-suggestions';
       autoCompleteDiv.className = 'auto-complete-dropdown';
+      autoCompleteDiv.style.cssText = `
+        position: fixed;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 99999;
+        max-height: 200px;
+        overflow-y: auto;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        font-family: inherit;
+        font-size: 14px;
+      `;
 
-      filteredSuggestions.forEach((suggestion, index) => {
+      filteredSuggestions.slice(0, 5).forEach((suggestion, index) => {
         const suggestionDiv = document.createElement('div');
         suggestionDiv.className = 'auto-complete-item';
         suggestionDiv.textContent = suggestion;
+        suggestionDiv.style.cssText = `
+          padding: 0.75rem 1rem;
+          cursor: pointer;
+          border-bottom: 1px solid #f8f9fa;
+          transition: background-color 0.2s ease;
+          color: #495057;
+          font-size: 0.9rem;
+          line-height: 1.4;
+        `;
         suggestionDiv.addEventListener('click', () => {
-          messageTextarea.value = suggestion;
+          input.value = suggestion;
           hideAutoCompleteSuggestions();
-          messageTextarea.focus();
+          input.focus();
+          updateSendButtonState();
+        });
+        suggestionDiv.addEventListener('mouseenter', () => {
+          suggestionDiv.style.backgroundColor = '#667eea';
+          suggestionDiv.style.color = 'white';
+        });
+        suggestionDiv.addEventListener('mouseleave', () => {
+          suggestionDiv.style.backgroundColor = '';
+          suggestionDiv.style.color = '#495057';
         });
         autoCompleteDiv.appendChild(suggestionDiv);
       });
 
-      // 자동완성 드롭다운을 입력 필드 아래에 추가
-      const inputGroup = messageTextarea.closest('.input-group');
-      inputGroup.appendChild(autoCompleteDiv);
+      // 자동완성 드롭다운을 body에 직접 추가
+      document.body.appendChild(autoCompleteDiv);
+      
+      // 입력 필드의 위치를 기준으로 드롭다운 위치 계산
+      const inputRect = input.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      
+      // 화면 하단에서는 위로, 중간에서는 아래로 표시
+      const isNearBottom = inputRect.bottom > windowHeight * 0.7;
+      
+      autoCompleteDiv.style.position = 'fixed';
+      if (isNearBottom) {
+        // 하단에서는 입력 필드 위로 표시
+        autoCompleteDiv.style.bottom = (windowHeight - inputRect.top + 5) + 'px';
+        autoCompleteDiv.style.top = 'auto';
+      } else {
+        // 중간에서는 입력 필드 아래로 표시
+        autoCompleteDiv.style.top = (inputRect.bottom + 5) + 'px';
+        autoCompleteDiv.style.bottom = 'auto';
+      }
+      autoCompleteDiv.style.left = inputRect.left + 'px';
+      autoCompleteDiv.style.width = inputRect.width + 'px';
+      autoCompleteDiv.style.zIndex = '99999';
+      
+
     }
 
     function hideAutoCompleteSuggestions() {
@@ -816,58 +2036,35 @@
       currentSuggestionIndex = -1;
     }
 
-    // 입력 필드 이벤트 리스너
-    messageTextarea.addEventListener('input', function () {
-      showAutoCompleteSuggestions(this);
-    });
-
-    messageTextarea.addEventListener('focus', function () {
-      if (this.value.length >= 2) {
-        showAutoCompleteSuggestions(this);
-      }
-    });
-
-    // 자동완성 키보드 네비게이션
-    messageTextarea.addEventListener('keydown', function (e) {
+    // 스크롤 시 자동완성 위치 업데이트
+    function updateAutoCompletePosition() {
       const autoCompleteDiv = document.getElementById('auto-complete-suggestions');
-
-      if (!autoCompleteDiv) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          chatForm.dispatchEvent(new Event('submit'));
-        }
-        return;
-      }
-
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, filteredSuggestions.length - 1);
-          updateAutoCompleteSelection();
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
-          updateAutoCompleteSelection();
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (currentSuggestionIndex >= 0 && filteredSuggestions[currentSuggestionIndex]) {
-            this.value = filteredSuggestions[currentSuggestionIndex];
-            hideAutoCompleteSuggestions();
-            chatForm.dispatchEvent(new Event('submit'));
+      const messageInput = document.getElementById('message-input');
+      
+      if (autoCompleteDiv && messageInput && autoCompleteDiv.style.display !== 'none') {
+        const inputRect = messageInput.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        
+        // 화면 하단에서는 위로, 중간에서는 아래로 표시
+        const isNearBottom = inputRect.bottom > windowHeight * 0.7;
+        
+        if (isNearBottom) {
+          // 하단에서는 입력 필드 위로 표시
+          autoCompleteDiv.style.bottom = (windowHeight - inputRect.top + 5) + 'px';
+          autoCompleteDiv.style.top = 'auto';
           } else {
-            chatForm.dispatchEvent(new Event('submit'));
-          }
-          break;
-        case 'Escape':
-          hideAutoCompleteSuggestions();
-          break;
+          // 중간에서는 입력 필드 아래로 표시
+          autoCompleteDiv.style.top = (inputRect.bottom + 5) + 'px';
+          autoCompleteDiv.style.bottom = 'auto';
+        }
+        autoCompleteDiv.style.left = inputRect.left + 'px';
+        autoCompleteDiv.style.width = inputRect.width + 'px';
       }
-    });
+    }
+    
 
-    function updateAutoCompleteSelection() {
-      const items = document.querySelectorAll('.auto-complete-item');
+    
+    function updateAutoCompleteSelection(items) {
       items.forEach((item, index) => {
         if (index === currentSuggestionIndex) {
           item.classList.add('selected');
@@ -877,79 +2074,17 @@
       });
     }
 
-    // 클릭 시 자동완성 숨기기
-    document.addEventListener('click', function (e) {
-      if (!e.target.closest('.input-group')) {
+    function selectAutoCompleteItem(item) {
+      const messageInput = document.getElementById('message-input');
+      messageInput.value = item.textContent;
         hideAutoCompleteSuggestions();
-      }
-    });
+      messageInput.focus();
+      updateSendButtonState();
+    }
 
-    // 보험 추천 프로필 입력 관련 함수들
-    window.showProfileInput = function() {
-      document.getElementById('profile-input-bubble').style.display = 'block';
-      document.getElementById('profile-input-bubble').scrollIntoView({ behavior: 'smooth' });
-    };
 
-    window.hideProfileInput = function() {
-      document.getElementById('profile-input-bubble').style.display = 'none';
-    };
 
-    // 프로필 폼 제출 처리
-    document.getElementById('profile-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const formData = new FormData(this);
-      const profileData = {};
-      
-      for (let [key, value] of formData.entries()) {
-        if (key === 'additional_coverage_interest') {
-          profileData[key] = value === 'on';
-        } else {
-          profileData[key] = value;
-        }
-      }
-
-      // 프로필 정보 저장 및 보험 추천 요청
-      fetch('/chatbot/api/insurance/profile/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify(profileData)
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // 말풍선 숨기기
-          hideProfileInput();
-          
-          // 보험 추천 결과를 채팅에 추가
-          if (data.recommendation) {
-            const formattedResponse = formatInsuranceRecommendation(data.recommendation);
-            addBotMessage(formattedResponse, {
-              insurance_recommendation_requested: true,
-              session_id: data.recommendation.session_id,
-              recommendation_id: data.recommendation.recommendation_id,
-              quotes_count: data.recommendation.quotes ? data.recommendation.quotes.length : 0,
-              model_used: 'insurance_service',
-              generated_at: new Date().toISOString()
-            });
-          }
-          
-          // 성공 메시지 표시
-          showAlert('프로필 정보가 저장되었습니다. 맞춤형 보험 추천을 제공해드립니다.', 'success');
-        } else {
-          showAlert('프로필 저장 중 오류가 발생했습니다: ' + data.error, 'danger');
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        showAlert('프로필 저장 중 오류가 발생했습니다.', 'danger');
-      });
-    });
-
-    // 보험 추천 결과 포맷팅 함수
+    // 보험 추천 결과 포맷팅
     function formatInsuranceRecommendation(result) {
       const quotes = result.quotes || [];
       if (quotes.length === 0) {
@@ -988,145 +2123,141 @@
       }
 
       response += "💡 **추천 이유**\n";
-      response += result.recommendation_reason || "개인 맞춤형 추천";
-      response += "\n\n더 자세한 정보나 다른 보험사 견적이 필요하시면 말씀해주세요!";
+      response += "   • 귀하의 프로필에 최적화된 상품을 선별했습니다.\n";
+      response += "   • 가격과 보장의 균형을 고려했습니다.\n";
+      response += "   • 고객 만족도가 높은 보험사를 우선 추천했습니다.\n\n";
+      
+      response += "📞 **상담 문의**\n";
+      response += "   더 자세한 상담이 필요하시면 언제든 연락주세요!";
 
       return response;
     }
 
-    // 알림 메시지 표시 함수
-    function showAlert(message, type) {
-      const alertDiv = document.createElement('div');
-      alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-      alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      `;
-      
-      const container = document.querySelector('.container');
-      container.insertBefore(alertDiv, container.firstChild);
-      
-      // 5초 후 자동으로 사라지게 설정
-      setTimeout(() => {
-        if (alertDiv.parentNode) {
-          alertDiv.remove();
-        }
-      }, 5000);
-    }
+    // 전역 함수로 등록
+    window.sendMessage = sendMessage;
 
-    // 봇 메시지 추가 함수 (기존 함수와 통합)
-    function addBotMessage(message, metadata = {}) {
-      const chatMessages = document.getElementById('chat-messages');
-      const messageDiv = document.createElement('div');
-      messageDiv.className = 'chat-message mb-3 bot-message';
-      
-      const formattedMessage = markdownToHtml(message);
-      
-      messageDiv.innerHTML = `
-        <div class="d-flex">
-          <div class="chat-bubble bot-bubble">
-            <div class="message-header mb-2">
-              <span class="badge bg-success">
-                <i class="fas fa-robot"></i>
-                챗봇
-              </span>
-              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
-            </div>
-            <div class="message-content">${formattedMessage}</div>
-            ${metadata.insurance_recommendation_requested ? `
-              <div class="message-metadata mt-2">
-                <span class="badge bg-info">보험 추천</span>
-                ${metadata.quotes_count ? `<span class="badge bg-secondary">${metadata.quotes_count}개 보험사</span>` : ''}
-              </div>
-            ` : ''}
-            ${metadata.relevant_chunks_count ? `
-              <div class="message-metadata mt-2">
-                <details>
-                  <summary class="text-muted small">
-                    <i class="fas fa-info-circle"></i>
-                    답변 정보
-                  </summary>
-                  <div class="mt-2 p-2 bg-light rounded">
-                    <small>
-                      <strong>사용된 문서:</strong>
-                      ${metadata.relevant_chunks_count}개
-                      <br />
-                      <strong>모델:</strong>
-                      ${metadata.model_used || 'N/A'}
-                      <br />
-                      <strong>생성 시간:</strong>
-                      ${metadata.generated_at ? new Date(metadata.generated_at).toLocaleString() : '시간 정보 없음'}
-                      ${metadata.cached ? '<br><strong>캐시:</strong> 빠른 응답' : ''}
-                      ${metadata.contact_info_used ? '<br><strong>정보:</strong> 연락처 정보 서비스' : ''}
-                    </small>
-                  </div>
-                </details>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      `;
-      
-      chatMessages.appendChild(messageDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+    window.hideInsuranceProfileModal = hideInsuranceProfileModal;
+    window.showAlert = showAlert;
+    window.updateSessionInfo = updateSessionInfo;
+    window.scrollToBottom = scrollToBottom;
+    window.showError = showError;
+    window.hideLoading = hideLoading;
+    window.showLoading = showLoading;
+    window.addMessageToChat = addMessageToChat;
 
-    // 챗봇 응답 처리 시 말풍선 표시 로직 추가
-    const originalReplaceLoadingWithAnswer = window.replaceLoadingWithAnswer;
-    window.replaceLoadingWithAnswer = function(answer, metadata = {}) {
-      const loadingMessage = document.getElementById('loading-message');
-      if (!loadingMessage) return;
-
-      // 프로필 입력 말풍선 표시 여부 확인
-      if (metadata && metadata.show_profile_input) {
-        // 프로필 입력 말풍선 표시
-        showProfileInput();
-      }
-
-      const formattedAnswer = markdownToHtml(answer);
-      
-      loadingMessage.innerHTML = `
-        <div class="d-flex">
-          <div class="chat-bubble bot-bubble">
-            <div class="message-header mb-2">
-              <span class="badge bg-success">
-                <i class="fas fa-robot"></i>
-                챗봇
-              </span>
-              <small class="text-muted ms-2">${new Date().toLocaleTimeString()}</small>
-            </div>
-            <div class="message-content">${formattedAnswer}</div>
-            ${metadata.relevant_chunks_count ? `
-              <div class="message-metadata mt-2">
-                <details>
-                  <summary class="text-muted small">
-                    <i class="fas fa-info-circle"></i>
-                    답변 정보
-                  </summary>
-                  <div class="mt-2 p-2 bg-light rounded">
-                    <small>
-                      <strong>사용된 문서:</strong>
-                      ${metadata.relevant_chunks_count}개
-                      <br />
-                      <strong>모델:</strong>
-                      ${metadata.model_used || 'N/A'}
-                      <br />
-                      <strong>생성 시간:</strong>
-                      ${metadata.generated_at ? new Date(metadata.generated_at).toLocaleString() : '시간 정보 없음'}
-                      ${metadata.cached ? '<br><strong>캐시:</strong> 빠른 응답' : ''}
-                      ${metadata.contact_info_used ? '<br><strong>정보:</strong> 연락처 정보 서비스' : ''}
-                    </small>
-                  </div>
-                </details>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      `;
-
-      const chatMessages = document.getElementById('chat-messages');
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    };
   });
+
+  // 모바일/태블릿 키보드 대응
+  function handleMobileKeyboard() {
+    if (window.innerWidth <= 1024) {
+      const chatMain = document.querySelector('.chat-main');
+      const chatMessages = document.querySelector('.chat-messages-container');
+      
+      // 키보드가 올라올 때 높이 조정
+      const adjustHeight = () => {
+        const newHeight = window.innerHeight - 120; // 헤더 + 입력 영역 고려
+        
+        if (chatMain) {
+          chatMain.style.height = `${newHeight}px`;
+        }
+        // chatMessages는 flex: 1로 자동 조정되므로 고정 높이 설정 제거
+      };
+      
+      // 초기 높이 설정
+      adjustHeight();
+      
+      // 화면 크기 변경 시 높이 재조정
+      window.addEventListener('resize', adjustHeight);
+      
+      // 입력 필드 포커스 시 높이 조정
+      const messageInput = document.getElementById('message-input');
+      if (messageInput) {
+        messageInput.addEventListener('focus', adjustHeight);
+        messageInput.addEventListener('blur', adjustHeight);
+      }
+    }
+  }
+  
+  // 페이지 로드 시 모바일 키보드 대응 초기화
+  document.addEventListener('DOMContentLoaded', function() {
+    handleMobileKeyboard();
+  });
+
+  // 세션 관리 함수들 (전역 스코프)
+  function startNewSession() {
+    if (confirm('새로운 대화를 시작하시겠습니까? 현재 대화는 저장됩니다.')) {
+      window.location.href = '{% url "chatbot:chat" %}?new_chat=true';
+    }
+  }
+
+  function editSessionTitle() {
+    const titleElement = document.querySelector('.chatbot-title small');
+    let currentTitle = '새로운 채팅';
+    
+    if (titleElement && titleElement.textContent) {
+      currentTitle = titleElement.textContent.trim();
+    }
+    
+    const newTitle = prompt('대화 제목을 입력하세요:', currentTitle);
+    
+    if (newTitle && newTitle.trim() !== '') {
+      fetch('{% url "chatbot:api_session_title" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+          session_id: '{{ current_session.id|default:"" }}',
+          title: newTitle.trim()
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showAlert('대화 제목이 수정되었습니다.', 'success');
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+        } else {
+          showAlert('제목 수정에 실패했습니다: ' + data.error, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showAlert('제목 수정 중 오류가 발생했습니다.', 'danger');
+      });
+    }
+  }
+
+  function deleteCurrentSession() {
+    if (confirm('현재 대화를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+      fetch('{% url "chatbot:api_session_delete" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+          session_id: '{{ current_session.id|default:"" }}'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showAlert('대화가 삭제되었습니다.', 'success');
+          setTimeout(() => {
+            window.location.href = '{% url "chatbot:chat" %}';
+          }, 1000);
+        } else {
+          showAlert('대화 삭제에 실패했습니다: ' + data.error, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showAlert('대화 삭제 중 오류가 발생했습니다.', 'danger');
+      });
+    }
+  }
 </script>
 {% endblock %}

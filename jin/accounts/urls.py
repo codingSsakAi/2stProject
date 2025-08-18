@@ -11,4 +11,6 @@ urlpatterns = [
     # 프로필 관련
     path("profile/", views.profile_view, name="profile"),
     path("profile/update/", views.profile_update_view, name="profile_update"),
+    # API 관련
+    path("api/statistics/", views.api_statistics_view, name="api_statistics"),
 ]

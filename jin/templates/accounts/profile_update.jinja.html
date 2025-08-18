@@ -55,6 +55,12 @@
                         {% endif %}
                     </div>
                     
+                    <div class="mb-3">
+                        <label for="{{ user_form.username.id_for_label }}" class="form-label">{{ user_form.username.label }}</label>
+                        {{ user_form.username }}
+                        <small class="form-text text-muted">아이디는 변경할 수 없습니다.</small>
+                    </div>
+                    
                     <!-- 보험 추천 관련 정보 -->
                     <h5 class="mb-3 text-primary mt-4">보험 추천 정보</h5>
                     
@@ -167,6 +173,63 @@
                                 </label>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- 비밀번호 변경 -->
+                    <h5 class="mb-3 text-primary mt-4">비밀번호 변경</h5>
+                    
+                    <div class="mb-3">
+                        <label for="{{ password_form.current_password.id_for_label }}" class="form-label">{{ password_form.current_password.label }}</label>
+                        {{ password_form.current_password }}
+                        {% if password_form.current_password.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in password_form.current_password.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% if password_form.non_field_errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in password_form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ password_form.new_password.id_for_label }}" class="form-label">{{ password_form.new_password.label }}</label>
+                            {{ password_form.new_password }}
+                            {% if password_form.new_password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in password_form.new_password.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ password_form.confirm_password.id_for_label }}" class="form-label">{{ password_form.confirm_password.label }}</label>
+                            {{ password_form.confirm_password }}
+                            {% if password_form.confirm_password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in password_form.confirm_password.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>비밀번호 변경 안내:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>현재 비밀번호를 입력하면 새 비밀번호 변경이 가능합니다.</li>
+                            <li>새 비밀번호는 8자 이상이어야 합니다.</li>
+                            <li>비밀번호 변경 후에는 다시 로그인해야 합니다.</li>
+                        </ul>
                     </div>
                     
                     <div class="d-grid gap-2 mt-4">

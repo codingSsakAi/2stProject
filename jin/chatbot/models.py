@@ -1,6 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 import os
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class InsuranceCompany(models.Model):
@@ -138,10 +142,10 @@ class ChatHistory(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="사용자")
     session = models.ForeignKey(
-        ChatSession, 
-        on_delete=models.CASCADE, 
+        ChatSession,
+        on_delete=models.CASCADE,
         verbose_name="채팅 세션",
-        related_name="chat_history"
+        related_name="chat_history",
     )
     message = models.TextField("메시지 내용")
     is_user = models.BooleanField("사용자 메시지 여부", default=True)
@@ -253,3 +257,65 @@ class InsuranceMockData(models.Model):
             premium *= self.accident_rate
 
         return int(premium)
+
+
+class PineconeUsage(models.Model):
+    """Pinecone 사용량 추적 모델"""
+
+    date = models.DateField(auto_now_add=True)
+    read_units = models.IntegerField(default=0, help_text="읽기 단위 사용량")
+    write_units = models.IntegerField(default=0, help_text="쓰기 단위 사용량")
+    storage_gb = models.FloatField(default=0.0, help_text="저장소 사용량 (GB)")
+    total_queries = models.IntegerField(default=0, help_text="총 쿼리 수")
+
+    class Meta:
+        db_table = "pinecone_usage"
+        verbose_name = "Pinecone 사용량"
+        verbose_name_plural = "Pinecone 사용량"
+
+    def __str__(self):
+        return f"{self.date} - RUs: {self.read_units}, WUs: {self.write_units}, Storage: {self.storage_gb:.2f}GB"
+
+    @classmethod
+    def get_today_usage(cls):
+        """오늘 사용량 조회"""
+        today = timezone.now().date()
+        usage, created = cls.objects.get_or_create(
+            date=today,
+            defaults={
+                "read_units": 0,
+                "write_units": 0,
+                "storage_gb": 0.0,
+                "total_queries": 0,
+            },
+        )
+        return usage
+
+    @classmethod
+    def add_read_units(cls, read_units: int):
+        """읽기 단위 추가"""
+        usage = cls.get_today_usage()
+        usage.read_units += read_units
+        usage.total_queries += 1
+        usage.save()
+        logger.info(
+            f"Pinecone 사용량 업데이트: RUs +{read_units}, 총 RUs: {usage.read_units}"
+        )
+
+    @classmethod
+    def add_write_units(cls, write_units: int):
+        """쓰기 단위 추가"""
+        usage = cls.get_today_usage()
+        usage.write_units += write_units
+        usage.save()
+        logger.info(
+            f"Pinecone 사용량 업데이트: WUs +{write_units}, 총 WUs: {usage.write_units}"
+        )
+
+    @classmethod
+    def update_storage(cls, storage_gb: float):
+        """저장소 사용량 업데이트"""
+        usage = cls.get_today_usage()
+        usage.storage_gb = storage_gb
+        usage.save()
+        logger.info(f"Pinecone 저장소 사용량 업데이트: {storage_gb:.2f}GB")

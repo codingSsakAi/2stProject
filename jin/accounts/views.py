@@ -1,13 +1,278 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.forms import AuthenticationForm
+from django import forms
 from django.contrib.auth.models import User
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, UpdateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from .forms import CustomUserCreationForm, UserProfileUpdateForm, UserUpdateForm
+from .forms import CustomUserCreationForm, UserProfileUpdateForm
 from .models import UserProfile
+from chatbot.statistics_service import StatisticsService
+
+
+# 사용자 기본 정보 폼 (User 모델)
+class UserBasicInfoForm(forms.ModelForm):
+    username = forms.CharField(
+        label="아이디",
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
+        required=False,
+    )
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": "form-control"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+        }
+        labels = {
+            "first_name": "이름",
+            "last_name": "성",
+            "email": "이메일",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["username"].initial = self.instance.username
+
+
+# 비밀번호 변경 폼
+class PasswordChangeForm(forms.Form):
+    current_password = forms.CharField(
+        label="현재 비밀번호",
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+        required=False,
+    )
+    new_password = forms.CharField(
+        label="새 비밀번호",
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+        required=False,
+    )
+    confirm_password = forms.CharField(
+        label="새 비밀번호 확인",
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+        required=False,
+    )
+
+    def __init__(self, user=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean(self):
+        cleaned_data = super().clean()
+        current_password = cleaned_data.get("current_password")
+        new_password = cleaned_data.get("new_password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        # 현재 비밀번호가 입력된 경우에만 검증
+        if current_password:
+            if not new_password:
+                raise forms.ValidationError("새 비밀번호를 입력해주세요.")
+            if not confirm_password:
+                raise forms.ValidationError("새 비밀번호 확인을 입력해주세요.")
+            if new_password != confirm_password:
+                raise forms.ValidationError(
+                    "새 비밀번호와 확인 비밀번호가 일치하지 않습니다."
+                )
+            if len(new_password) < 8:
+                raise forms.ValidationError("새 비밀번호는 8자 이상이어야 합니다.")
+
+            # 새 비밀번호가 현재 비밀번호와 같은지 확인
+            if current_password == new_password:
+                raise forms.ValidationError(
+                    "새 비밀번호는 현재 비밀번호와 달라야 합니다."
+                )
+
+        return cleaned_data
+
+
+@login_required
+def profile_view(request):
+    """사용자 프로필 뷰"""
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        # 프로필이 없으면 생성
+        profile = UserProfile.objects.create(user=request.user)
+
+    # 사용자의 최근 추천 내역 조회
+    from chatbot.insurance_service import InsuranceRecommendationService
+
+    insurance_service = InsuranceRecommendationService()
+    recent_recommendations = insurance_service.get_user_recommendation_history(
+        user=request.user, limit=5
+    )
+
+    # 실제 통계 데이터 조회
+    from .models import RecommendationStatistics, InsuranceRecommendation
+    from django.db.models import Count, Avg
+    from datetime import date, timedelta
+
+    # 최근 30일간의 통계 데이터
+    end_date = date.today()
+    start_date = end_date - timedelta(days=30)
+
+    # 연령대별 통계
+    age_group_stats = {}
+    gender_stats = {"M": 0, "F": 0}
+    car_type_stats = {}
+    company_preference_stats = {}
+    coverage_level_stats = {}
+    region_stats = {}
+
+    # 최근 추천 내역에서 통계 계산
+    recent_recommendations_data = InsuranceRecommendation.objects.filter(
+        created_at__date__gte=start_date
+    ).select_related("user__profile")
+
+    for rec in recent_recommendations_data:
+        profile_data = rec.user.profile
+
+        # 연령대별
+        age_group = profile_data.get_age_group()
+        age_group_stats[age_group] = age_group_stats.get(age_group, 0) + 1
+
+        # 성별
+        gender_stats[profile_data.gender] += 1
+
+        # 차종별
+        car_type = profile_data.car_type
+        if car_type:
+            car_type_stats[car_type] = car_type_stats.get(car_type, 0) + 1
+
+        # 지역별
+        region = profile_data.residence_area
+        if region:
+            region_stats[region] = region_stats.get(region, 0) + 1
+
+        # 보장 수준별
+        coverage = profile_data.coverage_level
+        coverage_level_stats[coverage] = coverage_level_stats.get(coverage, 0) + 1
+
+        # 보험사별 선호도 (선택된 경우)
+        if rec.is_selected and rec.selected_company:
+            company_preference_stats[rec.selected_company] = (
+                company_preference_stats.get(rec.selected_company, 0) + 1
+            )
+
+    # 디버깅을 위한 출력
+    print("=== 전달되는 통계 데이터 ===")
+    print(f"연령대별: {age_group_stats}")
+    print(f"성별: {gender_stats}")
+    print(f"차종별: {car_type_stats}")
+    print(f"보험사별: {company_preference_stats}")
+    print(f"보장수준별: {coverage_level_stats}")
+    print(f"지역별: {region_stats}")
+
+    context = {
+        "profile": profile,
+        "recent_recommendations": recent_recommendations,
+        "version": "1.0.0",  # 버전 정보
+        "age_group_stats": age_group_stats,
+        "gender_stats": gender_stats,
+        "car_type_stats": car_type_stats,
+        "company_preference_stats": company_preference_stats,
+        "coverage_level_stats": coverage_level_stats,
+        "region_stats": region_stats,
+    }
+    return render(request, "accounts/profile.jinja.html", context)
+
+
+@login_required
+def profile_update_view(request):
+    """프로필 수정 뷰"""
+    try:
+        profile = request.user.profile
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=request.user)
+
+    if request.method == "POST":
+        profile_form = UserProfileUpdateForm(request.POST, instance=profile)
+        user_form = UserBasicInfoForm(request.POST, instance=request.user)
+        password_form = PasswordChangeForm(user=request.user, data=request.POST)
+
+        # 비밀번호 변경 처리
+        password_changed = False
+        current_password = password_form.data.get("current_password", "")
+        new_password = password_form.data.get("new_password", "")
+        confirm_password = password_form.data.get("confirm_password", "")
+
+        # 비밀번호 변경 시도가 있는 경우에만 처리
+        if current_password or new_password or confirm_password:
+            print(f"DEBUG: 비밀번호 변경 시도 감지")
+            print(f"DEBUG: 현재 비밀번호 입력: {current_password}")
+            print(f"DEBUG: 새 비밀번호 입력: {new_password}")
+            print(f"DEBUG: 확인 비밀번호 입력: {confirm_password}")
+            print(f"DEBUG: 사용자 비밀번호 해시: {request.user.password[:50]}...")
+            print(f"DEBUG: check_password 결과: {request.user.check_password(current_password)}")
+            
+            if not current_password:
+                messages.error(request, "현재 비밀번호를 입력해주세요.")
+            elif not new_password:
+                messages.error(request, "새 비밀번호를 입력해주세요.")
+            elif not confirm_password:
+                messages.error(request, "새 비밀번호 확인을 입력해주세요.")
+            elif len(new_password) < 8:
+                messages.error(request, "새 비밀번호는 8자 이상이어야 합니다.")
+            elif new_password != confirm_password:
+                messages.error(request, "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.")
+            elif not request.user.check_password(current_password):
+                print(f"DEBUG: 현재 비밀번호 확인 실패")
+                print(f"DEBUG: 입력된 비밀번호: {current_password}")
+                print(f"DEBUG: 사용자 ID: {request.user.id}")
+                print(f"DEBUG: 사용자명: {request.user.username}")
+                messages.error(request, "현재 비밀번호가 올바르지 않습니다.")
+            else:
+                try:
+                    # 새 비밀번호 설정
+                    request.user.set_password(new_password)
+                    request.user.save()
+                    print("DEBUG: 비밀번호 변경 완료")
+                    password_changed = True
+                    messages.success(request, "비밀번호가 성공적으로 변경되었습니다.")
+                except Exception as e:
+                    print(f"DEBUG: 비밀번호 변경 오류: {str(e)}")
+                    messages.error(request, f"비밀번호 변경 중 오류가 발생했습니다: {str(e)}")
+
+        # 프로필 정보 저장
+        profile_saved = False
+        if profile_form.is_valid() and user_form.is_valid():
+            # 실제로 변경사항이 있는지 확인
+            profile_has_changes = profile_form.has_changed()
+            user_has_changes = user_form.has_changed()
+            
+            if profile_has_changes or user_has_changes:
+                try:
+                    if profile_has_changes:
+                        profile_form.save()
+                    if user_has_changes:
+                        user_form.save()
+                    profile_saved = True
+                    messages.success(request, "프로필이 성공적으로 업데이트되었습니다.")
+                except Exception as e:
+                    messages.error(request, f"프로필 저장 중 오류가 발생했습니다: {str(e)}")
+            else:
+                messages.info(request, "변경사항이 없습니다.")
+
+        # 성공적으로 처리된 경우 리다이렉트
+        if password_changed or profile_saved:
+            return redirect("accounts:profile")
+    else:
+        profile_form = UserProfileUpdateForm(instance=profile)
+        user_form = UserBasicInfoForm(instance=request.user)
+        password_form = PasswordChangeForm(user=request.user)
+
+    context = {
+        "profile_form": profile_form,
+        "user_form": user_form,
+        "password_form": password_form,
+        "profile": profile,
+    }
+    return render(request, "accounts/profile_update.jinja.html", context)
 
 
 def register_view(request):
@@ -15,47 +280,35 @@ def register_view(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            # 사용자 생성 (프로필도 함께 생성됨)
             user = form.save()
-
             # 자동 로그인
             login(request, user)
             messages.success(request, "회원가입이 완료되었습니다!")
             return redirect("home")
-        else:
-            # 폼 오류 디버깅
-    
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
-            messages.error(
-                request, "회원가입에 실패했습니다. 입력 정보를 확인해주세요."
-            )
     else:
         form = CustomUserCreationForm()
 
-    return render(request, "accounts/register.jinja.html", {"form": form})
+    context = {"form": form}
+    return render(request, "accounts/register.jinja.html", context)
 
 
 def login_view(request):
     """로그인 뷰"""
-    if request.user.is_authenticated:
-        return redirect("home")
-
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        user = authenticate(request, username=username, password=password)
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get("username")
+            password = form.cleaned_data.get("password")
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                messages.success(request, f"{username}님, 환영합니다!")
+                return redirect("home")
+    else:
+        form = AuthenticationForm()
 
-        if user is not None:
-            login(request, user)
-            messages.success(request, f"{user.username}님, 환영합니다!")
-            next_url = request.GET.get("next", "home")
-            return redirect(next_url)
-        else:
-            messages.error(request, "아이디 또는 비밀번호가 올바르지 않습니다.")
-
-    return render(request, "accounts/login.jinja.html")
+    context = {"form": form}
+    return render(request, "accounts/login.jinja.html", context)
 
 
 def logout_view(request):
@@ -66,75 +319,78 @@ def logout_view(request):
 
 
 @login_required
-def profile_view(request):
-    """사용자 프로필 뷰"""
+@require_http_methods(["GET"])
+def api_statistics_view(request):
+    """통계 데이터 API 뷰"""
     try:
-        profile = request.user.profile
-    except UserProfile.DoesNotExist:
-        # 프로필이 없는 경우 생성
-        profile = UserProfile.objects.create(
-            user=request.user, birth_date="2000-01-01", gender="M"  # 기본값  # 기본값
+        from django.db.models import Count, Avg
+        from datetime import date, timedelta
+        from .models import InsuranceRecommendation
+
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+
+        # 실제 통계 데이터 조회
+        recent_recommendations_data = InsuranceRecommendation.objects.filter(
+            created_at__date__gte=start_date
+        ).select_related("user__profile")
+
+        # 연령대별 통계
+        age_group_stats = {}
+        gender_stats = {"M": 0, "F": 0}
+        car_type_stats = {}
+        company_preference_stats = {}
+        coverage_level_stats = {}
+        region_stats = {}
+
+        for rec in recent_recommendations_data:
+            try:
+                profile_data = rec.user.profile
+                age_group = profile_data.get_age_group()
+                age_group_stats[age_group] = age_group_stats.get(age_group, 0) + 1
+                gender_stats[profile_data.gender] += 1
+                car_type = profile_data.car_type
+                if car_type:
+                    car_type_stats[car_type] = car_type_stats.get(car_type, 0) + 1
+                region = profile_data.residence_area
+                if region:
+                    region_stats[region] = region_stats.get(region, 0) + 1
+                coverage = profile_data.coverage_level
+                coverage_level_stats[coverage] = (
+                    coverage_level_stats.get(coverage, 0) + 1
+                )
+                if rec.is_selected and rec.selected_company:
+                    company_preference_stats[rec.selected_company] = (
+                        company_preference_stats.get(rec.selected_company, 0) + 1
+                    )
+            except Exception as e:
+                print(f"Error processing recommendation {rec.id}: {e}")
+                continue
+
+        statistics = {
+            "age_groups": age_group_stats,
+            "genders": gender_stats,
+            "car_types": car_type_stats,
+            "companies": company_preference_stats,
+            "coverage_levels": coverage_level_stats,
+            "regions": region_stats,
+        }
+
+        insights = [
+            {
+                "title": "인기 연령대",
+                "content": f"가장 많은 추천을 받은 연령대는 {max(age_group_stats.items(), key=lambda x: x[1])[0] if age_group_stats else 'N/A'}입니다.",
+            },
+            {
+                "title": "선호 보험사",
+                "content": f"가장 인기 있는 보험사는 {max(company_preference_stats.items(), key=lambda x: x[1])[0] if company_preference_stats else 'N/A'}입니다.",
+            },
+        ]
+
+        return JsonResponse(
+            {"success": True, "statistics": statistics, "insights": insights}
         )
 
-    context = {"profile": profile, "user": request.user, "version": "1.1"}
-    return render(request, "accounts/profile.jinja.html", context)
-
-
-@login_required
-def profile_update_view(request):
-    """프로필 수정 뷰"""
-    try:
-        profile = request.user.profile
-    except UserProfile.DoesNotExist:
-        profile = UserProfile.objects.create(
-            user=request.user, birth_date="2000-01-01", gender="M"
-        )
-
-    if request.method == "POST":
-        user_form = UserUpdateForm(request.POST, instance=request.user)
-        profile_form = UserProfileUpdateForm(request.POST, instance=profile)
-
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            messages.success(request, "프로필이 성공적으로 수정되었습니다.")
-            return redirect("accounts:profile")
-        else:
-            # 폼 오류 디버깅
-    
-            for field, errors in user_form.errors.items():
-                for error in errors:
-                    messages.error(request, f"사용자 정보 - {field}: {error}")
-            for field, errors in profile_form.errors.items():
-                for error in errors:
-                    messages.error(request, f"프로필 정보 - {field}: {error}")
-            messages.error(
-                request, "프로필 수정에 실패했습니다. 입력 정보를 확인해주세요."
-            )
-    else:
-        user_form = UserUpdateForm(instance=request.user)
-        profile_form = UserProfileUpdateForm()  # 빈 폼으로 생성
-
-    context = {"user_form": user_form, "profile_form": profile_form}
-    return render(request, "accounts/profile_update.jinja.html", context)
-
-
-class ProfileUpdateView(LoginRequiredMixin, UpdateView):
-    """프로필 수정 클래스 기반 뷰 (대안)"""
-
-    model = UserProfile
-    form_class = UserProfileUpdateForm
-    template_name = "accounts/profile_update.jinja.html"
-    success_url = reverse_lazy("profile")
-
-    def get_object(self):
-        try:
-            return self.request.user.profile
-        except UserProfile.DoesNotExist:
-            return UserProfile.objects.create(
-                user=self.request.user, birth_date="2000-01-01", gender="M"
-            )
-
-    def form_valid(self, form):
-        messages.success(self.request, "프로필이 성공적으로 수정되었습니다.")
-        return super().form_valid(form)
+    except Exception as e:
+        print(f"API Statistics Error: {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
