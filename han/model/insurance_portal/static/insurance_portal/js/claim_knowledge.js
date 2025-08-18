@@ -1,61 +1,119 @@
-// insurance_portal/static/insurance_portal/js/claim_knowledge.js
-// 기능: 보상상식 모달 열기/닫기 및 목록 데이터 로딩
+// static/insurance_portal/js/claim_knowledge.js
+// 변경 요약:
+// - 데이터 URL 상수화: window.CLAIM_KNOWLEDGE_URL || '/static/insurance_portal/json/merged_cases.jsonl'
+// - 나머지 로직은 동일
 
-document.addEventListener("DOMContentLoaded", function () {
-    // 1) 엘리먼트 캐시
-    const fab = document.getElementById("claim-fab");                    // 플로팅 버튼
-    const modal = document.getElementById("claim-knowledge-modal");      // 모달 루트
-    const closeBtn = document.getElementById("claim-close");             // 닫기 버튼
-    const body = document.getElementById("claimBody");                   // 목록 주입 영역
+const DATA_URL = window.CLAIM_KNOWLEDGE_URL || '/static/insurance_portal/json/merged_cases.jsonl';
 
-    // 2) 렌더 함수
-    function renderItems(items) {
-        if (!Array.isArray(items) || items.length === 0) {
-            body.innerHTML = "<p>데이터가 없습니다.</p>";
-            return;
-        }
-        body.innerHTML = items.map(item => `
-            <div class="claim-item">
-                <h4>${item.title || ""}</h4>
-                <p>${item.description || ""}</p>
-            </div>
-        `).join("");
-    }
+const ckmModal = document.getElementById('claim-knowledge-modal');
+const fabCKM   = document.getElementById('claim-knowledge-fab');
+const backdrop = ckmModal?.querySelector('.ckm-backdrop');
+const closeBtn = ckmModal?.querySelector('.ckm-close');
+const tabs     = ckmModal?.querySelectorAll('.ckm-tab');
+const listEl   = document.getElementById('ckm-list');
+const detailEl = document.getElementById('ckm-detail');
 
-    // 3) 데이터 로드
-    async function loadClaimKnowledge() {
-        body.innerHTML = "<p>불러오는 중...</p>";
-        try {
-            const resp = await fetch("/api/claim-knowledge/list/");
-            if (!resp.ok) throw new Error("API 호출 실패");
-            const data = await resp.json();
-            renderItems(data.items);
-        } catch (err) {
-            body.innerHTML = "<p>서버 오류로 데이터를 불러오지 못했습니다.</p>";
-            console.error(err);
-        }
-    }
+let byCat = {};
 
-    // 4) 열기/닫기
-    fab.addEventListener("click", () => {
-        modal.style.display = "block";
-        loadClaimKnowledge();
+function openCKM(){
+  ckmModal.removeAttribute('hidden');
+  requestAnimationFrame(() => { ckmModal.classList.add('show'); });
+}
+function closeCKM(){
+  ckmModal.classList.remove('show');
+  const dlg = ckmModal.querySelector('.ckm-dialog');
+  const onEnd = (e) => {
+    if (e.target !== dlg) return;
+    ckmModal.setAttribute('hidden', '');
+    dlg.removeEventListener('transitionend', onEnd);
+  };
+  dlg.addEventListener('transitionend', onEnd);
+}
+
+function parseJSONL(text){
+  return text.split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{
+    try { return JSON.parse(line); } catch(e){ return null; }
+  }).filter(Boolean);
+}
+function normalizeCategory(raw){
+  if(!raw) return '';
+  const s = String(raw).trim();
+  if(s.includes('차 vs. 차')) return '차 vs. 차';
+  if(s.includes('차 vs. 사람') || s.includes('차 vs. 보행자')) return '차 vs. 사람';
+  if(s.includes('차 vs. 기타') || s.includes('차 vs. 자전거') || s.includes('차 vs. 이륜')) return '차 vs. 기타';
+  return s;
+}
+function groupByCategory(data){
+  const m = {'차 vs. 차':[], '차 vs. 사람':[], '차 vs. 기타':[]};
+  data.forEach(it=>{
+    const cat = normalizeCategory(it.category);
+    const row = { category: cat||'', num:(it.num||'').trim(), title:(it.title||'').trim(), body:(it.body||'').trim() };
+    if(!m[cat]) m[cat] = [];
+    m[cat].push(row);
+  });
+  for(const k in m){
+    m[k].sort((a,b)=>{
+      const na = parseInt((a.num||'').replace(/\D/g,'')) || 9999;
+      const nb = parseInt((b.num||'').replace(/\D/g,'')) || 9999;
+      if(na !== nb) return na - nb;
+      return (a.title||'').localeCompare(b.title||'', 'ko');
     });
+  }
+  return m;
+}
+function renderList(category){
+  listEl.innerHTML = '';
+  const arr = byCat[category] || [];
+  if(arr.length === 0){
+    listEl.innerHTML = '<div class="ckm-empty">해당 분류의 사례가 없습니다.</div>';
+    detailEl.innerHTML = '<div class="ckm-empty">좌측에서 사례를 선택하세요.</div>';
+    return;
+  }
+  arr.forEach((item, idx)=>{
+    const el = document.createElement('div');
+    el.className = 'ckm-item';
+    el.setAttribute('role','option');
+    el.setAttribute('tabindex','0');
+    el.dataset.index = idx;
+    let displayNum;
+    if(item.num && item.num.trim()){ displayNum = item.num.trim(); }
+    else { displayNum = String(idx+1).padStart(2,'0') + '.'; }
+    el.innerHTML = '<span class="num">' + displayNum + '</span>' +
+                   '<span class="title">' + (item.title || '(제목 없음)') + '</span>';
+    el.addEventListener('click', ()=> renderDetail(category, idx));
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') renderDetail(category, idx); });
+    listEl.appendChild(el);
+  });
+  renderDetail(category, 0);
+}
+function renderDetail(category, index){
+  const arr = byCat[category] || [];
+  const item = arr[index];
+  if(!item){
+    detailEl.innerHTML = '<div class="ckm-empty">좌측에서 사례를 선택하세요.</div>'; return;
+  }
+  const body = (item.body || '').replace(/\n{3,}/g, '\n\n');
+  detailEl.innerHTML = '<div class="d-title">'+(item.title || '(제목 없음)')+'</div>'+
+                       '<div class="d-body">'+body+'</div>';
+}
+function selectTab(btn){
+  tabs.forEach(t => t.setAttribute('aria-selected', t===btn ? 'true' : 'false'));
+  const cat = btn.dataset.cat; renderList(cat);
+}
+fabCKM?.addEventListener('click', openCKM);
+closeBtn?.addEventListener('click', closeCKM);
+backdrop?.addEventListener('click', closeCKM);
+tabs?.forEach(t => t.addEventListener('click', ()=> selectTab(t)));
 
-    closeBtn.addEventListener("click", () => {
-        modal.style.display = "none";
-    });
-
-    // 5) ESC 닫기
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && modal.style.display === "block") {
-            modal.style.display = "none";
-        }
-    });
-
-    // 6) 배경 클릭 닫기
-    modal.addEventListener("click", (e) => {
-        const isBackdrop = e.target.classList.contains("claim-backdrop");
-        if (isBackdrop) modal.style.display = "none";
-    });
-});
+fetch(DATA_URL, {cache:'no-store'})
+  .then(res => { if(!res.ok) throw new Error('데이터 로드 실패'); return res.text(); })
+  .then(text => {
+    const all = parseJSONL(text);
+    byCat = groupByCategory(all);
+    const first = Array.from(tabs).find(b => b.getAttribute('aria-selected') === 'true') || tabs[0];
+    if(first) selectTab(first);
+  })
+  .catch(err => {
+    console.error(err);
+    listEl.innerHTML = '<div class="ckm-empty">데이터를 불러오지 못했습니다.</div>';
+  });

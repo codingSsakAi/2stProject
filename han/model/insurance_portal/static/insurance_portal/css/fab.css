@@ -1,0 +1,129 @@
+/* ===========================
+ * Floating Action Buttons (FAB)
+ * 위치/버튼/아이콘 색상
+ * =========================== */
+.fab-wrap{
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fab-btn{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:none;
+  background:#1f5eff;
+  color:#fff;
+  box-shadow:0 8px 18px rgba(0,0,0,0.15);
+  cursor:pointer;
+}
+.fab-btn.secondary{ background:#0a7d5d; }
+.fab-btn.warn{ background:#b05c00; }
+.fab-btn.dark{ background:#2d2f36; }
+
+/* ========== Side Actions (기존 마크업 호환) ========== */
+.side-actions{
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.side-button{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:none;
+  background:#1f5eff;
+  color:#fff;
+  box-shadow:0 8px 18px rgba(0,0,0,0.15);
+  cursor:pointer;
+}
+
+.side-button .material-symbols-outlined{line-height:1;}
+
+/* 색상 변형 */
+.side-button.btn-knowhow{ background:#0a7d5d; }   /* 보험상식 */
+.side-button.btn-reward { background:#b05c00; }   /* 보상상식 */
+.side-button.btn-chatbot{ background:#2d2f36; }   /* 챗봇 */
+
+
+/* ======================================================
+ * 배치 변경: 챗봇을 우측 중앙, 나머지 3개는 챗봇 위로 쌓기
+ * (HTML은 side-actions/side-button 구조를 그대로 사용)
+ * ====================================================== */
+
+:root{
+  --side-btn-h: 44px;   /* 버튼 높이 (라벨 포함) */
+  --side-gap:   10px;   /* 버튼 사이 간격 */
+  --side-right: 16px;   /* 화면 오른쪽 여백 */
+}
+
+/* 컨테이너의 우하단 고정은 해제(자식들을 개별 위치 고정) */
+.side-actions{
+  position: static !important;
+  right: auto !important;
+  bottom: auto !important;
+  display: block !important;
+}
+
+/* 라벨을 사용하는 버튼 높이/정렬 보정 */
+.side-button{
+  min-height: var(--side-btn-h);
+  white-space: nowrap;          /* 라벨 줄바꿈 방지 */
+}
+
+/* 챗봇: 우측 정중앙 고정 */
+#chatbot-fab{
+  position: fixed !important;
+  right: var(--side-right) !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  z-index: 1050;
+  width:80px;
+  height:60px;
+}
+
+/* 나머지 3개: 챗봇 위로 스택 (위로 갈수록 지표 증가) */
+#weekly-fab, #guide-fab, #claim-knowledge-fab{
+  position: fixed !important;
+  right: var(--side-right) !important;
+  bottom: auto !important;
+  z-index: 1050;
+  width:160px;
+  height:60px;
+}
+
+/* 챗봇 위 1단 */
+#weekly-fab{
+  top: calc(50% - (var(--side-btn-h) + var(--side-gap)) * 2) !important;
+}
+
+/* 챗봇 위 2단 */
+#guide-fab{
+  top: calc(50% - (var(--side-btn-h) + var(--side-gap)) * 3.5) !important;
+}
+
+/* 챗봇 위 3단 (맨 위) */
+#claim-knowledge-fab{
+  top: calc(50% - (var(--side-btn-h) + var(--side-gap)) * 5) !important;
+}
+
+/* 작은 세로 화면에서 버튼 크기/간격 살짝 축소(선택) */
+@media (max-height: 640px){
+  :root{
+    --side-btn-h: 40px;
+    --side-gap:   8px;
+  }
+}

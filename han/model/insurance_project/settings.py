@@ -17,7 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'insurance_app',
     'rest_framework',
-    "insurance_portal",
+    'insurance_portal',
 ]
 
 # 🔑 커스텀 유저 모델 설정 추가

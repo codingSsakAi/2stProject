@@ -1,184 +1,153 @@
-// insurance_portal/static/insurance_portal/js/guide.js
-// 기능: 사고 처리 가이드 모달 UI 제어 및 데이터 로드
+// static/insurance_portal/js/guide.js
+// 변경 요약:
+// - JSON 경로 상수화: window.GUIDE_JSONS(accident/evidence/others) 우선
+// - 기본 경로: '/static/insurance_portal/json/*.json'
+// - 이미지 경로 상수화: window.STATIC_PREFIX || '/static/insurance_portal/'
 
-document.addEventListener("DOMContentLoaded", function () {
-    const fab = document.getElementById("guide-fab");
-    const modal = document.getElementById("guide-modal");
-    const closeBtn = document.getElementById("guide-close");
+const PATH_ACCIDENT = (window.GUIDE_JSONS && window.GUIDE_JSONS.accident) || '/static/insurance_portal/json/accident_flow.json';
+const PATH_EVIDENCE = (window.GUIDE_JSONS && window.GUIDE_JSONS.evidence) || '/static/insurance_portal/json/evidence_collection.json';
+const PATH_VARIANTS = (window.GUIDE_JSONS && window.GUIDE_JSONS.others)   || '/static/insurance_portal/json/other_processes.json';
 
-    const tabs = document.querySelectorAll(".tab-btn");
-    const panels = {
-        basic: document.getElementById("panel-basic"),
-        evidence: document.getElementById("panel-evidence"),
-        various: document.getElementById("panel-various"),
-    };
+async function loadJSON(url){
+  const res = await fetch(url, { cache: 'no-store' });
+  if(!res.ok) throw new Error('fetch error: ' + url + ' (' + res.status + ')');
+  return await res.json();
+}
 
-    // 이미지 파일명 매핑(실제 파일명으로 변경)
-    const baseImg = "/static/insurance_portal/img/";
-    const stepImages = ["01.png","02.png","03.png","04.png","05.png","06.png"];
+const ul = arr => `<ul class="mb-2">${(arr||[]).map(t=>`<li>${t}</li>`).join('')}</ul>`;
+const badge = (txt, cls='bg-secondary') => `<span class="badge ${cls} me-2">${txt}</span>`;
 
-    // 탭 전환 이벤트
-    tabs.forEach(btn => {
-        btn.addEventListener("click", () => {
-            tabs.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            const tab = btn.dataset.tab;
-            Object.keys(panels).forEach(k => {
-                panels[k].classList.toggle("active", k === tab);
-            });
-        });
-    });
+function renderStep(step){
+  return `
+  <div class="border rounded p-3 mb-3">
+    <div class="d-flex align-items-center mb-1">
+      ${badge(step.step || '', 'bg-primary')}
+      <strong>${step.title || ''}</strong>
+    </div>
+    ${step.subtitle ? `<div class="text-muted mb-2">${step.subtitle}</div>` : ''}
+    ${step.details && step.details.length ? ul(step.details) : ''}
+    ${step._extraButtons || ''}${step._extraContent || ''}</div>`;
+}
+function renderSectionTitle(title){ return `<h6 class="mt-4 mb-2">${title}</h6>`; }
 
-    // API 호출
-    async function fetchGuideData() {
-        const resp = await fetch("/api/guide/steps/");
-        if (!resp.ok) throw new Error("API 호출 실패");
-        return await resp.json();
-    }
+function STATIC_IMG(rel){
+  const prefix = window.STATIC_PREFIX || '/static/insurance_portal/';
+  return prefix + rel;
+}
+const STEP_IMG = {
+  '01': STATIC_IMG('img/image1.png'),
+  '02': STATIC_IMG('img/image2.png'),
+  '03': STATIC_IMG('img/image3.png'),
+  '04': STATIC_IMG('img/image4.png'),
+  '05': STATIC_IMG('img/image5.png'),
+  '06': STATIC_IMG('img/image6.png'),
+};
+const getStepImg = n => STEP_IMG[String(n).padStart(2,'0')] || null;
 
-    // 기본 6단계 렌더링
-    function renderBasicSteps(basic) {
-        const grid = document.getElementById("guideGrid");
-        if (!Array.isArray(basic) || basic.length === 0) {
-            grid.innerHTML = "<p>기본 단계 데이터가 없습니다.</p>";
-            return;
-        }
-        grid.innerHTML = basic.map((s, i) => {
-            const num = s.step || String(i + 1).padStart(2, "0");
-            const img = stepImages[i] ? (baseImg + stepImages[i]) : (baseImg + "guide_icon.png");
-            const details = Array.isArray(s.details) ? s.details.map(d => `<li>${d}</li>`).join("") : "";
-            return `
-                <div class="guide-card">
-                    <div class="thumb">
-                        <img src="${img}" alt="사고 처리 ${num}">
-                        <span class="badge">${num}</span>
-                    </div>
-                    <div class="body">
-                        <div class="title">${s.title || ""}</div>
-                        ${s.subtitle ? `<div class="subtitle">${s.subtitle}</div>` : ""}
-                        <div class="desc">${details ? `<ul>${details}</ul>` : ""}</div>
-                    </div>
-                </div>
-            `;
-        }).join("");
-    }
+function renderStepCard(step){
+  const stepNo = step.step || '';
+  const title  = step.title || '';
+  const subtitle = step.subtitle ? `<div class="subtitle">${step.subtitle}</div>` : '';
+  const details  = (step.details && step.details.length) ? ul(step.details) : '';
+  const buttons  = step._extraButtons || '';
+  const extra    = step._extraContent || '';
+  const imgSrc   = getStepImg(stepNo);
+  const imgBlock = imgSrc ? `<div class="thumb"><img src="${imgSrc}" alt="${title}"></div>` : '';
+  return `
+    <div class="guide-card">
+      ${imgBlock}
+      <div class="head"><div class="step-badge">${stepNo}</div><div class="title">${title}</div></div>
+      ${subtitle}${details}${buttons ? `<div class="btn-toggle">${buttons}</div>` : ''}${extra}
+    </div>`;
+}
 
-    // 증거 확보 렌더링
-    function renderEvidence(evidence) {
-        const titleEl = document.getElementById("evidence-title");
-        const listEl = document.getElementById("evidence-list");
-        if (!evidence || !Array.isArray(evidence.items)) {
-            titleEl.textContent = "증거 확보";
-            listEl.innerHTML = "<li>데이터가 없습니다.</li>";
-            return;
-        }
-        titleEl.textContent = evidence.title || "증거 확보";
-        listEl.innerHTML = evidence.items.map(t => `<li>${t}</li>`).join("");
-    }
+function mergeGuide(baseSteps, evidence, variants){
+  const target1 = baseSteps.find(s => (s.title||'').includes('사고현장보존'));
+  if(target1 && evidence?.items?.length){
+    target1.details = (target1.details || []).concat(['[증거확보 체크리스트]']).concat(evidence.items);
+  }
+  const policeStep = baseSteps.find(s => (s.title||'').includes('경찰서'));
+  if(policeStep && variants?.섹션?.length){
+    const policeHtml = variants.섹션.map(sec => `
+      <div class="border rounded p-2 mb-2">
+        <div class="fw-semibold mb-1">${sec.제목}</div>
+        ${(sec.절차||[]).map(p=>`
+          <div class="ms-2">
+            ${badge(p.step,'bg-info')} <strong>${p.title}</strong>
+            ${p.details && p.details.length ? ul(p.details) : ''}
+            ${p["비고"] && p["비고"].length ? `<div class="small text-muted">비고: ${p["비고"].join(', ')}</div>` : ''}
+          </div>`).join('')}
+      </div>`).join('');
+    const areaId = 'police-extra-' + Date.now();
+    policeStep._extraButtons = `<button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#${areaId}">경찰서 절차 상세 열기/닫기</button>`;
+    policeStep._extraContent = `<div id="${areaId}" class="collapse mt-2">${policeHtml}</div>`;
+  }
+  const insurerStep = baseSteps.find(s => (s.title||'').includes('보험사'));
+  if(insurerStep && variants?.보험회사?.절차?.length){
+    const insHtml = (variants.보험회사.절차||[]).map(p=>`
+      <div class="ms-2">
+        ${badge(p.step,'bg-warning')} <strong>${p.title}</strong>
+        ${p.details && p.details.length ? ul(p.details) : ''}
+      </div>`).join('');
+    const areaId = 'ins-extra-' + Date.now();
+    insurerStep._extraButtons = `<button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#${areaId}">보험사 절차 상세 열기/닫기</button>`;
+    insurerStep._extraContent = `<div id="${areaId}" class="collapse mt-2">${insHtml}</div>`;
+  }
+  return baseSteps;
+}
 
-    // 상황별 절차 렌더링
-    function renderVarious(various) {
-        const pills = document.getElementById("various-pills");
-        const body = document.getElementById("various-body");
-        if (!various || !Array.isArray(various.섹션)) {
-            pills.innerHTML = "";
-            body.innerHTML = "<p>상황별 절차 데이터가 없습니다.</p>";
-            return;
-        }
+function appendVictimAndProperty(variants){
+  let html = '';
+  const renderFlowList = (steps) => {
+    return `<div class="flow-list">` + steps.map(s => {
+      const subtitle = s.subtitle ? `<div class="flow-sub">${s.subtitle}</div>` : '';
+      const details  = (s.details && s.details.length) ? `<ul class="mb-2">${s.details.map(t=>`<li>${t}</li>`).join('')}</ul>` : '';
+      return `
+        <div class="flow-card">
+          <div class="flow-head">
+            <div class="flow-badge">${s.step || ''}</div>
+            <div><div class="flow-title">${s.title || ''}</div>${subtitle}</div>
+          </div>${details}${s._extraButtons || ''}${s._extraContent || ''}
+        </div>`;
+    }).join('') + `</div>`;
+  };
+  if(variants?.피해물?.절차?.length){
+    const areaId = 'victim-car-' + Date.now();
+    html += `
+      <div class="flow-section">
+        <h6 class="mb-2">피해물(차량) 처리 흐름</h6>
+        <button class="flow-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${areaId}">내용 열기/닫기</button>
+        <div id="${areaId}" class="collapse">${renderFlowList(variants.피해물.절차)}</div>
+      </div>`;
+  }
+  if(variants?.피해자?.절차?.length){
+    const areaId = 'victim-human-' + Date.now();
+    html += `
+      <div class="flow-section">
+        <h6 class="mb-2">피해자 처리 흐름</h6>
+        <button class="flow-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${areaId}">내용 열기/닫기</button>
+        <div id="${areaId}" class="collapse">${renderFlowList(variants.피해자.절차)}</div>
+      </div>`;
+  }
+  return html;
+}
 
-        const categories = [
-            { key: "경찰서", label: "경찰서" },
-            { key: "보험회사", label: "보험회사" },
-            { key: "피해물", label: "피해물(차량)" },
-            { key: "피해자", label: "피해자" },
-        ];
-
-        pills.innerHTML = categories.map((c, i) =>
-            `<span class="pill ${i === 0 ? 'active' : ''}" data-key="${c.key}">${c.label}</span>`
-        ).join("");
-
-        function renderCategory(key) {
-            if (key === "경찰서") {
-                const sections = various.섹션 || [];
-                body.innerHTML = sections.map(sec => {
-                    const items = (sec.절차 || []).map(it => {
-                        const details = Array.isArray(it.details) ? it.details.map(d => `<li>${d}</li>`).join("") : "";
-                        const note = Array.isArray(it.비고) ? `<div class="note">비고: ${it.비고.join(", ")}</div>` : "";
-                        return `
-                            <div class="flow-item">
-                                <div><span class="step">${it.step || ""}</span>${it.title || ""}</div>
-                                ${details ? `<ul>${details}</ul>` : ""}
-                                ${note}
-                            </div>
-                        `;
-                    }).join("");
-                    return `
-                        <div class="section-block">
-                            <h4>${sec.제목 || ""}</h4>
-                            <div class="flow">${items}</div>
-                        </div>
-                    `;
-                }).join("");
-                return;
-            }
-
-            const pack = various[key];
-            if (!pack || !Array.isArray(pack.절차)) {
-                body.innerHTML = "<p>데이터가 없습니다.</p>";
-                return;
-            }
-            body.innerHTML = `
-                <div class="section-block">
-                    <h4>${key}</h4>
-                    <div class="flow">
-                        ${pack.절차.map(it => {
-                            const details = Array.isArray(it.details) ? it.details.map(d => `<li>${d}</li>`).join("") : "";
-                            return `
-                                <div class="flow-item">
-                                    <div><span class="step">${it.step || ""}</span>${it.title || ""}</div>
-                                    ${details ? `<ul>${details}</ul>` : ""}
-                                </div>
-                            `;
-                        }).join("")}
-                    </div>
-                </div>
-            `;
-        }
-
-        renderCategory("경찰서");
-
-        pills.querySelectorAll(".pill").forEach(p => {
-            p.addEventListener("click", () => {
-                pills.querySelectorAll(".pill").forEach(x => x.classList.remove("active"));
-                p.classList.add("active");
-                renderCategory(p.dataset.key);
-            });
-        });
-    }
-
-    // 모달 열기
-    fab.addEventListener("click", async () => {
-        modal.style.display = "block";
-        try {
-            const data = await fetchGuideData();
-            renderBasicSteps(data.basic);
-            renderEvidence(data.evidence);
-            renderVarious(data.various);
-        } catch (e) {
-            document.getElementById("guideGrid").innerHTML = "<p>데이터를 불러오지 못했습니다.</p>";
-            console.error(e);
-        }
-    });
-
-    // 닫기
-    closeBtn.addEventListener("click", () => {
-        modal.style.display = "none";
-    });
-
-    // ESC 닫기
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && modal.style.display === "block") {
-            modal.style.display = "none";
-        }
-    });
-});
+async function openGuide(){
+  try{
+    const [base, evidence, variants] = await Promise.all([
+      loadJSON(PATH_ACCIDENT), loadJSON(PATH_EVIDENCE), loadJSON(PATH_VARIANTS)
+    ]);
+    const merged = mergeGuide([...base], evidence, variants);
+    const body = document.getElementById('guideBody');
+    let html = '';
+    html += `<div class="alert alert-info py-2 mb-3">기본 사고 처리 순서와 절차 요약입니다.</div>`;
+    html += `<div class="guide-grid">` + merged.map(renderStepCard).join('') + `</div>`;
+    html += appendVictimAndProperty(variants);
+    body.innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('guideModal')); modal.show();
+  }catch(e){
+    document.getElementById('guideBody').innerHTML = `<div class="text-danger">가이드를 불러오지 못했습니다: ${e}</div>`;
+    const modal = new bootstrap.Modal(document.getElementById('guideModal')); modal.show();
+  }
+}
+document.getElementById('guide-fab')?.addEventListener('click', openGuide);

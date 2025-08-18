@@ -1,0 +1,79 @@
+/* ===========================================
+ * Accident Guide Cards & Flows
+ * 카드/배지/이미지/흐름 리스트
+ * =========================================== */
+.guide-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap:16px;
+  padding: 8px 6px 12px;
+}
+.guide-card{
+  background:#fff;
+  border:1px solid #e8ebf0;
+  border-radius:14px;
+  padding:18px 16px;
+  box-shadow:0 8px 18px rgba(0,0,0,0.05);
+}
+.guide-card .head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.guide-card .step-badge{
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#eef3ff;
+  color:#2f5bd3;
+  font-weight:800;
+  border:1px solid #dfe8ff;
+}
+.guide-card .thumb img{
+  max-width:100%;
+  height:auto;
+  border-radius:10px;
+  display:block;
+}
+
+.flow-section{ margin-top:18px; }
+.flow-toggle{
+  border:1px solid #d7dbe3;
+  background:#fff;
+  border-radius:10px;
+  padding:6px 10px;
+}
+.flow-list{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  padding:10px 0;
+}
+.flow-card{
+  border:1px solid #e8ebf0;
+  border-radius:12px;
+  padding:10px;
+  background:#fff;
+}
+.flow-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:6px;
+}
+.flow-badge{
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#eef3ff;
+  color:#2f5bd3;
+  font-weight:800;
+  border:1px solid #dfe8ff;
+}

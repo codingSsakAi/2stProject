@@ -1,0 +1,32 @@
+/* ===========================================
+ * Insurance Know-how
+ * 좌측 리스트/우측 본문 타이포그래피
+ * =========================================== */
+#kh-list .kh-item{
+  display:block;
+  width:100%;
+  text-align:left;
+  padding:10px 12px;
+  border:1px solid #e8ebf0;
+  background:#fff;
+  border-radius:10px;
+  margin-bottom:8px;
+}
+#kh-list .kh-item.active{
+  border-color:#bcd0ff;
+  background:#f3f6ff;
+}
+.kh-item .kh-item-title{ font-weight:600; }
+.kh-item .kh-item-meta{ font-size:12px; color:#666; margin-top:4px; }
+.kh-item .kh-item-meta .cat{ margin-right:6px; }
+
+#kh-detail{
+  min-height:220px;
+}
+.kh-title{ font-weight:700; font-size:16px; margin-bottom:6px; }
+.kh-meta{ font-size:12px; color:#666; margin-bottom:8px; }
+.kh-content{ line-height:1.6; }
+.kh-subtitle{ color:#2d2f36; margin:6px 0; }
+.kh-strongs{ margin:8px 0; padding-left:20px; }
+.kh-strongs li{ font-weight:600; }
+.kh-link{ margin-top:10px; }

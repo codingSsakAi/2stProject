@@ -1,57 +1,174 @@
-// insurance_portal/static/insurance_portal/js/chatbot.js
+// static/insurance_portal/js/chatbot.js
+// 변경 요약:
+// - API 엔드포인트 상수화: window.CHATBOT_ASK_URL || '/api/chatbot/ask/'
+// - 요청 바디 호환: {query, messages} 둘 다 전달(서버 구현 차이 대응)
+// - 응답 포맷 2종 처리: (A) {success, representative_answer/final_answer,...} (B) {matches:[...]}
+// - 최종/대표 답변 출력 시 KNIA 링크 추가. matches만 있는 경우도 근거 테이블과 함께 안내 출력
 
-document.addEventListener("DOMContentLoaded", function () {
-    const fab = document.getElementById("chatbot-fab");
-    const container = document.getElementById("chatbot-container");
-    const closeBtn = document.getElementById("chatbot-close");
-    const sendBtn = document.getElementById("chatbot-send");
-    const input = document.getElementById("chatbot-text");
-    const messages = document.getElementById("chatbot-messages");
+(function(){
+  const ASK_URL = window.CHATBOT_ASK_URL || '/api/chatbot/ask/';
 
-    // 플로팅 버튼 클릭 → 챗봇 열기
-    fab.addEventListener("click", () => {
-        container.style.display = "block";
-    });
+  const fab = document.getElementById('chatbot-fab');
+  const box = document.getElementById('chatbot-container');
+  const closeBtn = document.getElementById('chatbot-close');
+  const messagesEl = document.getElementById('chatbot-messages');
+  const inputEl = document.getElementById('chatbot-text');
+  const sendBtn = document.getElementById('chatbot-send');
+  const headerEl = document.getElementById('chatbot-header');
+  let isDragging = false, offsetX = 0, offsetY = 0;
 
-    // 닫기 버튼 클릭 → 챗봇 닫기
-    closeBtn.addEventListener("click", () => {
-        container.style.display = "none";
-    });
+  function scrollBottom(){ messagesEl.scrollTop = messagesEl.scrollHeight; }
+  function addMsg(role, html){
+    const div = document.createElement('div');
+    div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+    div.innerHTML = html;
+    messagesEl.appendChild(div);
+    scrollBottom();
+  }
 
-    // 메시지 추가 함수
-    function appendMessage(sender, text) {
-        const div = document.createElement("div");
-        div.className = sender;
-        div.textContent = text;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
+  fab?.addEventListener('click', () => { box.style.display = 'flex'; });
+  closeBtn?.addEventListener('click', () => { box.style.display = 'none'; });
+
+  async function ask(){
+    const t = (inputEl?.value || '').trim();
+    if(!t) return;
+    addMsg('user', t);
+    if (inputEl) inputEl.value = '';
+
+    // 로딩 메시지
+    const loading = document.createElement('div');
+    loading.className = 'msg bot';
+    loading.textContent = '답변 생성 중...';
+    messagesEl.appendChild(loading); scrollBottom();
+
+    try{
+      const resp = await fetch(ASK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // 서버가 CSRF 필요 없으면 무시됨. 필요하면 쿠키에서 읽어 전달.
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        // 서버 구현 호환용: query와 messages 동시 제공
+        body: JSON.stringify({
+          query: t,
+          messages: [{ role: 'user', content: t }]
+        })
+      });
+
+      const data = await resp.json();
+      // 로딩 제거
+      try { messagesEl.removeChild(loading); } catch(_){}
+
+      // (A) 기존 포맷: success / representative_answer / final_answer ...
+      if (typeof data.success !== 'undefined') {
+        if(!resp.ok || !data.success){
+          addMsg('bot', '오류: ' + (data.error || '처리 중 문제가 발생했습니다.'));
+          return;
+        }
+        if (data.representative_answer) {
+          addMsg('bot', data.representative_answer);
+          addMsg('bot',
+            '<div class="knia-tip">정확한 최종 과실비율은 상황·증거에 따라 달라질 수 있습니다. ' +
+            '<a href="https://accident.knia.or.kr/myaccident1" target="_blank" rel="noopener">손보협회 과실비율 확인</a>에서 기준을 확인하세요.</div>'
+          );
+        } else if (data.final_answer) {
+          addMsg('bot', data.final_answer);
+          addMsg('bot',
+            '<div class="knia-tip">정확한 최종 과실비율은 상황·증거에 따라 달라질 수 있습니다. ' +
+            '<a href="https://accident.knia.or.kr/myaccident1" target="_blank" rel="noopener">손보협회 과실비율 확인</a>에서 기준을 확인하세요.</div>'
+          );
+        } else {
+          addMsg('bot', '답변을 생성하지 못했습니다.');
+        }
+
+        if(Array.isArray(data.clarifying_questions) && data.clarifying_questions.length){
+          const qs = data.clarifying_questions.map(q => `• ${q}`).join('<br>');
+          addMsg('bot', qs);
+        }
+        if(Array.isArray(data.top_matches) && data.top_matches.length){
+          addMsg('bot', renderMatchesTable(data.top_matches));
+        }
+        return;
+      }
+
+      // (B) 단순 검색 포맷: { matches: [...] }
+      if (Array.isArray(data.matches)) {
+        if(!data.matches.length){
+          addMsg('bot', '검색 결과가 없습니다. 상황을 조금 더 구체적으로 설명해 주세요.');
+          return;
+        }
+        // 상단 간단 요약(파일·페이지·유사도) + 근거 표
+        const head = data.matches.slice(0,3).map(m=>{
+          const s = (typeof m.score === 'number') ? ` (유사도 ${Math.round(m.score*100)/100})` : '';
+          return `- ${m.file || ''} p.${m.page || ''}${s}`;
+        }).join('<br>');
+        addMsg('bot', `관련 근거를 ${data.matches.length}건 찾았습니다.<br>${head}`);
+        addMsg('bot',
+          '<div class="knia-tip">정확한 최종 과실비율은 상황·증거에 따라 달라질 수 있습니다. ' +
+          '<a href="https://accident.knia.or.kr/myaccident1" target="_blank" rel="noopener">손보협회 과실비율 확인</a>에서 기준을 확인하세요.</div>'
+        );
+        addMsg('bot', renderMatchesTable(data.matches));
+        return;
+      }
+
+      // 기타 예외
+      addMsg('bot', '응답 형식을 해석하지 못했습니다.');
+    }catch(e){
+      try{ messagesEl.removeChild(loading); }catch(_){}
+      console.error(e);
+      addMsg('bot', '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     }
+  }
 
-    // 전송 버튼 클릭 → API 호출
-    sendBtn.addEventListener("click", async () => {
-        const question = input.value.trim();
-        if (!question) return;
-        appendMessage("user", question);
-        input.value = "";
+  function renderMatchesTable(matches){
+    const rows = matches.map(m=>`
+      <tr>
+        <td>${m.score ?? ''}</td>
+        <td>${m.file ?? ''}</td>
+        <td>${m.page ?? ''}</td>
+        <td>${m.snippet ?? (m.chunk ? (String(m.chunk).slice(0,200)+'...') : '')}</td>
+      </tr>`).join('');
+    return `
+      <details class="source"><summary>근거 보기</summary>
+        <table>
+          <thead><tr><th>유사도</th><th>파일</th><th>페이지</th><th>요약</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </details>`;
+  }
 
-        try {
-            const resp = await fetch("/api/fault-chatbot/?q=" + encodeURIComponent(question));
-            const data = await resp.json();
-            if (data.answer) {
-                appendMessage("bot", data.answer);
-            } else if (data.error) {
-                appendMessage("bot", "오류: " + data.error);
-            }
-        } catch (err) {
-            appendMessage("bot", "서버 오류가 발생했습니다.");
-        }
-    });
+  sendBtn?.addEventListener('click', ask);
+  inputEl?.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') ask(); });
 
-    // Enter 키 입력 시 전송
-    input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            sendBtn.click();
-        }
-    });
-});
+  // 드래그 이동
+  headerEl?.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    const rect = box.getBoundingClientRect();
+    if (!box.style.left && !box.style.top) {
+      box.style.left = rect.left + 'px';
+      box.style.top = rect.top + 'px';
+      box.style.right = '';
+      box.style.bottom = '';
+    }
+    offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top;
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    let x = e.clientX - offsetX, y = e.clientY - offsetY;
+    const maxX = window.innerWidth - box.offsetWidth, maxY = window.innerHeight - box.offsetHeight;
+    if (x < 0) x = 0; if (y < 0) y = 0;
+    if (x > maxX) x = maxX; if (y > maxY) y = maxY;
+    box.style.left = x + 'px'; box.style.top = y + 'px';
+  });
+  document.addEventListener('mouseup', () => { if (isDragging) { document.body.style.userSelect = ''; } isDragging = false; });
+
+  function getCookie(name){
+    const m = document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+
+  // 최초 안내 메시지
+  addMsg('bot','사고 상황을 입력하면 필요한 정보를 단계적으로 물어보고 안내합니다.');
+})();
