@@ -22,6 +22,10 @@ urlpatterns = [
     # 실시간 채팅을 위한 AJAX API
     path('api/chat/send/', views.api_send_message, name='api_send_message'),
     
+    # 세션 관리 API
+    path('api/session/title/', views.api_session_title, name='api_session_title'),
+    path('api/session/delete/', views.api_session_delete, name='api_session_delete'),
+    
     # 보험 추천 관련 API
     path('api/insurance/profile/', views.api_insurance_profile, name='api_insurance_profile'),
     path('api/insurance/profile/get/', views.api_get_insurance_profile, name='api_get_insurance_profile'),

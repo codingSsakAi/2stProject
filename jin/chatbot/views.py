@@ -29,25 +29,49 @@ logger = logging.getLogger(__name__)
 def chat_view(request):
     """RAG 챗봇 상담 뷰 (실시간 채팅)"""
 
+    # URL 파라미터에서 세션 ID 확인
+    session_id = request.GET.get("session_id")
+
     # 채팅 세션 목록 조회
     chat_sessions = ChatSession.objects.filter(user=request.user).order_by(
         "-updated_at"
     )
 
-    # 최근 세션 (가장 최근에 업데이트된 세션)
-    latest_session = chat_sessions.first()
+    # URL 파라미터에서 새 대화 요청 확인
+    new_chat = request.GET.get("new_chat") == "true"
 
-    # 최근 세션의 채팅 기록 (시간 순서)
-    latest_chat_history = []
-    if latest_session:
-        latest_chat_history = ChatHistory.objects.filter(
-            session=latest_session
-        ).order_by(
+    # 특정 세션이 요청된 경우 해당 세션 사용
+    if session_id:
+        current_session = get_object_or_404(
+            ChatSession, id=session_id, user=request.user
+        )
+    # 새 대화 요청인 경우 새로운 세션 생성
+    elif new_chat:
+        current_session = ChatSession.objects.create(
+            user=request.user, title="새로운 채팅"
+        )
+        # 새 대화 생성 후 URL에서 파라미터 제거를 위해 리다이렉트
+        from django.shortcuts import redirect
+
+        return redirect("chatbot:chat")
+    # 그 외의 경우 최근 세션 사용
+    else:
+        current_session = chat_sessions.first()
+        # 세션이 없으면 새로 생성
+        if not current_session:
+            current_session = ChatSession.objects.create(
+                user=request.user, title="새로운 채팅"
+            )
+
+    # 현재 세션의 채팅 기록 (시간 순서)
+    chat_history = []
+    if current_session:
+        chat_history = ChatHistory.objects.filter(session=current_session).order_by(
             "created_at"
         )  # 시간 순서대로
 
         # 메타데이터의 시간 포맷 처리
-        for message in latest_chat_history:
+        for message in chat_history:
             if message.metadata:
                 try:
                     # generated_at이 있는 경우 포맷팅
@@ -73,8 +97,8 @@ def chat_view(request):
     context = {
         "title": "챗봇 상담",
         "chat_sessions": chat_sessions,
-        "latest_session": latest_session,
-        "latest_chat_history": latest_chat_history,
+        "current_session": current_session,
+        "chat_history": chat_history,
     }
 
     return render(request, "chatbot/chat.jinja.html", context)
@@ -110,8 +134,17 @@ def api_send_message(request):
         # 채팅 기록 저장
         chat_session = ChatSession.objects.filter(user=request.user).first()
         if not chat_session:
+            # 새 세션 생성 시 첫 메시지를 제목으로 설정
             chat_session = ChatSession.objects.create(
                 user=request.user, title=user_message[:50] + "..."
+            )
+            logger.info(f"새 세션 생성: {chat_session.id}, 제목: {chat_session.title}")
+        # 기존 세션의 제목이 기본값인 경우 첫 메시지로 제목 업데이트
+        elif chat_session.title == "새로운 채팅":
+            chat_session.title = user_message[:50] + "..."
+            chat_session.save()
+            logger.info(
+                f"세션 제목 업데이트: {chat_session.id}, 새 제목: {chat_session.title}"
             )
 
         # 사용자 메시지 저장
@@ -325,7 +358,6 @@ def chat_delete_view(request, session_id):
     }
 
     return render(request, "chatbot/chat_delete_confirm.jinja.html", context)
-
 
 
 @admin_required
@@ -547,16 +579,36 @@ def document_process_view(request, document_id):
             # PDF 처리기로 재처리
             pdf_processor = PDFProcessor()
 
-            if document.txt_file and os.path.exists(document.txt_file.path):
-                with open(document.txt_file.path, "r", encoding="utf-8") as f:
+            # txt 파일 경로 확인 및 생성
+            txt_file_path = None
+            if document.txt_file:
+                txt_file_path = os.path.join(
+                    settings.MEDIA_ROOT, document.txt_file.name
+                )
+
+            if txt_file_path and os.path.exists(txt_file_path):
+                with open(txt_file_path, "r", encoding="utf-8") as f:
                     text = f.read()
             else:
                 text = pdf_processor.process_pdf_with_ocr(document.pdf_file.path)
                 if text:
                     cleaned_text = pdf_processor.clean_text(text)
 
+                    # txt 파일 경로 생성
+                    if not txt_file_path:
+                        txt_filename = f"{os.path.splitext(os.path.basename(document.pdf_file.name))[0]}.txt"
+                        txt_file_path = os.path.join(
+                            "media",
+                            "documents",
+                            "txt",
+                            document.insurance_company.name,
+                            txt_filename,
+                        )
+                        os.makedirs(os.path.dirname(txt_file_path), exist_ok=True)
+                        document.txt_file = f"documents/txt/{document.insurance_company.name}/{txt_filename}"
+
                     # 텍스트 파일 업데이트
-                    with open(document.txt_file.path, "w", encoding="utf-8") as f:
+                    with open(txt_file_path, "w", encoding="utf-8") as f:
                         f.write(cleaned_text)
                     text = cleaned_text
 
@@ -650,9 +702,13 @@ def embedding_stats_view(request):
             status="completed"
         ).count()
 
+        # 사용량 정보 추출
+        usage_info = stats.get("usage_info", {})
+
         context = {
             "title": "Embedding 통계",
             "pinecone_stats": stats,
+            "usage_info": usage_info,
             "total_documents": total_documents,
             "total_chunks": total_chunks,
             "completed_documents": completed_documents,
@@ -699,3 +755,56 @@ def search_documents_view(request):
     }
 
     return render(request, "chatbot/search_documents.jinja.html", context)
+
+
+@chatbot_access_required
+@require_http_methods(["POST"])
+def api_session_title(request):
+    """세션 제목 수정 API"""
+    try:
+        data = json.loads(request.body)
+        session_id = data.get("session_id")
+        title = data.get("title", "").strip()
+
+        if not session_id:
+            return JsonResponse(
+                {"success": False, "error": "세션 ID가 필요합니다."}, status=400
+            )
+
+        if not title:
+            return JsonResponse(
+                {"success": False, "error": "제목을 입력해주세요."}, status=400
+            )
+
+        # 세션 조회 및 수정
+        session = get_object_or_404(ChatSession, id=session_id, user=request.user)
+        session.title = title
+        session.save()
+
+        return JsonResponse({"success": True, "message": "제목이 수정되었습니다."})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@chatbot_access_required
+@require_http_methods(["POST"])
+def api_session_delete(request):
+    """세션 삭제 API"""
+    try:
+        data = json.loads(request.body)
+        session_id = data.get("session_id")
+
+        if not session_id:
+            return JsonResponse(
+                {"success": False, "error": "세션 ID가 필요합니다."}, status=400
+            )
+
+        # 세션 조회 및 삭제
+        session = get_object_or_404(ChatSession, id=session_id, user=request.user)
+        session.delete()
+
+        return JsonResponse({"success": True, "message": "세션이 삭제되었습니다."})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

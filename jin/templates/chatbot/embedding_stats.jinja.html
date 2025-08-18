@@ -89,23 +89,63 @@
                                             <td><strong>벡터 차원:</strong></td>
                                             <td>{{ pinecone_stats.dimension|default:"0" }}</td>
                                         </tr>
-                                        <tr>
-                                            <td><strong>인덱스 사용률:</strong></td>
-                                            <td>{{ pinecone_stats.index_fullness|default:"0"|floatformat:2 }}%</td>
-                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="col-md-6">
-                                <div class="progress mb-3">
-                                    <div class="progress-bar" role="progressbar" 
-                                         style="width: {{ pinecone_stats.index_fullness|default:0 }}%"
-                                         aria-valuenow="{{ pinecone_stats.index_fullness|default:0 }}" 
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pinecone 사용량 통계 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie text-info"></i>
+                            Pinecone 사용량 통계
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- RUs -->
+                            <div class="col-md-4">
+                                <h6 class="text-primary">RUs (Request Units)</h6>
+                                <p class="mb-2">{{ usage_info.rus.formatted_used|default:"0" }} / {{ usage_info.rus.formatted_limit|default:"1M" }}</p>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         style="width: {{ usage_info.rus.percentage|default:0 }}%"
+                                         aria-valuenow="{{ usage_info.rus.percentage|default:0 }}" 
                                          aria-valuemin="0" aria-valuemax="100">
-                                        {{ pinecone_stats.index_fullness|default:0|floatformat:1 }}%
                                     </div>
                                 </div>
-                                <small class="text-muted">인덱스 사용률</small>
+                                <small class="text-muted">{{ usage_info.rus.percentage|default:0|floatformat:2 }}% 사용</small>
+                            </div>
+                            
+                            <!-- Storage -->
+                            <div class="col-md-4">
+                                <h6 class="text-success">Storage</h6>
+                                <p class="mb-2">{{ usage_info.storage.formatted_used|default:"0.00GB" }} / {{ usage_info.storage.formatted_limit|default:"2GB" }}</p>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ usage_info.storage.percentage|default:0 }}%"
+                                         aria-valuenow="{{ usage_info.storage.percentage|default:0 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ usage_info.storage.percentage|default:0|floatformat:2 }}% 사용</small>
+                            </div>
+                            
+                            <!-- WUs -->
+                            <div class="col-md-4">
+                                <h6 class="text-warning">WUs (Write Units)</h6>
+                                <p class="mb-2">{{ usage_info.wus.formatted_used|default:"0" }} / {{ usage_info.wus.formatted_limit|default:"2M" }}</p>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: {{ usage_info.wus.percentage|default:0 }}%"
+                                         aria-valuenow="{{ usage_info.wus.percentage|default:0 }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ usage_info.wus.percentage|default:0|floatformat:2 }}% 사용</small>
                             </div>
                         </div>
                     </div>

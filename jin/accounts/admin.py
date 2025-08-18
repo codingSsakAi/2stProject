@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import UserProfile, InsuranceRecommendation, ChatHistory
+from .models import UserProfile, InsuranceRecommendation, ChatHistory, RecommendationStatistics, UserBehaviorLog
 
 
 class UserProfileInline(admin.StackedInline):
@@ -131,6 +131,53 @@ class ChatHistoryAdmin(admin.ModelAdmin):
     fieldsets = (
         ("기본 정보", {"fields": ("user", "message_type", "session_id")}),
         ("메시지 내용", {"fields": ("content",)}),
+        ("시간 정보", {"fields": ("created_at",), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(RecommendationStatistics)
+class RecommendationStatisticsAdmin(admin.ModelAdmin):
+    """보험 추천 통계 관리"""
+
+    list_display = (
+        "date",
+        "total_recommendations",
+        "total_selections",
+        "average_premium",
+        "created_at",
+    )
+    list_filter = ("date", "created_at")
+    readonly_fields = ("created_at", "updated_at")
+
+    fieldsets = (
+        ("기본 정보", {"fields": ("date", "total_recommendations", "total_selections", "average_premium")}),
+        ("연령대별 통계", {"fields": ("age_group_stats",)}),
+        ("성별 통계", {"fields": ("gender_stats",)}),
+        ("차종별 통계", {"fields": ("car_type_stats",)}),
+        ("보험사별 통계", {"fields": ("company_preference_stats",)}),
+        ("보장 수준별 통계", {"fields": ("coverage_level_stats",)}),
+        ("지역별 통계", {"fields": ("region_stats",)}),
+        ("시간 정보", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(UserBehaviorLog)
+class UserBehaviorLogAdmin(admin.ModelAdmin):
+    """사용자 행동 로그 관리"""
+
+    list_display = (
+        "user",
+        "behavior_type",
+        "session_id",
+        "created_at",
+    )
+    list_filter = ("behavior_type", "created_at")
+    search_fields = ("user__username", "session_id")
+    readonly_fields = ("created_at",)
+
+    fieldsets = (
+        ("기본 정보", {"fields": ("user", "behavior_type", "session_id")}),
+        ("행동 데이터", {"fields": ("behavior_data",)}),
         ("시간 정보", {"fields": ("created_at",), "classes": ("collapse",)}),
     )
 

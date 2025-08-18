@@ -170,7 +170,24 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "insurance-documents")
 PINECONE_DIMENSION = int(os.getenv("PINECONE_DIMENSION", "4096"))
 PINECONE_METRIC = os.getenv("PINECONE_METRIC", "cosine")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# 사용 가능한 안정적인 모델들
+SUPPORTED_MODELS = [
+    "gpt-4o-mini",
+    "gpt-4o", 
+    "gpt-4",
+    "gpt-3.5-turbo",
+    "gpt-5-nano",
+    "gpt-5-mini",
+    "gpt-5"
+]
+
+# 기본 모델 설정 (gpt-5 모델들은 아직 안정적이지 않을 수 있음)
+DEFAULT_MODEL = "gpt-4o-mini"
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
+
+# 모델 유효성 검사 (경고만 출력하고 모델은 그대로 사용)
+if OPENAI_MODEL not in SUPPORTED_MODELS:
+    print(f"경고: {OPENAI_MODEL} 모델이 지원 목록에 없습니다. 계속 진행합니다.")
 
 # 로깅 설정
 LOGGING = {

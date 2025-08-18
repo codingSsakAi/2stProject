@@ -41,8 +41,8 @@ class CacheService:
         """
         쿼리를 기반으로 캐시 키 생성
         """
-        # 쿼리 정규화 (공백 제거, 소문자 변환)
-        normalized_query = ' '.join(query.lower().split())
+        # 쿼리 정규화 (연속된 공백만 제거, 대소문자 유지)
+        normalized_query = ' '.join(query.split())
         
         # SHA-256 해시 생성
         query_hash = hashlib.sha256(normalized_query.encode()).hexdigest()[:16]
@@ -137,6 +137,18 @@ class CacheService:
         query_lower = query.lower()
         
         return any(keyword in query_lower for keyword in contact_keywords)
+
+    def clear_cache(self) -> bool:
+        """
+        모든 캐시 삭제
+        """
+        try:
+            cache.clear()
+            logger.info("캐시가 완전히 초기화되었습니다.")
+            return True
+        except Exception as e:
+            logger.error(f"캐시 초기화 오류: {e}")
+            return False
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """

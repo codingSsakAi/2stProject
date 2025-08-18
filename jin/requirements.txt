@@ -17,8 +17,7 @@ openai==1.99.6
 # 벡터 데이터베이스
 pinecone==7.3.0
 
-# Embedding 모델
-sentence-transformers==3.0.1
+# Embedding 모델 (Upstage API 사용)
 numpy==1.26.4
 
 # 고급 ML 라이브러리
