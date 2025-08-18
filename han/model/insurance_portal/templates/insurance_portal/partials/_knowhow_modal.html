@@ -1,0 +1,24 @@
+<!-- 보험상식 모달 (JSON 주입 버전) -->
+<div class="modal fade" id="knowhowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">보험상식</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+
+      <div class="modal-body p-0">
+        <div class="kh-body">
+          <aside class="kh-list" id="kh-list" aria-label="목록" role="listbox"></aside>
+          <section class="kh-detail" id="kh-detail" aria-live="polite">
+            <div class="kh-empty">좌측에서 항목을 선택하세요.</div>
+          </section>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <small class="text-muted">안내 내용은 실제와 다를 수 있습니다.</small>
+      </div>
+    </div>
+  </div>
+</div>

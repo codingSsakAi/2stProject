@@ -1,40 +1,40 @@
 # insurance_portal/views/weekly.py
-# 기능: 보험상식(주간 정보) 표시 및 데이터 제공
-# - weekly_modal_view: UI 템플릿 반환
-# - weekly_list_api: weekly_articles.json 내용을 반환
+# 목적: 보험 상식(weekly) 페이지 및 partial 렌더
+# 데이터 로드: staticfiles의 weekly_articles.json을 파일시스템에서 찾아 로드
 
-from django.http import JsonResponse
+import json
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
-from ..utils.loaders import load_json
+from django.http import HttpResponseNotFound
+from django.contrib.staticfiles import finders
 
+# 정적 JSON 경로(앱 내부 static 경로 기준)
+WEEKLY_JSON_STATIC_PATH = "insurance_portal/json/weekly_articles.json"
 
-def weekly_modal_view(request):
+def _load_weekly_articles():
     """
-    보험상식 모달 또는 단독 페이지를 렌더링합니다.
-    - recommendation.html 등에서 {% include "insurance_portal/_weekly.html" %}로 불릴 수 있습니다.
-    - 별도의 URL로 직접 접근해도 모달/목록이 보이도록 구성할 수 있습니다.
+    staticfiles finders로 실제 파일 경로를 찾아 JSON 로드
+    개발/운영(STATIC_ROOT 수집) 모두 대응
     """
-    return render(request, "insurance_portal/_weekly.html")
+    path = finders.find(WEEKLY_JSON_STATIC_PATH)
+    if not path:
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-
-@csrf_exempt
-def weekly_list_api(request):
+def page(request):
     """
-    보험상식 목록 API
-    - 데이터 소스: insurance_portal/data/weekly_articles.json
-    - GET/POST 모두 지원
-    응답 예:
-    {
-        "items": [
-            {"title": "보험상식 제목1", "content": "내용...", "date": "YYYY-MM-DD"},
-            ...
-        ]
-    }
+    메인 페이지 렌더(템플릿에서 JS로 partial 불러오거나,
+    서버사이드로 바로 articles를 주입하는 방식 둘 다 가능)
+    여기서는 UI 구조만 제공하고 데이터는 partial에서 주입
     """
-    try:
-        items = load_json("weekly_articles.json")
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    return render(request, "insurance_portal/weekly.html")
 
-    return JsonResponse({"items": items})
+def partial(request):
+    """
+    부분 렌더: weekly_partial.html에 articles 컨텍스트로 주입
+    프런트(JS)가 /weekly/partial/을 호출해서 본문만 갱신하는 용도
+    """
+    data = _load_weekly_articles()
+    if data is None:
+        return HttpResponseNotFound("weekly_articles.json not found")
+    return render(request, "insurance_portal/weekly_partial.html", {"articles": data})

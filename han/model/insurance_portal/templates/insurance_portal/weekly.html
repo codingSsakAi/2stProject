@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>자동차 보험 상식</title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- 아이콘 (FAB/버튼용) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
+  <!-- 분리한 CSS -->
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/fab.css' %}">
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/chatbot.css' %}">
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/guide.css' %}">
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/knowhow.css' %}">
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/claim_knowledge.css' %}">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+  <h1 class="mb-4">자동차 보험 상식</h1>
+
+  <!-- 서버 렌더(articles 컨텍스트가 있을 때 아코디언 표시) -->
+  <div class="accordion" id="weeklyAccordion">
+    {% for a in articles %}
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false"
+                  aria-controls="collapse{{ forloop.counter }}">
+            <span class="badge bg-primary me-2">{{ a.category }}</span>
+            {{ a.title }}
+          </button>
+        </h2>
+        <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse"
+             aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#weeklyAccordion">
+          <div class="accordion-body">
+            <div>
+              <span class="badge bg-secondary">{{ a.main_em }}</span>
+              {% if a.main_h4 %}<h5 class="mt-2">{{ a.main_h4 }}</h5>{% endif %}
+            </div>
+
+            {% if a.main_strongs %}
+              <ul class="mt-2">
+                {% for strong in a.main_strongs %}
+                  <li><strong>{{ strong }}</strong></li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            {% if a.main_ps %}
+              <div class="mt-2">
+                {% for p in a.main_ps %}
+                  {% if p %}<p>{{ p }}</p>{% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="mt-3">
+              <a href="{{ a.url }}" target="_blank" class="btn btn-outline-primary btn-sm">상세 페이지 바로가기</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="alert alert-warning mt-4">기사 데이터가 없습니다.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ====== 기능 모달/패널 (JS가 기대하는 ID/구조) ====== -->
+
+<!-- 1) 사고처리 가이드 (guide.js가 #guideBody에 렌더) -->
+<div class="modal fade" id="guideModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">사고처리 가이드</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+      <div class="modal-body" id="guideBody">
+        <!-- guide.js가 여기로 카드/흐름을 렌더 -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2) 보험 상식 모달 (knowhow.js: #kh-list / #kh-detail 사용) -->
+<div class="modal fade" id="knowhowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">보험 상식</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-5">
+            <div id="kh-list" class="list-group"></div>
+          </div>
+          <div class="col-7">
+            <div id="kh-detail" class="border rounded p-3"><em>좌측에서 항목을 선택하세요.</em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3) 보상 상식(커스텀 모달) -->
+<div id="claim-knowledge-modal" hidden>
+  <div class="ckm-backdrop"></div>
+  <div class="ckm-dialog">
+    <div class="ckm-header">
+      <strong>자동차 사고 보상상식</strong>
+      <button class="ckm-close" type="button">닫기</button>
+    </div>
+    <div class="ckm-tabs">
+      <button class="ckm-tab" data-cat="차 vs. 차" aria-selected="true">차 vs. 차</button>
+      <button class="ckm-tab" data-cat="차 vs. 사람" aria-selected="false">차 vs. 사람</button>
+      <button class="ckm-tab" data-cat="차 vs. 기타" aria-selected="false">차 vs. 기타</button>
+    </div>
+    <div class="ckm-body">
+      <div id="ckm-list" role="listbox" aria-label="사례 목록"></div>
+      <div id="ckm-detail" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4) 챗봇 패널 -->
+<div id="chatbot-container" aria-live="polite" aria-label="보험 약관 상담 챗봇">
+  <div id="chatbot-header">
+    <span>보험 약관 상담</span>
+    <button id="chatbot-close" title="닫기">닫기</button>
+  </div>
+  <div id="chatbot-messages"></div>
+  <div id="chatbot-input">
+    <input id="chatbot-text" type="text" placeholder="사고 상황이나 궁금한 점을 입력하세요">
+    <button id="chatbot-send" type="button">전송</button>
+  </div>
+</div>
+
+<!-- ====== 우측 하단 FAB 아이콘 버튼 ====== -->
+<div class="fab-wrap">
+  <button id="guide-fab" class="fab-btn"><i class="fa-solid fa-route"></i><span>가이드</span></button>
+  <button id="weekly-fab" class="fab-btn secondary"><i class="fa-solid fa-book-open"></i><span>보험상식</span></button>
+  <button id="claim-knowledge-fab" class="fab-btn warn"><i class="fa-solid fa-scale-balanced"></i><span>보상상식</span></button>
+  <button id="chatbot-fab" class="fab-btn dark"><i class="fa-solid fa-comments"></i><span>챗봇</span></button>
+</div>
+
+<!-- JSON/엔드포인트/정적 경로 상수 주입 -->
+<script>
+  // 보험 상식 + 가이드 JSON
+  window.KNOWHOW_JSON_URL = "{% static 'insurance_portal/json/weekly_articles.json' %}";
+  window.GUIDE_JSONS = {
+    accident: "{% static 'insurance_portal/json/accident_flow.json' %}",
+    evidence: "{% static 'insurance_portal/json/evidence_collection.json' %}",
+    others:   "{% static 'insurance_portal/json/other_processes.json' %}"
+  };
+
+  // 보상 상식 JSONL (라인 단위)
+  window.CLAIM_KNOWLEDGE_URL = "{% static 'insurance_portal/json/merged_cases.jsonl' %}";
+
+  // 챗봇 API 엔드포인트
+  window.CHATBOT_ASK_URL = "/api/chatbot/ask/";
+
+  // 정적 경로 prefix (가이드 이미지 등에서 사용)
+  window.STATIC_PREFIX = "{% static 'insurance_portal/' %}";
+</script>
+
+<!-- 기능 JS -->
+<script src="{% static 'insurance_portal/js/knowhow.js' %}"></script>
+<script src="{% static 'insurance_portal/js/guide.js' %}"></script>
+<script src="{% static 'insurance_portal/js/claim_knowledge.js' %}"></script>
+<script src="{% static 'insurance_portal/js/chatbot.js' %}"></script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 보상상식 FAB 클릭 → 커스텀 모달 열기 -->
+<script>
+  document.getElementById('claim-knowledge-fab')?.addEventListener('click', function(){
+    const modal = document.getElementById('claim-knowledge-modal');
+    if(!modal) return;
+    modal.removeAttribute('hidden');
+    requestAnimationFrame(()=> modal.classList.add('show'));
+  });
+</script>
+
+</body>
+</html>

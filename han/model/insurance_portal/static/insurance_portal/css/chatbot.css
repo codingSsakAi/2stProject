@@ -1,0 +1,62 @@
+/* ===========================
+ * Chatbot Panel
+ * 패널/헤더/본문/입력/메시지
+ * =========================== */
+#chatbot-container{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  width:360px;
+  height:520px;
+  display:none;
+  flex-direction:column;
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 18px 36px rgba(0,0,0,0.25);
+  z-index:1060;
+}
+#chatbot-header{
+  background:#2d2f36;
+  color:#fff;
+  padding:10px 12px;
+  cursor:move;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-top-left-radius:16px;
+  border-top-right-radius:16px;
+}
+#chatbot-messages{
+  flex:1;
+  overflow:auto;
+  padding:10px;
+  background:#f7f8fb;
+}
+#chatbot-input{
+  display:flex;
+  gap:8px;
+  padding:10px;
+  border-top:1px solid #e9edf3;
+}
+#chatbot-input input{
+  flex:1;
+  border:1px solid #d7dbe3;
+  border-radius:10px;
+  padding:8px 10px;
+}
+#chatbot-input button{
+  border:none;
+  background:#1f5eff;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:10px;
+}
+
+/* 메시지 버블 및 근거 테이블 */
+.msg{ margin:6px 0; padding:8px 10px; border-radius:10px; max-width:92%; }
+.msg.user{ background:#e6efff; margin-left:auto; }
+.msg.bot{ background:#fff; border:1px solid #e6e9f1; }
+
+.source table{ width:100%; border-collapse:collapse; }
+.source th, .source td{ border:1px solid #e9edf3; padding:6px; font-size:12px; }
+.knia-tip{ font-size:12px; margin-top:6px; color:#444; }
