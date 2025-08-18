@@ -2,10 +2,11 @@ import os
 import json
 import re
 import math
+from collections import defaultdict
 import hashlib
 import unicodedata
 import difflib
-from typing import Optional, Dict, Any, List, Tuple, Set
+from typing import Optional, Dict, Any, List, Tuple
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -14,15 +15,17 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse, HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .models import CustomUser  # noqa: F401
 from .forms import CustomUserCreationForm, UserProfileChangeForm, EmailPasswordChangeForm
 from .pdf_processor import EnhancedPDFProcessor  # noqa: F401
 from .pinecone_search import retrieve_insurance_clauses
+from django.views.decorators.csrf import csrf_exempt
+
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 기본 페이지
+# 공용 페이지
 # ────────────────────────────────────────────────────────────────────────────────
 
 def home(request: HttpRequest) -> HttpResponse:
@@ -95,8 +98,9 @@ def recommend_insurance(request: HttpRequest) -> HttpResponse:
         }
         return render(request, 'insurance_app/recommend.html', context)
 
+
 # ────────────────────────────────────────────────────────────────────────────────
-# 텍스트 정규화/중복 제거 유틸
+# 유틸: 정규화 & 중복 제거
 # ────────────────────────────────────────────────────────────────────────────────
 
 def _normalize_spaces(s: str) -> str:
@@ -168,53 +172,21 @@ def ensure_not_overpruned(original: List[Dict[str, Any]],
             break
     return pruned + fill
 
+
 # ────────────────────────────────────────────────────────────────────────────────
-# 토픽 키워드 & 문장 필터/스코어러
+# 문장 분리 / 품질·안전 필터
 # ────────────────────────────────────────────────────────────────────────────────
 
-# 안전한 문장 분리(lookbehind 금지)
 _SENT_SPLIT = re.compile(r"((?:다\.)|[\.。!?])")
 
-_TABLE_TOKENS = {"구분", "비고", "표", "요율", "할인율", "등급", "등급표", "요금", "기명1인"}
-_BULLET_GLYPHS = set("○●■□▲▶▷▸•・∙·※")
-_JUNK_PATS = [
-    re.compile(r"(?:\d{1,3}(?:,\d{3})+|[0-9]+)\s*(?:원|만원|억원|%|㎞|km)"),
-    re.compile(r"(?:기명1인|부부|자녀|가족)\s*[○×]"),
-    re.compile(r"^\s*(?:Q|A)\s*[:·]"),
-]
-_NOISE_PREFIX = (
-    "가입하는 경우 가입 가능합니다",
-    "잠깐만",
-    "비고 구분",
-)
+_TABLE_MARKS = re.compile(r"[○●◯×✕✖︎□■△▷▶╳]|(?:\b[○×]\b)")
+_NUM_BULLET = re.compile(r"[①-⑳㈠-㈩]+\s*")
+_BOX_CHARS  = re.compile(r"[━│┝┥└┘┌┐╂╋┼─—]+")
+_ARTIFACT_TAGS = re.compile(r"^(?:<.*?>|〈.*?〉|【.*?】|※)\s*")
+_NOISE_HEAD = re.compile(r"^(?:·|•|∙|▶|▷|-\s*|—\s*|ㄱ\.?|ㄴ\.?|ㄷ\.?)\s*")
+_SHORT_PAREN = re.compile(r"\s*[\(\[\{][^\)\]\}]{0,60}[\)\]\}]\s*")
 
-_POLICY_CORE = [
-    "보상", "지급", "면책", "예외", "제외", "한도", "공제", "자기부담",
-    "책임", "의무", "위반", "손해", "담보", "특약", "약관", "보험증권", "청구",
-    "사고부담금", "음주", "무면허", "도난", "대여", "대인", "대물"
-]
-
-def extract_topic(question: str) -> str:
-    q = question
-    if any(k in q for k in ("음주", "무면허", "마약", "약물")): return "impaired"
-    if any(k in q for k in ("무사고", "할인", "마일리지", "안전운전")): return "discount"
-    if any(k in q for k in ("면책", "제외", "지급하지")): return "exclusion"
-    if any(k in q for k in ("도난", "절도")): return "theft"
-    if any(k in q for k in ("가족", "운전자범위", "특약")): return "family"
-    return "generic"
-
-def topic_keywords(topic: str) -> Set[str]:
-    if topic == "impaired":
-        return {"음주", "무면허", "사고부담금", "약물", "음주운전"}
-    if topic == "discount":
-        return {"할인", "마일리지", "안전운전", "점수", "후할인", "주행거리"}
-    if topic == "exclusion":
-        return {"면책", "지급하지", "제외", "전쟁", "지진", "고의"}
-    if topic == "theft":
-        return {"도난", "절도", "발견될", "자기차량손해", "대여자동차"}
-    if topic == "family":
-        return {"가족", "운전자범위", "한정운전", "부부", "자녀", "지정1인"}
-    return set()
+_UNPLEASANT_HINTS = re.compile(r"(모욕|비하|혐오|천대|경멸|폭언|막말)")
 
 def split_sentences(text: str) -> List[str]:
     text = _normalize_spaces(text)
@@ -235,249 +207,178 @@ def split_sentences(text: str) -> List[str]:
             sents.append(seg)
     return sents
 
-def _is_table_like(s: str, topic_hint: str) -> bool:
-    t = _normalize_spaces(s)
-    relaxed = (topic_hint == "discount")
-    tok_hit = any(tok in t for tok in _TABLE_TOKENS)
-    glyph_hit = any(g in t for g in _BULLET_GLYPHS)
-    numbers = len(re.findall(r"\d", t))
-    punct = len(re.findall(r"[|/·•∙%㎡㎞]", t))
-    junk_pat = any(p.search(t) for p in _JUNK_PATS)
-    if junk_pat and not relaxed:
-        return True
-    if (tok_hit or glyph_hit) and (numbers + punct) >= 3 and not relaxed:
-        return True
-    if numbers / max(1, len(t)) > 0.12 and not relaxed:
-        return True
-    if any(t.startswith(pfx) for pfx in _NOISE_PREFIX):
-        return True
-    return False
+def _hangul_ratio(s: str) -> float:
+    total = len(s)
+    if total == 0: return 0.0
+    hangul = sum(1 for ch in s if '가' <= ch <= '힣')
+    return hangul / total
 
-def _policy_core_bonus(s: str) -> float:
-    return sum(0.35 for k in _POLICY_CORE if k in s)
+def compress_sentence(s: str) -> str:
+    s = _normalize_spaces(s)
+    if _TABLE_MARKS.search(s):
+        return ""
+    s = _BOX_CHARS.sub(" ", s)
+    s = _NUM_BULLET.sub("", s)
+    s = _NOISE_HEAD.sub("", s)
+    s = _ARTIFACT_TAGS.sub("", s)
+    s = _SHORT_PAREN.sub(" ", s)
+    if len(re.findall(r"[,/|:·•●○×]", s)) >= 3:
+        return ""
+    if re.search(r"\d\.\s*$", s):
+        return ""
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    return s
 
-def _length_penalty(n: int) -> float:
-    if n > 240: return -0.6
-    if n < 18:  return -0.35
-    return 0.0
+def is_readable_sentence(s: str) -> bool:
+    if not s: return False
+    if len(s) < 8 or len(s) > 260: return False
+    if _hangul_ratio(s) < 0.3: return False
+    if len(re.findall(r"[^\w\s\.\,\(\)·\-\uAC00-\uD7A3]", s)) > 3:
+        return False
+    if not re.search(r"(다\.|요\.|니다\.|\.|!|？|!)\s*$", s):
+        if not re.search(r"(보상|면책|지급|특약|한정|범위|조건|가입|불가|제한|거절|무효)", s):
+            return False
+    if _UNPLEASANT_HINTS.search(s):
+        return False
+    return True
 
-def _law_citation_penalty(s: str) -> float:
-    if re.search(r"제\d+조", s) and not any(w in s for w in ("약관", "담보", "보상", "지급", "면책")):
-        return -0.6
-    return 0.0
+def to_bullet_style(s: str) -> str:
+    s = compress_sentence(s)
+    if not s or not is_readable_sentence(s):
+        return ""
+    s = re.sub(r"(회사|보험회사)(?:는|가)\s*", "", s)
+    s = re.sub(r"(보상하지 않습니다|지급하지 않습니다)", " 보상 제외", s)
+    s = re.sub(r"(보상하지 아니합니다)", " 보상 제외", s)
+    s = re.sub(r"(가입할 수 없습니다|가입할 수 없|가입 불가)", " 가입 불가", s)
+    s = re.sub(r"(계약이 무효가 됩니다|무효가 됩니다|무효입니다)", " 계약 무효", s)
+    s = s.replace("보상하지 않는 손해", "보상 제외 항목")
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    return s
 
-def _stitch_pair(s1: str, s2: str) -> Optional[str]:
-    if len(s1) < 40 and len(s2) < 140:
-        if any(p.search(s1) for p in _JUNK_PATS): return None
-        if any(p.search(s2) for p in _JUNK_PATS): return None
-        return _normalize_spaces(f"{s1} {s2}")
-    return None
 
-def clean_and_pick_sentences(question: str,
-                             texts: List[Tuple[str, str, Any]],
-                             max_sent_total: int = 8) -> List[Tuple[str, str, Any, str]]:
-    topic = extract_topic(question)
-    kws = topic_keywords(topic)
+# ────────────────────────────────────────────────────────────────────────────────
+# 의도 인식 + 토큰 필터
+# ────────────────────────────────────────────────────────────────────────────────
 
+def infer_topic_filters(question: str):
+    q = _normalize_spaces(question)
+
+    include, exclude, title_regex = set(), set(), None
+
+    # 면책/보상 제외 의도
+    if any(t in q for t in ["면책", "면책사항", "보상 제외", "보상하지", "지급하지 않는"]):
+        include.update(["면책", "보상하지", "지급하지 않", "제외", "면책사항"])
+        title_regex = re.compile(r"(보상하지.*손해|면책|지급하지.*않는)", re.I)
+        exclude.update([
+            "농업", "어업", "수산", "식품산업", "양식", "염전",
+            "도로교통법", "어린이 보호구역", "경찰공무원", "호흡조사",
+            "마일리지", "안전운전점수", "할인"
+        ])
+
+    # 가입 불가/인수 제한 의도  ← 추가
+    if any(t in q for t in ["가입 불가", "가입불가", "가입 제한", "인수 제한", "인수제한", "인수 거절", "계약 무효", "특약 무효", "계약 취소"]):
+        include.update([
+            "가입 불가", "가입할 수 없", "가입 제한", "인수 제한", "인수거절", "계약 거절",
+            "무효", "취소", "부적격", "허위", "거짓", "중대 과실", "의무 위반"
+        ])
+        title_regex = re.compile(r"(가입\s*불가|인수\s*(제한|거절)|계약\s*(무효|취소)|특약\s*무효)", re.I)
+        # '가입대상/가입가능/할인/점수' 등 긍정·할인성 문구는 제외
+        exclude.update([
+            "가입대상", "가입할 수 있", "가입 가능합니다", "가능", "할인", "마일리지",
+            "안전운전점수", "점수", "의무보험", "대물배상", "대인배상"
+        ])
+
+    return list(include), list(exclude), title_regex
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 문장 선별(부정 의도 가중치/가산·감점 포함)
+# ────────────────────────────────────────────────────────────────────────────────
+
+_NEG_PAT = re.compile(r"(불가|제한|거절|무효|취소|제외|지급하지|보상하지|허위|거짓|의무 위반)")
+_POS_ALLOW_PAT = re.compile(r"(가입(할 수)? 있|가능|허용|할인|우대)")
+
+def clean_and_pick_sentences(
+    question: str,
+    texts: List[Tuple[str, str, Any]],
+    max_sent_total: int = 8,
+    include_tokens: Optional[List[str]] = None,
+    exclude_tokens: Optional[List[str]] = None,
+    title_regex: Optional[re.Pattern] = None
+) -> List[Tuple[str, str, Any, str]]:
+    include_tokens = include_tokens or []
+    exclude_tokens = exclude_tokens or []
     q = _normalize_spaces(question)
     q_terms = [t for t in re.split(r"\s+", q) if len(t) >= 2]
+
+    asking_negative = any(t in q for t in ["불가","제한","거절","무효","취소","면책","제외","지급하지","보상하지"])
 
     scored = []
     seen_norm = set()
 
     for company, page, raw in texts:
-        sents = split_sentences(raw)
-        i = 0
-        while i < len(sents):
-            s = _normalize_spaces(sents[i])
-            i += 1
-            if not s:
+        raw_norm = _normalize_spaces(raw)
+        must_keep = bool(title_regex and title_regex.search(raw_norm))
+
+        for s in split_sentences(raw_norm):
+            st = compress_sentence(s)
+            if not st or not is_readable_sentence(st):
                 continue
 
-            st = s
-            if i < len(sents):
-                stitched = _stitch_pair(s, _normalize_spaces(sents[i]))
-                if stitched and len(stitched) <= 220:
-                    st = stitched
-                    i += 1
+            # 제외 토큰
+            if any(tok in st for tok in exclude_tokens):
+                if not must_keep:
+                    continue
 
-            # 토픽 키워드 매칭(없으면 큰 감점)
-            topic_hit = any(kw in st for kw in kws) if kws else True
-
-            # 표/라벨/잡음 억제
-            if _is_table_like(st, topic):
-                topic_hit = False  # 사실상 제외
-
-            score = 0.7 if topic_hit else 0.1
-            for t in q_terms:
-                if t in st:
-                    score += 0.8
-            score += _policy_core_bonus(st)
-            score += _length_penalty(len(st))
-            score += _law_citation_penalty(st)
+            # 포함 토큰
+            if include_tokens:
+                if not (any(tok in st for tok in include_tokens) or must_keep):
+                    continue
 
             key = _norm_text_for_key(st)
             if key in seen_norm:
                 continue
+
+            score = 1.0
+
+            # 기본 쿼리 키워드 매칭
+            for t in q_terms:
+                if t in st:
+                    score += 0.7
+
+            # 의도: 부정(불가/제한/면책) 강화
+            if asking_negative:
+                if _NEG_PAT.search(st):
+                    score += 1.2  # 불가·면책 표현 가산
+                if _POS_ALLOW_PAT.search(st):
+                    score -= 1.0  # '가입 가능/할인' 등은 감점
+
+            # 표/나열 성향 약화
+            if len(re.findall(r"[,:/|·•○●×]", st)) >= 2:
+                score -= 0.4
+
+            # 길이 조정
+            if 40 <= len(st) <= 180:
+                score += 0.2
+            if len(st) > 220:
+                score -= 0.3
+            if len(st) < 18:
+                score -= 0.2
+
+            # 제목 정규식 히트는 강한 가산
+            if must_keep:
+                score += 0.8
+
             seen_norm.add(key)
             scored.append((score, company, page, raw, st))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    picked = [x for x in scored if x[0] > 0.6][:max_sent_total]  # 저품질 컷
-    if not picked:  # 너무 엄격하면 백업
-        picked = scored[:max_sent_total]
-    out = [(co, pg, raw, st) for _, co, pg, raw, st in picked]
-    return out
+    picked = scored[:max_sent_total]
+    return [(co, pg, raw, st) for _, co, pg, raw, st in picked]
+
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 규칙형 요약기(LLM 미사용 시)
-# ────────────────────────────────────────────────────────────────────────────────
-
-def _simplify_phrase(s: str) -> str:
-    """표/라벨 흔적, 불필요 숫자 삭제 등 문장 정리(근거엔 적용하지 않음)."""
-    s = _normalize_spaces(s)
-    s = re.sub(r"\[[^\]]{0,40}\]", "", s)  # [비고], [형사합의금 ...] 제거
-    s = re.sub(r"[▶▷•·∙■□○●]+", " ", s)
-    s = re.sub(r"\(.*?표\)", "", s)  # (별표 X)류
-    s = re.sub(r"\s{2,}", " ", s)
-    return s.strip(" -·")
-
-def summarise_policy_from_sentences(question: str,
-                                    picked: List[Tuple[str, str, Any, str]]) -> List[str]:
-    """증거문장 집합을 보고 조건/한도/면책/부담금/절차 중심으로 3~5개 규칙형 요약 생성."""
-    topic = extract_topic(question)
-    text_all = " ".join(st for _, _, _, st in picked)
-    bullets: List[str] = []
-
-    def has(*keys): return all(k in text_all for k in keys)
-    def anyof(*keys): return any(k in text_all for k in keys)
-
-    # 공통 규칙
-    if anyof("보험증권", "가입금액", "한도"):
-        bullets.append("지급 한도는 보험증권에 기재된 담보별 가입금액(한도) 내에서 산정됩니다.")
-    if anyof("자기부담", "공제", "사고부담금"):
-        bullets.append("약관상 공제(자기부담·사고부담금)가 있는 경우 해당 금액을 차감합니다.")
-    if anyof("방지", "경감", "변호사", "법률비용", "방어비용"):
-        bullets.append("손해의 방지·경감 또는 방어에 필요한 비용은 약관이 허용하는 범위에서 인정될 수 있습니다.")
-
-    # 토픽별 규칙
-    if topic == "impaired":
-        if anyof("음주", "무면허", "약물"):
-            bullets.append("음주·무면허·약물 운전은 보상 범위가 제한되며, 사고부담금이 부과되거나 면책될 수 있습니다.")
-        if anyof("대인배상", "대물배상", "자기신체", "자동차상해"):
-            bullets.append("적용 담보(대인·대물·자기신체/자동차상해)에 따라 보상 방식과 한도가 달라집니다.")
-    elif topic == "discount":
-        if anyof("마일리지", "주행거리"):
-            bullets.append("마일리지(주행거리) 특약은 약정 주행거리·정산 요건 충족 시에만 할인 적용이 가능합니다.")
-        if anyof("안전운전점수", "점수"):
-            bullets.append("안전운전 점수 기반 할인은 회사가 정한 인증·확인 절차에 협조해야 유효합니다.")
-        if anyof("최초 1회", "추가 적용하지"):
-            bullets.append("특약 규정상 할인은 가입 시점 1회 적용 등 제한이 있을 수 있습니다.")
-    elif topic == "exclusion":
-        if anyof("면책", "지급하지"):
-            bullets.append("약관에 정한 면책 사유(예: 고의, 일정 법령 위반, 일부 자연재해 등)에는 보험금이 지급되지 않습니다.")
-    elif topic == "theft":
-        if anyof("도난", "발견될"):
-            bullets.append("도난의 경우, 도난 시점부터 발견 시점까지 발생한 손해 중 약관에 정한 담보 범위 내에서 보상됩니다.")
-        if anyof("자기차량손해"):
-            bullets.append("일부 부속품만의 단독 도난 등은 자기차량손해 담보에서 제외될 수 있습니다.")
-    elif topic == "family":
-        if anyof("운전자범위", "한정운전", "가족"):
-            bullets.append("운전자범위를 가족/부부/기명1인 등으로 한정한 경우, 약정 범위 밖 운전자의 사고는 보상에서 제외됩니다.")
-        if anyof("증명서", "등본", "서류"):
-            bullets.append("가족범위 확인을 위해 회사가 요구하는 증빙서류(예: 가족관계증명서)를 제출해야 할 수 있습니다.")
-
-    # 중복 제거 및 3~5개로 정리
-    uniq = []
-    seen = set()
-    for b in bullets:
-        k = _norm_text_for_key(b)
-        if k in seen or len(_normalize_spaces(b)) < 10:
-            continue
-        seen.add(k)
-        uniq.append(_simplify_phrase(b))
-    return uniq[:5] if uniq else []
-
-# ────────────────────────────────────────────────────────────────────────────────
-# LLM 정제(옵션)
-# ────────────────────────────────────────────────────────────────────────────────
-
-def _get_llm_client():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return None, None
-    model = os.getenv("LLM_REFINE_MODEL", "gpt-4o-mini")
-    try:
-        from openai import OpenAI  # type: ignore
-        client = OpenAI(api_key=api_key)
-        return client, model
-    except Exception:
-        try:
-            import openai  # type: ignore
-            openai.api_key = api_key
-            return openai, model
-        except Exception:
-            return None, None
-
-def refine_with_llm(question: str,
-                    candidates: List[Dict[str, Any]],
-                    allow_tables: bool) -> Optional[Dict[str, Any]]:
-    use_llm = os.getenv("USE_LLM_REFINE", "0") in ("1", "true", "True")
-    if not use_llm or not candidates:
-        return None
-    client, model = _get_llm_client()
-    if not client or not model:
-        return None
-
-    system = (
-        "You are a careful assistant for Korean motor insurance clauses.\n"
-        "Given a question and evidence sentences with IDs, output 3-5 policy-style bullets (paraphrased) "
-        "and pick 3-5 evidence IDs. Avoid table fragments unless the user asks about discounts/mileage. "
-        "Output strict JSON with keys: bullets, evidence_ids, notes."
-    )
-    topic = extract_topic(question)
-    allow_tables = allow_tables or (topic == "discount")
-
-    trimmed = candidates[:10]
-    user = (
-        f"[질문]\n{question}\n\n"
-        f"[후보 근거 문장]\n" +
-        "\n".join([f"- {c['id']}: {c['sentence']}  (src={c.get('company','')} p={c.get('page','')})" for c in trimmed]) +
-        "\n\n[지침]\n- Bullets: 3~5개, 중복 금지, 숫자나 표 라벨 나열은 피하기.\n"
-        f"- 표/라벨/숫자조각 배제{'(할인/마일리지이면 허용)' if allow_tables else ''}.\n"
-        "- 반드시 JSON만 출력."
-    )
-
-    try:
-        if hasattr(client, "chat"):
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role":"system","content":system},
-                          {"role":"user","content":user}],
-                temperature=0.2,
-            )
-            content = resp.choices[0].message.content
-        else:
-            content = client.ChatCompletion.create(
-                model=model,
-                messages=[{"role":"system","content":system},
-                          {"role":"user","content":user}],
-                temperature=0.2,
-            )["choices"][0]["message"]["content"]
-        data = json.loads(content)
-        if not isinstance(data, dict):
-            return None
-        data["bullets"] = [str(x).strip() for x in data.get("bullets", []) if str(x).strip()]
-        data["evidence_ids"] = [str(x).strip() for x in data.get("evidence_ids", []) if str(x).strip()]
-        data["notes"] = str(data.get("notes", "")).strip()
-        if not data["bullets"]:
-            return None
-        return data
-    except Exception:
-        return None
-
-# ────────────────────────────────────────────────────────────────────────────────
-# 답변 생성(휴리스틱 + 옵션 LLM 정제)
+# 최종 답변 생성(요약 vs 근거 분리 + 중복 방지)
 # ────────────────────────────────────────────────────────────────────────────────
 
 def build_answer(question: str,
@@ -485,44 +386,61 @@ def build_answer(question: str,
                  max_refs: int = 5) -> Dict[str, Any]:
     if not matches:
         return {
-            "answer": "관련 약관을 찾지 못했습니다. 핵심 키워드(예: 면책, 음주, 도난 등)를 포함해 다시 질문해 주세요.",
+            "answer": "관련 약관을 찾지 못했습니다. 핵심 키워드(예: 면책, 불가, 인수 제한 등)를 포함해 다시 질문해 주세요.",
             "references": []
         }
 
-    # 문장 후보 추출
     triples = []
     for r in matches:
         company = r.get("company") or r.get("document") or "보험사"
         page = r.get("page") or ""
         text = _normalize_spaces(r.get("text") or r.get("chunk") or "")
-        if not text:
+        if text:
+            triples.append((company, str(page), text))
+
+    inc, exc, title_rx = infer_topic_filters(question)
+    picked = clean_and_pick_sentences(
+        question, triples, max_sent_total=8,
+        include_tokens=inc, exclude_tokens=exc, title_regex=title_rx
+    )
+
+    bullets, grounds = [], []
+    seen_bullet = set()
+
+    for _, _, _, st in picked:
+        b = to_bullet_style(st)
+        if not b:
             continue
-        triples.append((company, str(page), text))
+        k = _norm_text_for_key(b)
+        if k in seen_bullet:
+            continue
+        seen_bullet.add(k)
+        bullets.append(" - " + b)
+        if len(bullets) >= 4:
+            break
 
-    picked = clean_and_pick_sentences(question, triples, max_sent_total=8)
+    seen_ground = set()
+    for co, pg, raw, st in picked:
+        if any(_norm_text_for_key(st) == _norm_text_for_key(b.replace(" - ", "")) for b in bullets):
+            continue
+        k = _norm_text_for_key(st)
+        if k in seen_ground:
+            continue
+        grounds.append(f" · {st}")
+        seen_ground.add(k)
+        if len(grounds) >= 5:
+            break
 
-    # 후보 → LLM 정제 or 규칙형 요약
-    candidates = []
-    for idx, (co, pg, raw, st) in enumerate(picked, 1):
-        candidates.append({"id": f"E{idx}", "sentence": st, "company": co, "page": pg})
+    if not bullets and picked:
+        for _, _, _, st in picked[:3]:
+            if is_readable_sentence(st):
+                bullets.append(" - " + compress_sentence(st))
+    if not grounds and picked:
+        for _, _, _, st in picked[:3]:
+            if is_readable_sentence(st):
+                grounds.append(" · " + st)
 
-    allow_tables = ("할인" in question) or ("마일리지" in question)
-    llm_out = refine_with_llm(question, candidates, allow_tables)
-
-    if llm_out:
-        bullets = llm_out.get("bullets", [])[:5]
-        chosen_ids = set(llm_out.get("evidence_ids", [])[:5])
-        grounds = [f" · {c['sentence']}" for c in candidates if c["id"] in chosen_ids][:5]
-        llm_refine = True
-    else:
-        bullets = summarise_policy_from_sentences(question, picked)
-        # 근거 문장: 상위 3~5개(요약과 동일하지 않게 원문 유지)
-        grounds = [f" · {st}" for _, _, _, st in picked[:5]]
-        llm_refine = False
-
-    # 레퍼런스(회사/파일/페이지) 고유화
-    refs = []
-    seen_ref = set()
+    refs, seen_ref = [], set()
     for r in matches:
         k = (r.get("company", ""), r.get("file", ""), str(r.get("page", "")))
         if k in seen_ref:
@@ -538,29 +456,16 @@ def build_answer(question: str,
         if len(refs) >= max_refs:
             break
 
-    # 최소 3줄 이상 보장(너무 텅빈 출력 방지)
-    if len(bullets) < 3:
-        # 근거 기반 백업 문장 추가
-        for _, _, _, st in picked:
-            if st not in bullets:
-                bullets.append(_simplify_phrase(st))
-            if len(bullets) >= 3:
-                break
-
     header = f"질문: {question}\n"
-    body = "핵심 요약:\n" + "\n".join([f" - {b}" for b in bullets])
+    body = "핵심 요약:\n" + ("\n".join(bullets) if bullets else " - 관련 조항을 충분히 찾지 못했습니다.")
     if grounds:
         body += "\n\n근거 문장(요약):\n" + "\n".join(grounds)
 
-    out = {
-        "answer": (header + "\n" + body).strip(),
-        "references": refs,
-        "llm_refine": llm_refine
-    }
-    return out
+    return {"answer": (header + "\n\n" + body).strip(), "references": refs}
+
 
 # ────────────────────────────────────────────────────────────────────────────────
-# RAG 챗봇 전용 엔드포인트
+# RAG 챗봇 엔드포인트
 # ────────────────────────────────────────────────────────────────────────────────
 
 @csrf_exempt
@@ -575,6 +480,7 @@ def insurance_recommendation(request: HttpRequest) -> HttpResponse:
         company_name: Optional[str] = data.get('company')
         top_k: int = int(data.get("top_k") or 12)
         cand_k: int = max(2 * top_k, 20)
+
         if not query:
             return JsonResponse({'success': False, 'error': '질문을 입력해주세요.'}, status=400)
 
@@ -589,15 +495,12 @@ def insurance_recommendation(request: HttpRequest) -> HttpResponse:
         except Exception as e:
             return JsonResponse({'success': False, 'error': f'검색 실패: {str(e)}'}, status=500)
 
-        # 중복/잡음 정리
+        # 중복 제어
         orig_matches = matches
         matches = dedup_matches_by_tuple(matches)
         matches = fuzzy_dedup_matches(matches, threshold=0.965, window=80)
-        min_ratio = float(os.getenv("RAG_MIN_RATIO", "0.35"))
-        min_count = int(os.getenv("RAG_MIN_COUNT", "5"))
-        matches = ensure_not_overpruned(orig_matches, matches, min_ratio=min_ratio, min_count=min_count)
+        matches = ensure_not_overpruned(orig_matches, matches, min_ratio=0.35, min_count=5)
 
-        # 답변 생성
         summary = build_answer(query, matches, max_refs=5)
 
         return JsonResponse({
@@ -605,11 +508,9 @@ def insurance_recommendation(request: HttpRequest) -> HttpResponse:
             'answer': summary["answer"],
             'references': summary["references"],
             'total_results': len(matches),
-            'used_model': os.getenv("EMBED_MODEL", "unknown"),
-            'llm_refine': bool(summary.get("llm_refine", False)),
+            'used_model': os.getenv("EMBED_MODEL", "unknown")
         })
 
-    # GET: 챗봇 페이지
     processor = EnhancedPDFProcessor()
     company_stats = processor.get_company_statistics()
     context = {
@@ -617,6 +518,7 @@ def insurance_recommendation(request: HttpRequest) -> HttpResponse:
         'insurance_companies': processor.insurance_companies
     }
     return render(request, 'insurance_app/recommendation.html', context)
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 계정 관련
@@ -631,6 +533,7 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     storage.used = True
     logout(request)
     return redirect('login')
+
 
 @login_required
 def mypage(request: HttpRequest) -> HttpResponse:
