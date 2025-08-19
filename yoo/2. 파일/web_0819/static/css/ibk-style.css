@@ -1,0 +1,535 @@
+/* IBK 스타일 자동차보험 사이트 - 강화된 CSS */
+
+/* ========== CSS 변수 정의 ========== */
+:root {
+    /* IBK 메인 컬러 팔레트 */
+    --primary-blue: #4A90E2;
+    --secondary-blue: #7B68EE;
+    --accent-pink: #FF6B9D;
+    --accent-yellow: #FFD93D;
+    --accent-orange: #FF8A65;
+    --accent-green: #4ECDC4;
+    --accent-purple: #A78BFA;
+    --accent-teal: #14B8A6;
+    
+    /* 그라데이션 */
+    --gradient-primary: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    --gradient-warm: linear-gradient(135deg, var(--accent-pink), var(--accent-orange));
+    --gradient-cool: linear-gradient(135deg, var(--accent-green), var(--accent-teal));
+    --gradient-sunset: linear-gradient(135deg, #FFB347, #FF6B9D);
+    --gradient-ocean: linear-gradient(135deg, #4ECDC4, #44A08D);
+    
+    /* 그림자 효과 */
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.12);
+    --shadow-strong: 0 15px 40px rgba(0, 0, 0, 0.15);
+    --shadow-glow: 0 0 30px rgba(74, 144, 226, 0.3);
+    
+    /* 둥근 모서리 */
+    --radius-small: 8px;
+    --radius-medium: 16px;
+    --radius-large: 24px;
+    --radius-xl: 32px;
+    
+    /* 애니메이션 */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ========== 기본 설정 ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: #2D3748;
+    background: linear-gradient(135deg, #F7FAFC 0%, #EDF2F7 100%);
+    overflow-x: hidden;
+}
+
+/* ========== 네비게이션 강화 ========== */
+.navbar {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-bottom: 1px solid rgba(74, 144, 226, 0.1);
+    transition: var(--transition-smooth);
+}
+
+.navbar.scrolled {
+    box-shadow: var(--shadow-medium);
+}
+
+.navbar-brand {
+    transition: var(--transition-bounce);
+}
+
+.navbar-brand:hover {
+    transform: translateY(-3px) scale(1.05);
+}
+
+.logo-circle {
+    width: 45px;
+    height: 45px;
+    background: var(--gradient-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+}
+
+.logo-circle::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+    transform: rotate(45deg);
+    transition: var(--transition-smooth);
+}
+
+.logo-circle:hover::before {
+    animation: shimmer 0.8s ease-in-out;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.nav-link {
+    font-weight: 500;
+    position: relative;
+    padding: 0.75rem 1rem !important;
+    transition: var(--transition-smooth);
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+    transition: var(--transition-smooth);
+    transform: translateX(-50%);
+}
+
+.nav-link:hover::after {
+    width: 80%;
+}
+
+.nav-link:hover {
+    color: var(--primary-blue) !important;
+    transform: translateY(-2px);
+}
+
+/* ========== 버튼 스타일 강화 ========== */
+.btn {
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: var(--transition-bounce);
+    border: none;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-ibk-primary {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: var(--shadow-soft);
+}
+
+.btn-ibk-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-strong);
+    color: white;
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--primary-blue);
+    color: var(--primary-blue);
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-blue);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+    color: white;
+}
+
+/* ========== 히어로 섹션 강화 ========== */
+.hero-section {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 5rem 0;
+    border-radius: var(--radius-xl);
+    margin: 2rem 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-strong);
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="rgba(255,255,255,0.1)"><polygon points="0,0 1000,0 1000,100 0,80"/></svg>');
+    background-size: cover;
+}
+
+.hero-section .container {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-illustration {
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+.display-4 {
+    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    margin-bottom: 1.5rem !important;
+}
+
+/* ========== 서비스 카드 강화 ========== */
+.service-cards .card {
+    border: none;
+    border-radius: var(--radius-large);
+    transition: var(--transition-bounce);
+    background: white;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+}
+
+.service-cards .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    transform: scaleX(0);
+    transition: var(--transition-smooth);
+}
+
+.service-cards .card:hover::before {
+    transform: scaleX(1);
+}
+
+.service-cards .card:hover {
+    transform: translateY(-15px) scale(1.02);
+    box-shadow: var(--shadow-strong);
+}
+
+.service-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: var(--transition-bounce);
+}
+
+.service-cards .card:hover .service-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* 카드별 컬러 테마 */
+.service-cards .card:nth-child(1) .service-icon { background: var(--gradient-primary); }
+.service-cards .card:nth-child(2) .service-icon { background: var(--gradient-cool); }
+.service-cards .card:nth-child(3) .service-icon { background: var(--gradient-sunset); }
+.service-cards .card:nth-child(4) .service-icon { background: var(--gradient-ocean); }
+.service-cards .card:nth-child(5) .service-icon { background: linear-gradient(135deg, #FF6B6B, var(--accent-pink)); }
+.service-cards .card:nth-child(6) .service-icon { background: linear-gradient(135deg, var(--accent-purple), var(--secondary-blue)); }
+
+.card-title {
+    font-weight: 600;
+    color: #2D3748;
+    margin-bottom: 0.75rem;
+}
+
+.card-text {
+    color: #718096;
+    font-size: 0.95rem;
+}
+
+/* ========== 뉴스 섹션 강화 ========== */
+.news-section .card {
+    border: none;
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-soft);
+    transition: var(--transition-smooth);
+    overflow: hidden;
+}
+
+.news-section .card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-medium);
+}
+
+.news-section .card-header {
+    border: none;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+}
+
+.news-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: var(--transition-smooth);
+}
+
+.news-item:last-child {
+    border-bottom: none;
+}
+
+.news-item:hover {
+    background: rgba(74, 144, 226, 0.05);
+    padding-left: 1rem;
+    border-radius: var(--radius-small);
+}
+
+.news-item h6 {
+    color: #2D3748;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+/* ========== CTA 섹션 강화 ========== */
+.cta-section {
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(123, 104, 238, 0.1));
+    border-radius: var(--radius-xl);
+    border: 2px solid rgba(74, 144, 226, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(74, 144, 226, 0.1) 0%, transparent 50%);
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.cta-section .container {
+    position: relative;
+    z-index: 2;
+}
+
+/* ========== 챗봇 버튼 강화 ========== */
+.chatbot-toggle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-strong);
+    cursor: pointer;
+    transition: var(--transition-bounce);
+    position: relative;
+    overflow: hidden;
+}
+
+.chatbot-toggle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.chatbot-toggle:hover::before {
+    transform: translateX(100%);
+}
+
+.chatbot-toggle:hover {
+    transform: scale(1.1);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(74, 144, 226, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 144, 226, 0); }
+}
+
+/* ========== 푸터 강화 ========== */
+footer {
+    background: linear-gradient(135deg, #F8FAFC, #EDF2F7) !important;
+    border-top: 1px solid rgba(74, 144, 226, 0.1);
+    margin-top: 4rem;
+}
+
+/* ========== 스크롤바 커스터마이징 ========== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gradient-primary);
+    border-radius: 4px;
+    transition: var(--transition-smooth);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-blue);
+}
+
+/* ========== 반응형 디자인 ========== */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 3rem 0;
+        margin: 1rem 0;
+        border-radius: var(--radius-large);
+    }
+    
+    .display-4 {
+        font-size: 2rem !important;
+    }
+    
+    .hero-illustration i {
+        font-size: 5rem !important;
+    }
+    
+    .service-cards .card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .chatbot-toggle {
+        width: 60px;
+        height: 60px;
+        font-size: 1.3rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 2rem 0;
+        border-radius: var(--radius-medium);
+    }
+    
+    .logo-circle {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .display-4 {
+        font-size: 1.8rem !important;
+    }
+}
+
+/* ========== 접근성 향상 ========== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ========== 다크모드 지원 ========== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text-primary: #E2E8F0;
+        --bg-primary: #1A202C;
+        --bg-secondary: #2D3748;
+    }
+}
+
+/* ========== 인터랙션 효과 ========== */
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s ease;
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.slide-in-left {
+    transform: translateX(-100px);
+    opacity: 0;
+    transition: all 0.8s ease;
+}
+
+.slide-in-left.visible {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.slide-in-right {
+    transform: translateX(100px);
+    opacity: 0;
+    transition: all 0.8s ease;
+}
+
+.slide-in-right.visible {
+    transform: translateX(0);
+    opacity: 1;
+}

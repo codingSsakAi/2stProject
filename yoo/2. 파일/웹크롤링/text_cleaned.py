@@ -18,7 +18,7 @@ import pandas as pd
 # ====================== 설정 ======================
 # 1) 입력/출력 경로(고정)
 INPUT_CSV_PATH  = r"C:\Users\Admin\Desktop\2차 프로젝트\2.코드\웹크롤링\데이터\1.보험용어\2.변환본(가공,최종)\보험용어 취합본(정리중_취합완료_0814_3).csv"
-OUTPUT_XLSX_PATH = r"C:\Users\Admin\Desktop\2차 프로젝트\2.코드\웹크롤링\데이터\1.보험용어\2.변환본(가공,최종)\보험용어_정제_3시트.xlsx"
+OUTPUT_XLSX_PATH = r"C:\Users\Admin\Desktop\2차 프로젝트\2.코드\웹크롤링\데이터\1.보험용어\2.변환본(가공,최종)\보험용어_정제_3시트_0819.xlsx"
 
 # 2) 인코딩(국내 자료면 cp949일 수도 있음)
 ENCODING = "utf-8"  # 필요시 "cp949"
@@ -83,7 +83,7 @@ rx_square_eng_block = re.compile(
 
 # 영어-3) /english → 슬래시 포함 오른쪽 영어 구간 삭제
 rx_slash_english_to_eol = re.compile(
-    r"\s*/\s*['’]?[A-Za-z][A-Za-z0-9'’\s\-\.,]*"
+    r"\s*/\s*['']?[A-Za-z][A-Za-z0-9''\s\-\.,]*"
 )
 
 # 영어-4) '한글 바로 뒤에 붙은' 영어 런 전부 삭제
@@ -91,9 +91,9 @@ rx_slash_english_to_eol = re.compile(
 # FEOL(...) 단독 영문 약어는 유지됨(앞에 한글이 없어 매치 안 됨)
 rx_ko_adjacent_english_right = re.compile(
     rf"(?<=[{HANGUL}])"                 # 직전이 한글이면
-    r"[A-Za-z][A-Za-z0-9'’\-]*"         # 영문 토큰 시작
+    r"[A-Za-z][A-Za-z0-9''\-]*"         # 영문 토큰 시작
     r"(?:\([^)]+\))?"                   # 뒤에 괄호-설명 붙으면 같이
-    r"(?:[ \t,;:\-]+[A-Za-z][A-Za-z0-9'’\-]*(?:\([^)]+\))?)*"  # 이어지는 영문 구절
+    r"(?:[ \t,;:\-]+[A-Za-z][A-Za-z0-9''\-]*(?:\([^)]+\))?)*"  # 이어지는 영문 구절
 )
 
 # 한자-1) ( … ) 내부에 '한자' 1자 이상 포함 → 괄호 포함 삭제
@@ -330,7 +330,7 @@ def main():
 
     # 3) 같은 term_clean 내 중복 처리
     #    - 동일 설명(문자 그대로 완전 동일): 1개만 남기고 나머지 시트2 이동(rule=dup_exact_same_desc)
-    #    - 서로 다른 설명: 줄바꿈으로 병합하여 1행에 남기고, 나머지는 시트2 이동(rule=merged_diff_desc)
+    #    - 서로 다른 설명: 가장 긴 설명만 남기고 나머지는 시트2 이동(rule=merged_diff_desc)
     if not cleaned_df_mid.empty:
         keep_mask = pd.Series(True, index=cleaned_df_mid.index)
 
@@ -365,15 +365,15 @@ def main():
                     first_by_desc[d] = i
                     unique_firsts.append((i, d))
 
-            # 서로 다른 설명이 2개 이상이면 병합
+            # 서로 다른 설명이 2개 이상이면 가장 긴 설명만 남기기
             if len(unique_firsts) >= 2:
                 base_i, _ = unique_firsts[0]
-                # 병합 텍스트 구성(빈 설명은 제외)
+                # 가장 긴 설명 찾기(빈 설명은 제외)
                 merged_descs = [d for _, d in unique_firsts if isinstance(d, str) and d.strip() != ""]
-                merged_text = "\n".join(merged_descs) if merged_descs else ""
+                longest_desc = max(merged_descs, key=len)
 
-                # base 행의 description을 병합 텍스트로 교체
-                cleaned_df_mid.at[base_i, "description"] = merged_text
+                # base 행의 description을 가장 긴 텍스트로 교체
+                cleaned_df_mid.at[base_i, "description"] = longest_desc
 
                 # 나머지 유니크 첫 등장들은 제거하면서 로그 남김
                 for i, d in unique_firsts[1:]:
@@ -391,7 +391,7 @@ def main():
                             "description": d,
                             "collected_date": rr.get("collected_date", ""),
                             "kept_row_id": base_i,
-                            "kept_description": merged_text,
+                            "kept_description": longest_desc,
                         })
 
         cleaned_df_mid = cleaned_df_mid.loc[keep_mask].copy()
