@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from .pinecone_client import get_index
 
-# 384차원 임베딩 모델
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model = SentenceTransformer('intfloat/multilingual-e5-large')
 
 class EnhancedPDFProcessor:
     def __init__(self):
@@ -193,7 +192,9 @@ class EnhancedPDFProcessor:
                         "company": chunk['company'],
                         "document_type": chunk['document_type'],
                         "chunk_type": chunk['chunk_type'],
-                        "length": chunk['length']
+                        "length": chunk['length'],
+                        "file": chunk.get('file', ''),     # 예: '메리츠화재/메리츠화재.pdf'
+                        "page": chunk.get('page', ''),
                     }
                 })
                 successful_chunks += 1
@@ -246,6 +247,9 @@ class EnhancedPDFProcessor:
             
             print(f"    📝 추출된 텍스트 길이: {len(text):,} 문자")
             
+            # 상대 경로(서빙 경로와 맞춤): '회사/파일이름.pdf'
+            rel_file = f"{company_name}/{pdf_file.name}"
+
             # 스마트 청킹
             chunks = self.smart_chunk_text(text, company_name, document_type)
             print(f"    🔪 생성된 청크 수: {len(chunks)}")
@@ -254,6 +258,7 @@ class EnhancedPDFProcessor:
             for chunk in chunks:
                 chunk['company'] = company_name
                 chunk['document_type'] = document_type
+                chunk['file'] = rel_file
             
             # Pinecone에 업로드
             if self.upload_chunks_to_pinecone(chunks, namespace=f"insurance_{company_name.replace(' ', '_')}"):

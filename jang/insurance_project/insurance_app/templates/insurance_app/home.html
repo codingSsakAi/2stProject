@@ -49,34 +49,41 @@
         .btn-secondary:hover {
             box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
         }
-        .nav-bar {
-    margin-top: 18px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
+        /* 새로 추가: 약관 사전 버튼 스타일 */
+        .btn-tertiary {
+            background: linear-gradient(135deg, #8e44ad, #9b59b6);
+        }
+        .btn-tertiary:hover {
+            box-shadow: 0 10px 25px rgba(155, 89, 182, 0.3);
+        }
 
-.nav-btn {
-    display: inline-block;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    padding: 8px 18px;
-    border-radius: 30px;
-    font-size: 1em;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background 0.2s, transform 0.2s;
-}
-.nav-btn:hover {
-    background: linear-gradient(135deg, #2980b9, #3498db);
-    transform: translateY(-2px) scale(1.04);
-}
-.logout-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-.logout-btn:hover {
-    background: linear-gradient(135deg, #c0392b, #e74c3c);
-}
+        .nav-bar {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .nav-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 1em;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-btn:hover {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            transform: translateY(-2px) scale(1.04);
+        }
+        .logout-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+        }
     </style>
 </head>
 <body>
@@ -92,7 +99,12 @@
         <a href="{% url 'recommend_insurance' %}" class="btn btn-secondary">
             📊 보험 추천
         </a>
-        
+
+        <!-- 여기 변경: 스타일 적용 -->
+        <a href="{% url 'glossary' %}" class="btn btn-tertiary">
+            📘 약관 용어 사전
+        </a>
+
         <br><br>
         
         {% if user.is_authenticated %}
