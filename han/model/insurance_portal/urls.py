@@ -3,6 +3,7 @@
 
 from django.urls import path
 from .views import chatbot, weekly
+from insurance_portal.views.fault_api import fault_answer_view
 
 urlpatterns = [
     # 사고 과실 챗봇 API
@@ -11,4 +12,5 @@ urlpatterns = [
     # 보험 상식(weekly) 페이지 및 부분 렌더
     path("weekly/", weekly.page, name="portal_weekly"),
     path("weekly/partial/", weekly.partial, name="portal_weekly_partial"),
+    path("api/fault/answer/", fault_answer_view, name="fault_answer"),
 ]

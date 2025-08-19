@@ -20,7 +20,7 @@
 
   <!-- 포털 기능 전용 CSS (분리본) -->
   <link rel="stylesheet" href="{% static 'insurance_portal/css/fab.css' %}">
-  <link rel="stylesheet" href="{% static 'insurance_portal/css/chatbot.css' %}">
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/chatbot.css' %}?v=20250819">
   <link rel="stylesheet" href="{% static 'insurance_portal/css/claim_knowledge.css' %}">
   <link rel="stylesheet" href="{% static 'insurance_portal/css/guide.css' %}">
   <link rel="stylesheet" href="{% static 'insurance_portal/css/knowhow.css' %}">
@@ -68,6 +68,7 @@
   {% include "insurance_portal/partials/_claim_knowledge.html" %}
   {% include "insurance_portal/partials/_guide_modal.html" %}
   {% include "insurance_portal/partials/_knowhow_modal.html" %}
+  {% comment %} {% include "insurance_portal/partials/_fault_answer.html" %} {% endcomment %}
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -85,9 +86,6 @@
     // 보상 상식 JSONL
     window.CLAIM_KNOWLEDGE_URL = "{% static 'insurance_portal/json/merged_cases.jsonl' %}";
 
-    // 챗봇 API 엔드포인트
-    window.CHATBOT_ASK_URL = "/api/chatbot/ask/";
-
     // 정적 경로 prefix (사고 가이드 이미지 등)
     window.STATIC_PREFIX = "{% static 'insurance_portal/' %}";
   </script>
@@ -96,6 +94,11 @@
   <script src="{% static 'insurance_portal/js/knowhow.js' %}"></script>
   <script src="{% static 'insurance_portal/js/guide.js' %}"></script>
   <script src="{% static 'insurance_portal/js/claim_knowledge.js' %}"></script>
-  <script src="{% static 'insurance_portal/js/chatbot.js' %}"></script>
+  <!-- 필수: marked -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- A안 전용 챗봇: 과실 프롬프트 스키마 전용 (/api/fault/answer/) -->
+  <script src="{% static 'insurance_portal/js/chatbot.js' %}?v=20250819"></script>
+
 </body>
 </html>
