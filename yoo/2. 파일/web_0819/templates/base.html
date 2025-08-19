@@ -1,0 +1,212 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}자동차보험 알아보기{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom IBK Style CSS -->
+    <link rel="stylesheet" href="{% static 'css/ibk-style.css' %}">
+    
+    {% block extra_css %}
+    {% endblock %}
+    
+    <!-- Meta Tags for SEO -->
+    <meta name="description" content="AI 기반 맞춤형 자동차보험 비교견적 서비스. 최적의 보험을 찾아드립니다.">
+    <meta name="keywords" content="자동차보험, 보험비교, 보험견적, AI추천, IBK스타일">
+    <meta name="author" content="자동차보험 비교견적">
+    
+    <!-- Open Graph for Social Media -->
+    <meta property="og:title" content="자동차보험 비교견적">
+    <meta property="og:description" content="AI 기반 맞춤형 자동차보험 비교견적 서비스">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top" id="mainNavbar">
+        <div class="container">
+            <!-- Logo -->
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'home:index' %}">
+                <div class="logo-circle me-3">
+                    <i class="fas fa-car text-white"></i>
+                </div>
+                <div>
+                    <span class="text-primary fs-4 fw-bold">자동차보험</span>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: -3px;">알아보기</div>
+                </div>
+            </a>
+            
+            <!-- Mobile Toggle -->
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Navigation Links -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#insurance">
+                            <i class="fas fa-magic me-1"></i>보험추천
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#custom">
+                            <i class="fas fa-cogs me-1"></i>맞춤설계
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#guide">
+                            <i class="fas fa-map-marked-alt me-1"></i>가이드
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#news">
+                            <i class="fas fa-newspaper me-1"></i>뉴스
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#terms">
+                            <i class="fas fa-book me-1"></i>용어사전
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- User Actions -->
+                <div class="d-flex align-items-center gap-2">
+                    {% if user.is_authenticated %}
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user me-1"></i>{{ user.username }}
+                            </button>
+                            <ul class="dropdown-menu shadow">
+                                <li><a class="dropdown-item" href="#profile">
+                                    <i class="fas fa-user-circle me-2"></i>마이페이지
+                                </a></li>
+                                <li><a class="dropdown-item" href="#settings">
+                                    <i class="fas fa-cog me-2"></i>설정
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#logout">
+                                    <i class="fas fa-sign-out-alt me-2"></i>로그아웃
+                                </a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="#login" class="btn btn-outline-primary">
+                            <i class="fas fa-sign-in-alt me-1"></i>로그인
+                        </a>
+                        <a href="#signup" class="btn btn-ibk-primary">
+                            <i class="fas fa-user-plus me-1"></i>회원가입
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="logo-circle me-3" style="width: 50px; height: 50px;">
+                            <i class="fas fa-car text-white"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-primary mb-0">자동차보험</h5>
+                            <small class="text-muted">비교견적 서비스</small>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-3">
+                        AI 기반 맞춤형 추천으로 최적의 자동차보험을 찾아드리는 
+                        신뢰할 수 있는 비교견적 서비스입니다.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a href="#" class="btn btn-outline-primary btn-sm rounded-circle" style="width: 40px; height: 40px;">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-primary btn-sm rounded-circle" style="width: 40px; height: 40px;">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-primary btn-sm rounded-circle" style="width: 40px; height: 40px;">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-lg-2 col-md-3 mb-4">
+                    <h6 class="fw-bold mb-3 text-primary">서비스</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#recommend" class="text-muted text-decoration-none">보험추천</a></li>
+                        <li class="mb-2"><a href="#custom" class="text-muted text-decoration-none">맞춤설계</a></li>
+                        <li class="mb-2"><a href="#compare" class="text-muted text-decoration-none">보험사비교</a></li>
+                        <li class="mb-2"><a href="#calculator" class="text-muted text-decoration-none">보험료계산</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-3 mb-4">
+                    <h6 class="fw-bold mb-3 text-primary">가이드</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#fault" class="text-muted text-decoration-none">과실비율</a></li>
+                        <li class="mb-2"><a href="#accident" class="text-muted text-decoration-none">사고처리</a></li>
+                        <li class="mb-2"><a href="#compensation" class="text-muted text-decoration-none">보상상식</a></li>
+                        <li class="mb-2"><a href="#knowledge" class="text-muted text-decoration-none">보험상식</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-3 mb-4">
+                    <h6 class="fw-bold mb-3 text-primary">정보</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#news" class="text-muted text-decoration-none">뉴스</a></li>
+                        <li class="mb-2"><a href="#terms" class="text-muted text-decoration-none">용어사전</a></li>
+                        <li class="mb-2"><a href="#faq" class="text-muted text-decoration-none">FAQ</a></li>
+                        <li class="mb-2"><a href="#blog" class="text-muted text-decoration-none">블로그</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-3 mb-4">
+                    <h6 class="fw-bold mb-3 text-primary">고객센터</h6>
+                    <div class="mb-2">
+                        <i class="fas fa-phone text-primary me-2"></i>
+                        <strong>1588-0000</strong>
+                    </div>
+                    <div class="mb-2">
+                        <i class="fas fa-clock text-primary me-2"></i>
+                        <span class="text-muted">평일 09:00-18:00</span>
+                    </div>
+                    <div class="mb-2">
+                        <i class="fas fa-envelope text-primary me-2"></i>
+                        <span class="text-muted">help@carinsurance.co.kr</span>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4 border-primary opacity-25">
+            
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted mb-0">
+                        © 2024 자동차보험 알아보기. All rights reserved.
+                    </p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#privacy" class="text-muted me-
