@@ -1,22 +1,20 @@
-# insurance_portal/services/pinecone_search_fault.py
+# -*- coding: utf-8 -*-
 from typing import List, Dict, Any, Optional
 from django.conf import settings
 from pinecone import Pinecone
-import requests
+import requests, os
 
 # ---- 설정값 ----
-PINECONE_API_KEY = getattr(settings, "PINECONE_API_KEY_MY", None)
-PINECONE_INDEX   = getattr(settings, "FAULT_INDEX_NAME", None)
+PINECONE_API_KEY = getattr(settings, "PINECONE_API_KEY_MY", os.getenv("PINECONE_API_KEY_MY"))
+PINECONE_INDEX   = getattr(settings, "FAULT_INDEX_NAME", os.getenv("FAULT_INDEX_NAME"))
 
-UPSTAGE_API_KEY     = getattr(settings, "UPSTAGE_API_KEY", None)
-UPSTAGE_EMBED_URL   = getattr(settings, "UPSTAGE_EMBED_URL", None)  # None이면 기본 사용
-UPSTAGE_EMBED_MODEL = getattr(settings, "UPSTAGE_EMBED_MODEL", "solar-embedding-1-large")
+UPSTAGE_API_KEY     = getattr(settings, "UPSTAGE_API_KEY", os.getenv("UPSTAGE_API_KEY"))
+UPSTAGE_EMBED_URL   = getattr(settings, "UPSTAGE_EMBED_URL", os.getenv("UPSTAGE_EMBED_URL"))
+UPSTAGE_EMBED_MODEL = getattr(settings, "UPSTAGE_EMBED_MODEL", os.getenv("UPSTAGE_EMBED_MODEL", "solar-embedding-1-large"))
 
-# ---- 내부 유틸 ----
 _pinecone_index = None
 
 def _ensure_index():
-    """Pinecone Index 핸들 생성/캐싱"""
     global _pinecone_index
     if _pinecone_index is not None:
         return _pinecone_index
@@ -31,9 +29,6 @@ def _ensure_index():
 # ---------- Upstage Embedding ----------
 
 def _normalize_model(name: Optional[str]) -> str:
-    """
-    기본 모델명을 정규화(접미사 제거/별칭 보정).
-    """
     if not name:
         return "solar-embedding-1-large"
     base = name.strip()
@@ -49,12 +44,6 @@ def _normalize_model(name: Optional[str]) -> str:
     return aliases.get(base, base)
 
 def upstage_embed(text: str) -> List[float]:
-    """
-    Upstage 임베딩 호출.
-    - 모델명 후보: base, base-query, base-passage, (레거시) embedding-query
-    - URL 후보: /v1/embeddings → /v1/solar/embeddings
-    둘 다 순차 시도하여 첫 성공 결과를 반환.
-    """
     if not UPSTAGE_API_KEY:
         raise RuntimeError("UPSTAGE_API_KEY 설정이 없습니다.")
 
@@ -63,16 +52,14 @@ def upstage_embed(text: str) -> List[float]:
         base,
         f"{base}-query",
         f"{base}-passage",
-        "embedding-query",      # 일부 SDK/문서 레거시
+        "embedding-query",
     ]
-
     url_candidates = [
         (UPSTAGE_EMBED_URL or "https://api.upstage.ai/v1/embeddings"),
         "https://api.upstage.ai/v1/solar/embeddings",
     ]
 
     headers = {"Authorization": f"Bearer {UPSTAGE_API_KEY}", "Content-Type": "application/json"}
-
     errors: List[str] = []
     for url in url_candidates:
         for model in model_candidates:
@@ -85,7 +72,6 @@ def upstage_embed(text: str) -> List[float]:
                     if not vec:
                         raise RuntimeError("Upstage 응답에 embedding이 없습니다.")
                     return vec
-                # 에러 메시지 기록 후 다음 후보 시도
                 try:
                     r.raise_for_status()
                 except requests.HTTPError as e:
@@ -94,7 +80,6 @@ def upstage_embed(text: str) -> List[float]:
             except requests.RequestException as e:
                 errors.append(f"{url} model={model} -> 연결 오류: {e}")
                 continue
-
     raise RuntimeError("Upstage 임베딩 실패:\n" + "\n".join(errors))
 
 # ---- 공개 함수 ----
@@ -104,10 +89,6 @@ def retrieve_fault_ratio(
     namespace: Optional[str] = None,
     filters: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    과실비율 질의 검색
-    반환: [{score, text, file, page, chunk_idx}, ...]
-    """
     index = _ensure_index()
     vector = upstage_embed(query)
 
@@ -125,12 +106,26 @@ def retrieve_fault_ratio(
     matches: List[Dict[str, Any]] = []
     for m in (result.get("matches") or []):
         meta = m.get("metadata") or {}
-        text = meta.get("text") or meta.get("chunk") or ""
+        text_or_table = meta.get("table_md") or meta.get("text") or meta.get("chunk") or ""
         matches.append({
             "score": m.get("score", 0.0),
-            "text": text,
-            "file": meta.get("file", ""),
-            "page": meta.get("page", ""),
+            "type": meta.get("type", ""),
+            "id":   meta.get("id", ""),
+            "chapter": meta.get("chapter", ""),
+            "topic": meta.get("topic", []),
+            "text": text_or_table,            # 표면 table_md가 우선
+            "table_md": meta.get("table_md"),
+            "table_json": meta.get("table_json"),
+            "file": meta.get("source", meta.get("file", "")),
+            "page": meta.get("page_hint", meta.get("page", "")),
             "chunk_idx": meta.get("chunk_idx", ""),
         })
     return matches
+
+# === 서비스 레이어용 alias: 표 우선 포맷/프롬프트 조립에서 일관되게 쓰기 위함 ===
+def retrieve_fault_sources(query: str, top_k: int = 7) -> List[Dict[str, Any]]:
+    """
+    서비스 레이어(fault_answerer.py)에서 호출하는 기본 검색 함수.
+    반환 형식은 retrieve_fault_ratio와 동일.
+    """
+    return retrieve_fault_ratio(query=query, top_k=top_k)

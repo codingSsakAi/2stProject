@@ -4,6 +4,13 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+UPSTAGE_API_KEY     = os.getenv("UPSTAGE_API_KEY")
+UPSTAGE_EMBED_MODEL = os.getenv("UPSTAGE_EMBED_MODEL", "solar-embedding-1-large")
+UPSTAGE_EMBED_URL   = os.getenv("UPSTAGE_EMBED_URL", "https://api.upstage.ai/v1/embeddings")
+
+# Pinecone
+PINECONE_API_KEY_MY = os.getenv("PINECONE_API_KEY_MY")
+FAULT_INDEX_NAME    = os.getenv("FAULT_INDEX_NAME") 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret")
 DEBUG = True
 ALLOWED_HOSTS = []
