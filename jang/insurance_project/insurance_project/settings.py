@@ -1,3 +1,4 @@
+# insurance_project/settings.py
 from pathlib import Path
 from dotenv import load_dotenv
 import os
@@ -19,10 +20,8 @@ INSTALLED_APPS = [
     'rest_framework',
 ]
 
-# 🔑 커스텀 유저 모델 설정 추가
 AUTH_USER_MODEL = 'insurance_app.CustomUser'
 
-# 환경 변수 로드
 load_dotenv()
 PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 PINECONE_ENV = os.getenv('PINECONE_ENV')
@@ -43,7 +42,7 @@ ROOT_URLCONF = "insurance_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "insurance_app" / "templates"],  # 앱 템플릿 경로 추가
+        "DIRS": [BASE_DIR / "insurance_app" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -71,13 +70,18 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# 🌐 한국어/한국 시간대 설정
 LANGUAGE_CODE = "ko-kr"
 TIME_ZONE = "Asia/Seoul"
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "insurance_app" / "static"]
+
+# PDF/문서 제공용
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 USE_MOCK_API = True

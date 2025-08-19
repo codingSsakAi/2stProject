@@ -22,7 +22,7 @@
     .chat-box{max-height:560px;min-height:360px;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:14px;background:#fafafa}
     .msg{margin:10px 0;display:flex}
     .msg.user{justify-content:flex-end}
-    .bubble{max-width:80%;padding:12px 14px;border-radius:14px;border:1px solid #e5e7eb;line-height:1.6;white-space:pre-wrap}
+    .bubble{max-width:80%;padding:12px 14px;border-radius:14px;border:1px solid #e5e7eb;line-height:1.6}
     .msg.user .bubble{background:#e7f1ff;border-color:#cfe0ff}
     .msg.assistant .bubble{background:#f8f9fa}
     .meta{margin-top:8px;font-size:.85em;color:#6b7280}
@@ -40,6 +40,7 @@
     .chip:hover{background:#3498db;color:#fff}
     .footer{background:#2c3e50;color:#fff;text-align:center;padding:18px;font-size:.95em;opacity:.9}
     @media (max-width:768px){.container{margin:8px;border-radius:16px}.chat-box{min-height:300px}}
+    mark{background:#fff2ac;padding:0 .2em;border-radius:.2em}
   </style>
 </head>
 <body>
@@ -67,8 +68,18 @@
       <div class="chat-wrap">
         <div class="chat-title">대화</div>
         <div id="chatBox" class="chat-box"></div>
+
         <div class="input-row">
-          <input id="chatInput" class="input" type="text" placeholder="예) 음주운전 사고 시 보상여부는? / 무사고 할인 기준은?" onkeypress="if(event.key==='Enter'){sendChat()}">
+          <input id="chatInput" class="input" type="text"
+                 placeholder="예) 음주운전 사고 시 보상여부는? / 무사고 할인 기준은?"
+                 onkeypress="if(event.key==='Enter'){sendChat()}">
+
+          <select id="answerMode" class="input" style="max-width:160px;flex:0 0 160px">
+            <option value="brief">간단</option>
+            <option value="normal" selected>자세히</option>
+            <option value="clauses">조항만</option>
+          </select>
+
           <button id="chatSend" class="send-btn" onclick="sendChat()">질문하기</button>
         </div>
       </div>
@@ -77,8 +88,6 @@
         <h3>💡 예시 질문</h3>
         <span class="chip" onclick="quickAsk('음주운전으로 사고가 났을 때 보상되나요?')">음주운전 보상 여부</span>
         <span class="chip" onclick="quickAsk('무사고 할인은 어떻게 적용되나요?')">무사고 할인 기준</span>
-        <!-- 면책 질문은 의도를 좁혀서 제공(잡음 방지) -->
-        <span class="chip" onclick="quickAsk('면책(자기차량손해)에서 보상 제외 항목은?')">면책(자기차량손해)</span>
         <span class="chip" onclick="quickAsk('가족 특약 혜택은 어떻게 되나요?')">가족 특약</span>
         <span class="chip" onclick="quickAsk('차량 도난 시 보상 기준은?')">도난 보상</span>
       </div>
@@ -90,6 +99,8 @@
   </div>
 
   <script>
+    const MEDIA_BASE = "{{ MEDIA_URL|default:'/documents/' }}";  // settings.MEDIA_URL 전달됨
+
     function getCookie(name){
       let v=null;
       if(document.cookie&&document.cookie!==''){
@@ -138,23 +149,41 @@
 
     function clamp01(x){ return Math.max(0,Math.min(0.999,Number(x)||0)); }
 
+    // 경로 컴포넌트 안전 인코딩 (한글/공백 대응)
+    function encodePath(p){
+      return String(p||'').split('/').map(encodeURIComponent).join('/');
+    }
+
+    // 간단 키워드 하이라이트
+    function highlight(text, query){
+      try{
+        const terms = (query||'').split(/\s+/).filter(t=>t.length>=2);
+        if(!terms.length) return text;
+        let out = text;
+        terms.forEach(t=>{
+          const esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          out = out.replace(new RegExp(esc, 'gi'), m => `<mark>${m}</mark>`);
+        });
+        return out;
+      }catch(e){ return text; }
+    }
+
     async function sendChat(){
       const inp=document.getElementById('chatInput');
+      const mode=(document.getElementById('answerMode').value||'normal');
       const btn=document.getElementById('chatSend');
       const q=(inp.value||'').trim();
       if(!q){ inp.focus(); return; }
 
       appendMsg('user', q);
-      inp.value='';
-      btn.disabled=true;
-
+      inp.value=''; btn.disabled=true;
       const pendingId = addThinkingBubble();
 
       try{
         const r=await fetch('/insurance-recommendation/',{
           method:'POST',
           headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-          body:JSON.stringify({query:q, top_k:12})
+          body:JSON.stringify({query:q, top_k:12, answer_mode: mode})
         });
         const data=await r.json();
 
@@ -163,11 +192,16 @@
           return;
         }
 
+        const answerHtml = highlight((data.answer||'').replace(/\n/g,'\n'), q);
+
         const refs=(data.references||[]).map((s,i)=>{
           const sc = typeof s.score==='number' ? (clamp01(s.score)*100).toFixed(1)+'%' : '';
           const file = s.file || '';
           const page = s.page || '';
-          return `(${i+1}) ${s.company||'?'}${file?` | ${file}`:''}${page?` | p.${page}`:''}${sc?` <span style="color:#8892a6">(${sc})</span>`:''}`;
+          // PDF 파일(.pdf)이고 page가 있을 때만 '원문 열기' 표시
+          const linkable = file && /\.pdf$/i.test(file) && page;
+          const link = linkable ? `<a href="${MEDIA_BASE}${encodePath(file)}#page=${page}" target="_blank">원문 열기</a>` : '';
+          return `(${i+1}) ${s.company||'?'}${file?` | ${file}`:''}${page?` | p.${page}`:''} ${link} ${sc?`<span style="color:#8892a6">(${sc})</span>`:''}`;
         }).join('<br/>');
 
         const meta = [];
@@ -175,7 +209,7 @@
         if (typeof data.total_results === 'number') meta.push(`검색수: ${data.total_results}`);
 
         const html = `
-          <div>${(data.answer||'').replace(/\n/g,'\n')}</div>
+          <div style="white-space:pre-wrap">${answerHtml}</div>
           ${refs? `<div class="meta">근거<br/>${refs}</div>`:''}
           ${meta.length? `<div class="meta">${meta.join(' · ')}</div>`:''}
         `;

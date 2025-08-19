@@ -1,0 +1,72 @@
+<!-- insurance_app/templates/insurance_app/glossary.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>약관 용어 사전</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;background:#f6f7fb;margin:0}
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .title{font-size:1.6rem;font-weight:800;color:#1f2d3d}
+    .nav a{color:#2980b9;text-decoration:none;font-weight:600;margin-left:10px}
+    .searchbar{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:14px;margin:10px 0;display:grid;grid-template-columns:2fr 1fr auto;gap:10px}
+    input[type="text"],select{padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px}
+    .btn{background:#e74c3c;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+    .card{background:#fff;border:1px solid #eaeaea;border-radius:12px;padding:16px}
+    .term{font-weight:800;color:#2c3e50}
+    .cat{display:inline-block;background:#eef6ff;color:#1f6feb;border:1px solid #c7e1ff;border-radius:999px;padding:2px 8px;font-size:12px;margin:6px 0}
+    .alias{display:inline-block;background:#f5f7fa;border:1px solid #e3e7ee;border-radius:8px;padding:2px 6px;margin:2px;font-size:12px}
+    .desc{color:#444;margin-top:8px;line-height:1.5}
+    .muted{color:#888;font-size:12px;margin-top:6px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="title">📘 약관 용어 사전</div>
+    <div class="nav">
+      <a href="{% url 'home' %}">홈</a> ·
+      <a href="{% url 'recommend_insurance' %}">보험료 계산</a>
+    </div>
+  </div>
+
+  <form class="searchbar" method="get">
+    <input type="text" name="q" value="{{ q }}" placeholder="예: 대인Ⅱ, 자차, 운전자 범위, 면책...">
+    <select name="cat">
+      <option value="">전체 분류</option>
+      {% for c in categories %}
+        <option value="{{ c }}" {% if c == cat %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">검색</button>
+  </form>
+
+  {% if terms %}
+    <div class="grid">
+      {% for t in terms %}
+        <div class="card">
+          <div class="term">{{ t.term }}</div>
+          <div class="cat">{{ t.category }}</div>
+          {% if t.aliases %}
+            <div class="muted">동의어:
+              {% for a in t.aliases %}
+                <span class="alias">{{ a }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+          <div class="desc">{{ t.short_def }}</div>
+          {% if t.long_def %}
+            <div class="muted" style="margin-top:8px;">{{ t.long_def|truncatechars:180 }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>검색 결과가 없습니다.</p>
+  {% endif %}
+</div>
+</body>
+</html>
