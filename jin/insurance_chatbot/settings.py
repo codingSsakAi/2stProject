@@ -60,8 +60,8 @@ MIDDLEWARE = [
 # CSRF 설정
 CSRF_COOKIE_SECURE = False  # 개발 환경에서는 False
 CSRF_COOKIE_HTTPONLY = False  # JavaScript에서 접근 가능하도록
-CSRF_COOKIE_SAMESITE = 'Lax'  # SameSite 설정
-CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000']
+CSRF_COOKIE_SAMESITE = "Lax"  # SameSite 설정
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]
 
 ROOT_URLCONF = "insurance_chatbot.urls"
 
@@ -86,28 +86,25 @@ WSGI_APPLICATION = "insurance_chatbot.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# 개발 단계에서는 SQLite 사용, 배포 시 MySQL로 전환
+# MySQL 설정
+import pymysql
+
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.getenv("DB_NAME", "insuranceChatbotDB"),
+        "USER": os.getenv("DB_USER", "root"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "0945"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "3306"),
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
-
-# MySQL 설정 (배포 시 사용)
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.mysql",
-#         "NAME": os.getenv("DB_NAME"),
-#         "USER": os.getenv("DB_USER"),
-#         "PASSWORD": os.getenv("DB_PASSWORD"),
-#         "HOST": os.getenv("DB_HOST"),
-#         "PORT": os.getenv("DB_PORT"),
-#         "OPTIONS": {
-#             "charset": "utf8mb4",
-#         },
-#     }
-# }
 
 
 # Password validation
@@ -173,12 +170,12 @@ PINECONE_METRIC = os.getenv("PINECONE_METRIC", "cosine")
 # 사용 가능한 안정적인 모델들
 SUPPORTED_MODELS = [
     "gpt-4o-mini",
-    "gpt-4o", 
+    "gpt-4o",
     "gpt-4",
     "gpt-3.5-turbo",
     "gpt-5-nano",
     "gpt-5-mini",
-    "gpt-5"
+    "gpt-5",
 ]
 
 # 기본 모델 설정 (gpt-5 모델들은 아직 안정적이지 않을 수 있음)

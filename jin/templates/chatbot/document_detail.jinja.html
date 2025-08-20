@@ -148,6 +148,48 @@
             </h2>
             <div id="collapse{{ chunk.id }}" class="accordion-collapse collapse" data-bs-parent="#chunksAccordion">
               <div class="accordion-body">
+                <!-- 메타데이터 정보 -->
+                {% if chunk.title or chunk.category or chunk.keywords %}
+                <div class="mb-3">
+                  <h6 class="text-primary">메타데이터</h6>
+                  <div class="row">
+                    {% if chunk.title %}
+                    <div class="col-md-6">
+                      <strong>제목:</strong> {{ chunk.title }}
+                    </div>
+                    {% endif %}
+                    {% if chunk.category %}
+                    <div class="col-md-6">
+                      <strong>카테고리:</strong> 
+                      <span class="badge bg-secondary">{{ chunk.category }}</span>
+                    </div>
+                    {% endif %}
+                  </div>
+                  {% if chunk.keywords %}
+                  <div class="mt-2">
+                    <strong>키워드:</strong>
+                    {% for keyword in chunk.keywords %}
+                    <span class="badge bg-info me-1">{{ keyword }}</span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  {% if chunk.summary %}
+                  <div class="mt-2">
+                    <strong>요약:</strong> {{ chunk.summary }}
+                  </div>
+                  {% endif %}
+                  {% if chunk.confidence_score %}
+                  <div class="mt-2">
+                    <strong>신뢰도:</strong> 
+                    <span class="badge bg-{% if chunk.confidence_score > 0.7 %}success{% elif chunk.confidence_score > 0.4 %}warning{% else %}danger{% endif %}">
+                      {{ chunk.confidence_score|floatformat:2 }}
+                    </span>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- 텍스트 내용 -->
                 <div class="bg-light p-3 rounded">
                   <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit">{{ chunk.chunk_text }}</pre>
                 </div>

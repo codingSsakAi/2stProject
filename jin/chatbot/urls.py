@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, enhanced_views
 
 app_name = 'chatbot'
 
@@ -13,6 +13,19 @@ urlpatterns = [
     path('documents/<int:document_id>/', views.document_detail_view, name='document_detail'),
     path('documents/<int:document_id>/delete/', views.document_delete_view, name='document_delete'),
     path('documents/<int:document_id>/process/', views.document_process_view, name='document_process'),
+    path('documents/<int:document_id>/progress/', views.processing_progress_view, name='processing_progress'),
+    
+    # 향상된 문서 관리 URL 패턴들
+    path('enhanced/documents/', enhanced_views.enhanced_document_list_view, name='enhanced_document_list'),
+    path('enhanced/documents/<int:document_id>/', enhanced_views.enhanced_document_detail_view, name='enhanced_document_detail'),
+    path('enhanced/documents/search/', enhanced_views.enhanced_document_search_view, name='enhanced_document_search'),
+    path('enhanced/embedding_stats/', enhanced_views.enhanced_embedding_stats_view, name='enhanced_embedding_stats'),
+    path('enhanced/chat_management/', enhanced_views.enhanced_chat_management_view, name='enhanced_chat_management'),
+    
+    # 메타데이터 관리 API
+    path('api/chunks/<int:chunk_id>/metadata/', enhanced_views.update_chunk_metadata_view, name='update_chunk_metadata'),
+    path('api/documents/<int:document_id>/reprocess/', enhanced_views.reprocess_document_metadata_view, name='reprocess_document_metadata'),
+    path('api/metadata/export/', enhanced_views.export_metadata_view, name='export_metadata'),
     
     # 채팅 관련 URL 패턴들
     path('chat/', views.chat_view, name='chat'),
@@ -25,6 +38,7 @@ urlpatterns = [
     # 세션 관리 API
     path('api/session/title/', views.api_session_title, name='api_session_title'),
     path('api/session/delete/', views.api_session_delete, name='api_session_delete'),
+    path('api/sessions/', views.api_get_chat_sessions, name='api_get_chat_sessions'),
     
     # 보험 추천 관련 API
     path('api/insurance/profile/', views.api_insurance_profile, name='api_insurance_profile'),

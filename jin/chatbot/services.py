@@ -14,6 +14,7 @@ from .hybrid_search import HybridSearchService
 from .cache_service import CacheService
 from .insurance_service import InsuranceRecommendationService
 from .ml_models import InsurancePremiumPredictor, CustomerBehaviorAnalyzer
+from .metadata_service import MetadataService
 
 # Pinecone 클라이언트
 try:
@@ -28,6 +29,77 @@ except ImportError:
 UPSTAGE_AVAILABLE = True
 
 logger = logging.getLogger(__name__)
+
+
+class DocumentService:
+    """문서 검색 및 관리 서비스"""
+
+    def __init__(self, embedding_service):
+        self.embedding_service = embedding_service
+        self.pinecone_service = PineconeService()
+
+    def search_similar_chunks(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+        """쿼리와 유사한 청크 검색"""
+        try:
+            # 쿼리 임베딩 생성
+            query_embedding = self.embedding_service.get_embeddings([query])[0]
+            
+            # Pinecone에서 유사한 벡터 검색
+            search_results = self.pinecone_service.search_vectors(
+                query_embedding, top_k=top_k
+            )
+            
+            # 결과 포맷팅
+            formatted_results = []
+            for result in search_results:
+                chunk_id = result.get('id')
+                if chunk_id:
+                    try:
+                        chunk = DocumentChunk.objects.get(id=chunk_id)
+                        formatted_results.append({
+                            'chunk_id': chunk.id,
+                            'content': chunk.chunk_text,
+                            'document_id': chunk.document.id,
+                            'document_title': chunk.document.title,
+                            'score': result.get('score', 0),
+                            'metadata': {
+                                'content': chunk.chunk_text,
+                                'document_id': chunk.document.id,
+                                'chunk_id': chunk.id,
+                                'title': chunk.title,
+                                'category': chunk.category,
+                                'article_number': chunk.article_number,
+                                'keywords': chunk.keywords,
+                                'summary': chunk.summary
+                            }
+                        })
+                    except DocumentChunk.DoesNotExist:
+                        logger.warning(f"청크 {chunk_id}를 찾을 수 없습니다.")
+                        continue
+            
+            return formatted_results
+            
+        except Exception as e:
+            logger.error(f"문서 검색 중 오류: {e}")
+            return []
+
+    def get_document_chunks(self, document_id: int) -> List[DocumentChunk]:
+        """문서의 모든 청크 조회"""
+        try:
+            return DocumentChunk.objects.filter(document_id=document_id).order_by('chunk_index')
+        except Exception as e:
+            logger.error(f"문서 청크 조회 중 오류: {e}")
+            return []
+
+    def get_chunk_by_id(self, chunk_id: int) -> Optional[DocumentChunk]:
+        """청크 ID로 청크 조회"""
+        try:
+            return DocumentChunk.objects.get(id=chunk_id)
+        except DocumentChunk.DoesNotExist:
+            return None
+        except Exception as e:
+            logger.error(f"청크 조회 중 오류: {e}")
+            return None
 
 
 class EmbeddingService:
@@ -98,22 +170,24 @@ class EmbeddingService:
                         logger.error(
                             f"텍스트 {i+1}에 대한 응답에 데이터가 없습니다: {result}"
                         )
-                        # 빈 벡터 추가 (차원은 4096)
-                        embeddings.append([0.0] * 4096)
+                        # 빈 벡터로 대체
+                        embeddings.append([0.0] * 4096)  # 기본 차원
 
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"텍스트 {i+1} API 호출 실패: {e}")
+                    # 빈 벡터로 대체
+                    embeddings.append([0.0] * 4096)
                 except Exception as e:
                     logger.error(f"텍스트 {i+1} 처리 중 오류: {e}")
-                    # 오류 시 빈 벡터 추가
+                    # 빈 벡터로 대체
                     embeddings.append([0.0] * 4096)
 
-            logger.info(f"✅ Upstage API로 {len(embeddings)}개의 벡터 생성 완료")
+            logger.info(f"✅ Embedding 생성 완료: {len(embeddings)}개 벡터")
             return embeddings
 
         except Exception as e:
-            logger.error(f"Upstage API 호출 실패: {e}")
-            if "response" in locals():
-                logger.error(f"응답 내용: {response.text}")
-            raise Exception(f"Upstage Embedding API 오류: {str(e)}")
+            logger.error(f"Upstage Embedding API 오류: {e}")
+            raise
 
     def get_single_embedding(self, text: str) -> List[float]:
         """단일 텍스트를 Embedding 벡터로 변환"""
@@ -142,15 +216,27 @@ class PineconeService:
 
         try:
             # Pinecone 클라이언트 초기화
-            self.pc = Pinecone(api_key=getattr(settings, "PINECONE_API_KEY", ""))
+            api_key = getattr(settings, "PINECONE_API_KEY", "")
+            if not api_key:
+                logger.error("Pinecone API 키가 설정되지 않았습니다.")
+                return
+            
+            self.pc = Pinecone(api_key=api_key)
+            logger.info("✅ Pinecone 클라이언트 초기화 완료")
 
             # 인덱스 존재 확인 및 생성
-            if self.index_name not in self.pc.list_indexes().names():
+            existing_indexes = self.pc.list_indexes().names()
+            logger.info(f"기존 인덱스 목록: {existing_indexes}")
+            
+            if self.index_name not in existing_indexes:
+                logger.info(f"인덱스 '{self.index_name}'가 없어 새로 생성합니다.")
                 self._create_index()
+            else:
+                logger.info(f"인덱스 '{self.index_name}'가 이미 존재합니다.")
 
             # 인덱스 연결
             self.index = self.pc.Index(self.index_name)
-            logger.info(f"Pinecone 인덱스 '{self.index_name}' 연결 완료")
+            logger.info(f"✅ Pinecone 인덱스 '{self.index_name}' 연결 완료")
 
         except Exception as e:
             logger.error(f"Pinecone 초기화 실패: {e}")
@@ -298,6 +384,51 @@ class PineconeService:
         except Exception as e:
             logger.error(f"Pinecone 인덱스 통계 조회 실패: {e}")
             return {}
+
+    def delete_all_vectors(self) -> bool:
+        """인덱스의 모든 벡터 삭제"""
+        if not self.index:
+            logger.error("Pinecone 인덱스가 초기화되지 않았습니다.")
+            return False
+
+        try:
+            self.index.delete(delete_all=True)
+            logger.info("Pinecone 인덱스의 모든 벡터가 삭제되었습니다.")
+            return True
+        except Exception as e:
+            logger.error(f"Pinecone 벡터 삭제 실패: {e}")
+            return False
+
+    def delete_index(self) -> bool:
+        """인덱스 완전 삭제"""
+        if not self.pc:
+            logger.error("Pinecone 클라이언트가 초기화되지 않았습니다.")
+            return False
+
+        try:
+            self.pc.delete_index(self.index_name)
+            logger.info(f"Pinecone 인덱스 '{self.index_name}'가 삭제되었습니다.")
+            self.index = None
+            return True
+        except Exception as e:
+            logger.error(f"Pinecone 인덱스 삭제 실패: {e}")
+            return False
+
+    def recreate_index(self) -> bool:
+        """인덱스 재생성 (삭제 후 새로 생성)"""
+        try:
+            # 기존 인덱스 삭제
+            if self.delete_index():
+                logger.info("기존 인덱스 삭제 완료")
+            
+            # 새 인덱스 생성
+            self._create_index()
+            self.index = self.pc.Index(self.index_name)
+            logger.info(f"새 Pinecone 인덱스 '{self.index_name}' 생성 완료")
+            return True
+        except Exception as e:
+            logger.error(f"Pinecone 인덱스 재생성 실패: {e}")
+            return False
 
     def _get_usage_info(self) -> Dict[str, Any]:
         """Pinecone 사용량 정보 조회 (RUs, Storage, WUs)"""
@@ -506,20 +637,42 @@ class DocumentEmbeddingService:
             # Pinecone 업로드용 벡터 데이터 준비
             vectors = []
             for i, chunk in enumerate(document_chunks):
-                vector_data = {
-                    "id": f"chunk_{chunk['id']}",
-                    "values": embeddings[i],
-                    "metadata": {
+                # DocumentChunk에서 메타데이터 조회
+                try:
+                    chunk_obj = DocumentChunk.objects.get(id=chunk['id'])
+                    metadata = {
                         "document_id": chunk["document_id"],
                         "chunk_index": chunk["chunk_index"],
-                        "content": chunk["content"][
-                            :1000
-                        ],  # 메타데이터에는 일부만 저장
+                        "content": chunk["content"][:1000],  # 메타데이터에는 일부만 저장
                         "insurance_company": chunk.get("insurance_company", ""),
                         "document_title": chunk.get("document_title", ""),
                         "created_at": chunk.get("created_at", ""),
                         "chunk_type": "document",
-                    },
+                        # 추가 메타데이터
+                        "title": chunk_obj.title or "",
+                        "category": chunk_obj.category or "",
+                        "keywords": chunk_obj.keywords or [],
+                        "summary": chunk_obj.summary or "",
+                        "confidence_score": chunk_obj.confidence_score or 0.0,
+                        "review_status": chunk_obj.review_status or "pending",
+                        "extraction_method": chunk_obj.extraction_method or "rule_based",
+                    }
+                except DocumentChunk.DoesNotExist:
+                    # 청크가 없는 경우 기본 메타데이터만 사용
+                    metadata = {
+                        "document_id": chunk["document_id"],
+                        "chunk_index": chunk["chunk_index"],
+                        "content": chunk["content"][:1000],
+                        "insurance_company": chunk.get("insurance_company", ""),
+                        "document_title": chunk.get("document_title", ""),
+                        "created_at": chunk.get("created_at", ""),
+                        "chunk_type": "document",
+                    }
+                
+                vector_data = {
+                    "id": f"chunk_{chunk['id']}",
+                    "values": embeddings[i],
+                    "metadata": metadata,
                 }
                 vectors.append(vector_data)
 
@@ -642,21 +795,28 @@ class DocumentEmbeddingService:
             return []
 
     def delete_document_vectors(self, document_id: int) -> bool:
-        """특정 문서의 모든 벡터 삭제"""
+        """특정 문서의 모든 벡터 삭제 (개선된 버전)"""
         try:
-            # 해당 문서의 모든 벡터 ID 조회
-            filter_dict = {"document_id": str(document_id)}
-            results = self.pinecone_service.search_vectors(
-                query_vector=[0.0] * self.pinecone_service.dimension,  # 더미 벡터
-                top_k=1000,  # 충분히 큰 수
-                filter_dict=filter_dict,
-            )
-
-            if results:
-                vector_ids = [result["id"] for result in results]
-                return self.pinecone_service.delete_vectors(vector_ids)
-
-            return True
+            # DocumentChunk에서 해당 문서의 모든 청크 조회
+            from chatbot.models import DocumentChunk
+            
+            chunks = DocumentChunk.objects.filter(document_id=document_id)
+            if not chunks.exists():
+                logger.info(f"문서 {document_id}의 청크가 없습니다.")
+                return True
+            
+            # 벡터 ID 생성 (chunk_{id} 형식)
+            vector_ids = [f"chunk_{chunk.id}" for chunk in chunks]
+            
+            # Pinecone에서 벡터 삭제
+            success = self.pinecone_service.delete_vectors(vector_ids)
+            
+            if success:
+                logger.info(f"문서 {document_id}의 {len(vector_ids)}개 벡터를 Pinecone에서 삭제 완료")
+            else:
+                logger.error(f"문서 {document_id}의 벡터 삭제 실패")
+            
+            return success
 
         except Exception as e:
             logger.error(f"문서 벡터 삭제 실패: {e}")
@@ -899,7 +1059,9 @@ class RAGChatbotService:
 
             if response.choices:
                 choice = response.choices[0]
-                content = choice.message.content if getattr(choice, "message", None) else ""
+                content = (
+                    choice.message.content if getattr(choice, "message", None) else ""
+                )
                 finish_reason = getattr(choice, "finish_reason", None)
                 logger.info(f"OpenAI API 응답 content 타입: {type(content)}")
                 logger.info(
@@ -910,9 +1072,10 @@ class RAGChatbotService:
                 )
 
                 # gpt-5 계열에서 length 종료 또는 빈 응답이면 안정 모델로 폴백
-                if (
-                    str(self.openai_model).startswith("gpt-5")
-                    and (not content or not content.strip() or (finish_reason and finish_reason != "stop"))
+                if str(self.openai_model).startswith("gpt-5") and (
+                    not content
+                    or not content.strip()
+                    or (finish_reason and finish_reason != "stop")
                 ):
                     logger.warning(
                         f"{self.openai_model} 응답이 불완전(finish_reason={finish_reason})하여 폴백 모델로 재시도합니다."
@@ -924,7 +1087,9 @@ class RAGChatbotService:
                         "max_tokens": 800,
                     }
                     try:
-                        fallback_response = client.chat.completions.create(**fallback_params)
+                        fallback_response = client.chat.completions.create(
+                            **fallback_params
+                        )
                         if fallback_response.choices:
                             fb_content = fallback_response.choices[0].message.content
                             if fb_content and fb_content.strip():
@@ -1137,20 +1302,18 @@ class RAGChatbotService:
             except:
                 has_complete_profile = False
 
-            # 프로필이 불완전한 경우 말풍선 UI 제공
-            if not has_complete_profile:
-                return {
-                    "answer": self._get_profile_input_message(),
-                    "metadata": {
-                        "insurance_recommendation_requested": True,
-                        "profile_incomplete": True,
-                        "show_profile_input": True,
-                        "model_used": "insurance_service",
-                        "generated_at": timezone.now().isoformat(),
-                    },
-                }
+            # 보험 추천 요청 시 항상 입력 폼 표시 (프로세스 개선)
+            return {
+                "answer": self._get_profile_input_message(),
+                "metadata": {
+                    "insurance_recommendation_requested": True,
+                    "show_profile_input": True,
+                    "model_used": "insurance_service",
+                    "generated_at": timezone.now().isoformat(),
+                },
+            }
 
-                # ML 기반 보험료 예측 (안전장치 포함)
+            # ML 기반 보험료 예측 (안전장치 포함)
             try:
                 ml_prediction = self._get_ml_premium_prediction(profile)
                 if "error" in ml_prediction:
@@ -1349,7 +1512,7 @@ class RAGChatbotService:
         response_parts.append("🔍 **자동차보험 추천 결과 (AI 분석 포함)**")
         response_parts.append("")
 
-        # ML 예측 정보 추가
+        # ML 예측 정보 추가 (강화)
         if "predicted_premium" in ml_prediction:
             predicted_premium = ml_prediction["predicted_premium"]
             confidence_score = ml_prediction.get("confidence_score", 0)
@@ -1358,23 +1521,68 @@ class RAGChatbotService:
             response_parts.append("🤖 **AI 예측 보험료**")
             response_parts.append(f"   💰 예상 보험료: {predicted_premium:,}원")
             response_parts.append(f"   📊 예측 신뢰도: {confidence_percent}%")
+
+            # ML 예측과 실제 견적 비교
+            if quotes:
+                actual_lowest = min(quote["annual_premium"] for quote in quotes)
+                difference = abs(predicted_premium - actual_lowest)
+                difference_percent = (difference / predicted_premium) * 100
+
+                if difference_percent <= 10:
+                    response_parts.append(
+                        f"   ✅ 예측 정확도: 높음 (차이: {difference_percent:.1f}%)"
+                    )
+                elif difference_percent <= 20:
+                    response_parts.append(
+                        f"   ⚠️ 예측 정확도: 보통 (차이: {difference_percent:.1f}%)"
+                    )
+                else:
+                    response_parts.append(
+                        f"   ❌ 예측 정확도: 낮음 (차이: {difference_percent:.1f}%)"
+                    )
+
             response_parts.append("")
 
-        # 사용자 선호도 정보 추가
+        # 사용자 선호도 정보 추가 (강화)
         if "preferences" in user_preferences and user_preferences["preferences"]:
             prefs = user_preferences["preferences"]
             response_parts.append("👤 **개인화 분석**")
 
             if "price_sensitivity" in prefs:
-                response_parts.append(
-                    f"   💡 가격 민감도: {prefs['price_sensitivity']}"
-                )
+                price_sens = prefs["price_sensitivity"]
+                response_parts.append(f"   💡 가격 민감도: {price_sens}")
+
+                # 가격 민감도에 따른 추천 조언
+                if "높음" in price_sens:
+                    response_parts.append(
+                        "      💰 가격이 중요한 고객님께는 최저가 보험사 추천"
+                    )
+                elif "보통" in price_sens:
+                    response_parts.append("      ⚖️ 가성비를 고려한 보험사 추천")
+                else:
+                    response_parts.append("      🛡️ 보장 범위를 우선 고려한 보험사 추천")
+
             if "preferred_coverage_level" in prefs:
-                response_parts.append(
-                    f"   🛡️ 선호 보장 수준: {prefs['preferred_coverage_level']}"
-                )
+                coverage = prefs["preferred_coverage_level"]
+                response_parts.append(f"   🛡️ 선호 보장 수준: {coverage}")
+
+                # 보장 수준에 따른 조언
+                if "고급" in coverage or "프리미엄" in coverage:
+                    response_parts.append(
+                        "      🏆 고급 보장을 원하시는 고객님께는 프리미엄 상품 추천"
+                    )
+                elif "기본" in coverage:
+                    response_parts.append("      💰 기본 보장으로도 충분한 보험사 추천")
+
             if "preferred_car_type" in prefs:
-                response_parts.append(f"   🚗 선호 차종: {prefs['preferred_car_type']}")
+                car_type = prefs["preferred_car_type"]
+                response_parts.append(f"   🚗 선호 차종: {car_type}")
+
+                # 차종별 특화 정보
+                if "중형" in car_type or "대형" in car_type:
+                    response_parts.append("      🚙 중대형차 특화 보장 혜택 확인")
+                elif "경차" in car_type or "소형" in car_type:
+                    response_parts.append("      🚗 소형차 특별 할인 혜택 확인")
 
             response_parts.append("")
 
@@ -1435,15 +1643,85 @@ class RAGChatbotService:
             response_parts.append(result["recommendation_reason"])
             response_parts.append("")
 
+        # 신뢰도 정보 추가
+        response_parts.append("📊 **추천 신뢰도**")
+
+        # ML 예측 신뢰도
+        if "confidence_score" in ml_prediction:
+            ml_confidence = int(ml_prediction["confidence_score"] * 100)
+            if ml_confidence >= 80:
+                response_parts.append(f"   🤖 AI 예측 신뢰도: 높음 ({ml_confidence}%)")
+            elif ml_confidence >= 60:
+                response_parts.append(f"   🤖 AI 예측 신뢰도: 보통 ({ml_confidence}%)")
+            else:
+                response_parts.append(f"   🤖 AI 예측 신뢰도: 낮음 ({ml_confidence}%)")
+
+        # 사용자 선호도 신뢰도
+        if "confidence" in user_preferences:
+            pref_confidence = int(user_preferences["confidence"] * 100)
+            if pref_confidence >= 70:
+                response_parts.append(
+                    f"   👤 개인화 분석 신뢰도: 높음 ({pref_confidence}%)"
+                )
+            elif pref_confidence >= 50:
+                response_parts.append(
+                    f"   👤 개인화 분석 신뢰도: 보통 ({pref_confidence}%)"
+                )
+            else:
+                response_parts.append(
+                    f"   👤 개인화 분석 신뢰도: 낮음 ({pref_confidence}%)"
+                )
+
+        # 전체 신뢰도 평가
+        overall_confidence = self._calculate_overall_confidence(
+            ml_prediction, user_preferences
+        )
+        if overall_confidence >= 80:
+            response_parts.append(
+                f"   ✅ 전체 추천 신뢰도: 높음 ({overall_confidence}%)"
+            )
+        elif overall_confidence >= 60:
+            response_parts.append(
+                f"   ⚠️ 전체 추천 신뢰도: 보통 ({overall_confidence}%)"
+            )
+        else:
+            response_parts.append(
+                f"   ❌ 전체 추천 신뢰도: 낮음 ({overall_confidence}%)"
+            )
+
+        response_parts.append("")
+
         response_parts.append(
             "더 자세한 정보나 다른 보험사 견적이 필요하시면 말씀해주세요!"
         )
 
         return "\n".join(response_parts)
 
+    def _calculate_overall_confidence(
+        self, ml_prediction: Dict[str, Any], user_preferences: Dict[str, Any]
+    ) -> int:
+        """
+        전체 추천 신뢰도 계산
+        """
+        try:
+            # ML 예측 신뢰도 (가중치: 60%)
+            ml_confidence = ml_prediction.get("confidence_score", 0.5) * 100
+
+            # 사용자 선호도 신뢰도 (가중치: 40%)
+            pref_confidence = user_preferences.get("confidence", 0.5) * 100
+
+            # 가중 평균 계산
+            overall_confidence = (ml_confidence * 0.6) + (pref_confidence * 0.4)
+
+            return int(overall_confidence)
+
+        except Exception as e:
+            logger.error(f"전체 신뢰도 계산 중 오류: {e}")
+            return 50  # 기본값
+
     def _get_profile_input_message(self) -> str:
         """프로필 입력을 위한 말풍선 메시지 생성"""
-        return """🔍 **자동차보험 맞춤 추천을 위해 몇 가지 정보가 필요합니다**
+        return """🔍 **자동차보험 맞춤 추천**
 
 정확한 보험 추천을 받으시려면 아래 정보를 입력해주세요:
 
@@ -1457,6 +1735,6 @@ class RAGChatbotService:
 • 사고 경력 (횟수)
 • 원하는 보장 수준
 
-**💡 말풍선을 클릭하여 정보를 입력해주세요!**
+**💡 아래 입력 폼에 정보를 입력하고 '추천 받기' 버튼을 클릭해주세요!**
 
-입력하신 정보는 안전하게 저장되며, 더 정확한 보험 추천을 위해 사용됩니다."""
+입력하신 정보는 안전하게 저장되며, ML 기반 맞춤형 보험 추천을 위해 사용됩니다."""

@@ -187,40 +187,6 @@ class InsuranceRecommendation(models.Model):
         return f"{self.user.username} - {self.recommendation_mode} 추천"
 
 
-class ChatHistory(models.Model):
-    """채팅 내역 모델"""
-
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="chat_history"
-    )
-
-    # 메시지 타입
-    MESSAGE_TYPE_CHOICES = [
-        ("user", "사용자"),
-        ("bot", "봇"),
-    ]
-    message_type = models.CharField(
-        "메시지 타입", max_length=10, choices=MESSAGE_TYPE_CHOICES
-    )
-
-    # 메시지 내용
-    content = models.TextField("메시지 내용")
-
-    # 채팅 세션 ID
-    session_id = models.CharField("세션 ID", max_length=100)
-
-    # 생성 시간
-    created_at = models.DateTimeField("생성일시", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "채팅 내역"
-        verbose_name_plural = "채팅 내역"
-        ordering = ["created_at"]
-
-    def __str__(self):
-        return f"{self.user.username} - {self.message_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
-
-
 class RecommendationStatistics(models.Model):
     """보험 추천 통계 모델 - 배치 처리로 일일 업데이트"""
 

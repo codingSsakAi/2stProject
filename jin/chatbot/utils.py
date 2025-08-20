@@ -249,7 +249,7 @@ class PDFProcessor:
 
     def clean_text(self, text: str) -> str:
         """
-        추출된 텍스트 정리
+        추출된 텍스트 정리 (강화된 버전)
 
         Args:
             text: 원본 텍스트
@@ -267,24 +267,31 @@ class PDFProcessor:
         except:
             pass
 
-        # 불필요한 공백 제거
-        text = re.sub(r"\s+", " ", text)
+        # 마크다운 문법 제거
+        text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # **볼드** 제거
+        text = re.sub(r'\*([^*]+)\*', r'\1', text)      # *이탤릭* 제거
+        text = re.sub(r'#+\s*', '', text)               # # 헤더 제거
+        text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # [링크](url) 제거
+        text = re.sub(r'`([^`]+)`', r'\1', text)        # `코드` 제거
+
+        # 개행문자 정리
+        text = re.sub(r'\n+', ' ', text)  # 개행을 공백으로 변환
+        text = re.sub(r'\r+', ' ', text)  # 캐리지 리턴을 공백으로 변환
+        text = re.sub(r'\t+', ' ', text)  # 탭을 공백으로 변환
 
         # 페이지 구분자 정리
-        text = re.sub(r"--- 페이지 \d+ ---", "\n\n", text)
+        text = re.sub(r"--- 페이지 \d+ ---", " ", text)
 
-        # 특수 문자 정리 (한글 보존)
-        text = re.sub(r'[^\w\s가-힣.,!?;:()\-()\[\]{}""' "\n\r]", "", text)
+        # 한글 사이 불필요한 공백 제거
+        text = re.sub(r'([가-힣])\s+([가-힣])', r'\1\2', text)
 
-        # 깨진 한글 문자 제거 (더 포괄적으로)
-        text = re.sub(
-            r'[^\uAC00-\uD7A3\u3131-\u318E\u1100-\u11FF\uA960-\uA97F\uD7B0-\uD7FF\w\s.,!?;:()\-()\[\]{}""'
-            "\n\r]",
-            "",
-            text,
-        )
+        # 연속된 공백 정리
+        text = re.sub(r'\s+', ' ', text)
 
-        # 추가적인 깨진 문자 패턴 제거
+        # 특수문자 정리 (한글, 영문, 숫자, 기본 문장부호만 유지)
+        text = re.sub(r'[^가-힣a-zA-Z0-9\s.,!?;:()\-]', '', text)
+
+        # 깨진 한글 문자 제거
         broken_patterns = [
             r"[៳ᱲᲦᚪᲥᱤᲱᢌᶊὑ]+",  # 특정 깨진 한글 패턴
             r"[ᇋᖰᥥᶱᮍ]+",  # 추가 깨진 문자들
@@ -294,8 +301,14 @@ class PDFProcessor:
         for pattern in broken_patterns:
             text = re.sub(pattern, "", text)
 
-        # 연속된 줄바꿈 정리
-        text = re.sub(r"\n{3,}", "\n\n", text)
+        # 중복 텍스트 제거 (동일한 문장이 연속으로 나오는 경우)
+        sentences = text.split('.')
+        cleaned_sentences = []
+        for i, sentence in enumerate(sentences):
+            sentence = sentence.strip()
+            if sentence and (i == 0 or sentence != sentences[i-1].strip()):
+                cleaned_sentences.append(sentence)
+        text = '. '.join(cleaned_sentences)
 
         # 앞뒤 공백 제거
         text = text.strip()

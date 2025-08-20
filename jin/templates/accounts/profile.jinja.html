@@ -369,59 +369,8 @@ function updateInsights(insights) {
       <!-- 사이드바 -->
       <div class="col-lg-4">
         <div class="sidebar-section">
-          <!-- 최근 추천 내역 -->
-          <div class="sidebar-card">
-            <div class="card-header">
-              <h5 class="card-title">
-                <i class="fas fa-history me-2"></i>
-                최근 추천 내역
-              </h5>
-            </div>
-            <div class="card-body">
-              {% if recent_recommendations %}
-                <div class="recommendation-list">
-                  {% for recommendation in recent_recommendations %}
-                    <div class="recommendation-item">
-                      <div class="recommendation-header">
-                        <div class="recommendation-company">{{ recommendation.recommended_company }}</div>
-                        <div class="recommendation-date">{{ recommendation.created_at|date:"m/d" }}</div>
-                      </div>
-                      <div class="recommendation-details">
-                        <div class="recommendation-premium">
-                          <span class="premium-label">추천 보험료</span>
-                          <span class="premium-amount">{{ recommendation.recommended_premium|floatformat:0 }}원</span>
-                        </div>
-                        <div class="recommendation-coverage">
-                          <span class="coverage-label">보장 수준</span>
-                          <span class="coverage-level">{{ recommendation.coverage_level }}</span>
-                        </div>
-                      </div>
-                      <div class="recommendation-actions">
-                        <a href="{% url 'chatbot:chat' %}?session_id={{ recommendation.chat_session.id }}&highlight_recommendation={{ recommendation.id }}" 
-                           class="btn btn-sm btn-outline-primary">
-                          <i class="fas fa-eye me-1"></i>
-                          확인
-                        </a>
-                      </div>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% else %}
-                <div class="empty-state">
-                  <div class="empty-icon">
-                    <i class="fas fa-chart-bar"></i>
-                  </div>
-                  <p class="empty-text">아직 추천 내역이 없습니다</p>
-                  <a href="{% url 'chatbot:chat' %}" class="btn btn-primary btn-sm">
-                    첫 추천 받기
-                  </a>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-          
           <!-- 인사이트 -->
-          <div class="sidebar-card">
+          <div class="sidebar-card mb-4">
             <div class="card-header">
               <h5 class="card-title">
                 <i class="fas fa-lightbulb me-2"></i>
@@ -449,6 +398,86 @@ function updateInsights(insights) {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+          
+          <!-- 최근 추천 내역 -->
+          <div class="sidebar-card">
+            <div class="card-header">
+              <h5 class="card-title">
+                <i class="fas fa-history me-2"></i>
+                최근 추천 내역
+              </h5>
+            </div>
+            <div class="card-body">
+              {% if recent_recommendations %}
+                <div class="recommendation-list">
+                  {% for recommendation in recent_recommendations %}
+                    <div class="recommendation-item">
+                      <div class="recommendation-header">
+                        <div class="recommendation-company">
+                          {% if recommendation.recommendations_data %}
+                            {% with first_quote=recommendation.recommendations_data.0 %}
+                              {{ first_quote.company|default:"보험사 정보 없음" }}
+                            {% endwith %}
+                          {% else %}
+                            추천 정보 없음
+                          {% endif %}
+                        </div>
+                        <div class="recommendation-date">{{ recommendation.created_at|date:"m/d" }}</div>
+                      </div>
+                      <div class="recommendation-details">
+                        <div class="recommendation-premium">
+                          <span class="premium-label">추천 보험료</span>
+                          <span class="premium-amount">
+                            {% if recommendation.recommendations_data %}
+                              {% with first_quote=recommendation.recommendations_data.0 %}
+                                {{ first_quote.annual_premium|floatformat:0|default:"정보 없음" }}원
+                              {% endwith %}
+                            {% else %}
+                              정보 없음
+                            {% endif %}
+                          </span>
+                        </div>
+                        <div class="recommendation-coverage">
+                          <span class="coverage-label">보장 수준</span>
+                          <span class="coverage-level">
+                            {% if recommendation.user_profile_snapshot.coverage_level %}
+                              {{ recommendation.user_profile_snapshot.coverage_level }}
+                            {% else %}
+                              정보 없음
+                            {% endif %}
+                          </span>
+                        </div>
+                      </div>
+                      <div class="recommendation-actions">
+                        {% if recommendation.chat_session %}
+                          <a href="{% url 'chatbot:chat' %}?session_id={{ recommendation.chat_session.id }}" 
+                             class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye me-1"></i>
+                            확인
+                          </a>
+                        {% else %}
+                          <span class="btn btn-sm btn-outline-secondary disabled">
+                            <i class="fas fa-eye me-1"></i>
+                            세션 없음
+                          </span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="empty-state">
+                  <div class="empty-icon">
+                    <i class="fas fa-chart-bar"></i>
+                  </div>
+                  <p class="empty-text">아직 추천 내역이 없습니다</p>
+                  <a href="{% url 'chatbot:chat' %}" class="btn btn-primary btn-sm">
+                    첫 추천 받기
+                  </a>
+                </div>
+              {% endif %}
             </div>
           </div>
         </div>
