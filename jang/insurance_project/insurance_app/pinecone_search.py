@@ -15,6 +15,11 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-large")
 INDEX_NAME  = os.getenv("PINECONE_INDEX_NAME", "")
 NAMESPACE   = os.getenv("NAMESPACE") or None
 INDEX_DIM   = int(os.getenv("INDEX_DIM", "1024"))  # Pinecone 인덱스 차원 (검증용)
+# 검색 점수 가중치(노트북 개념 반영)
+W_SEMANTIC = float(os.getenv("W_SEMANTIC", "0.7"))   # 벡터 유사도 가중
+W_LEXICAL  = float(os.getenv("W_LEXICAL",  "0.3"))   # BM25/토큰겹침 가중
+W_RECENCY  = float(os.getenv("W_RECENCY",  "0.0"))   # year 메타 있을 때만 영향
+
 
 # e5 시리즈 차원별 권장 모델 맵
 E5_DIM_TO_MODEL = {
@@ -89,6 +94,57 @@ class Embedder:
 embedder = Embedder(USE_BACKEND, EMBED_MODEL, INDEX_DIM)
 
 # -----------------------
+# Lexical 보조 점수 (BM25 또는 토큰겹침)
+# -----------------------
+def _collapse_vertical_tokens(s: str) -> str:
+    # '**과**<br>**실**<br>...' 같은 세로 토막 제거
+    return re.sub(r'(\*\*[가-힣A-Za-z]\*\*)(?:<br>|\n){1,}', '', s or '')
+
+def _tokenize_lex(s: str) -> list:
+    s = s.lower()
+    s = re.sub(r"[^0-9a-z가-힣\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return [t for t in s.split() if len(t) > 1]
+
+def _bm25_scores(query: str, docs: list) -> list:
+    try:
+        from rank_bm25 import BM25Okapi  # 선택 설치
+        corpus = [_tokenize_lex(d) for d in docs]
+        bm = BM25Okapi(corpus)
+        return bm.get_scores(_tokenize_lex(query)).tolist()
+    except Exception:
+        # Fallback: 단순 토큰 교집합 크기
+        q = set(_tokenize_lex(query))
+        out = []
+        for d in docs:
+            out.append(float(len(q & set(_tokenize_lex(d)))))
+        return out
+
+def _zscore(xs: list) -> list:
+    if not xs: return xs
+    m = sum(xs)/len(xs)
+    v = sum((x-m)**2 for x in xs)/len(xs)
+    sd = (v ** 0.5) if v > 0 else 1.0
+    return [(x-m)/sd for x in xs]
+
+def _recency_boost(years: list) -> list:
+    # 최신 연도일수록 높게. 메타에 'year' 없으면 0.
+    now = 2025
+    boosts = []
+    for y in years:
+        try:
+            y = int(y)
+        except Exception:
+            y = None
+        if y is None:
+            boosts.append(0.0)
+        else:
+            delta = max(0, now - y)
+            boosts.append(1.0/(1.0 + 0.25*delta))
+    return boosts
+
+
+# -----------------------
 # Pinecone
 # -----------------------
 from pinecone import Pinecone
@@ -137,6 +193,7 @@ def _collapse_adjacent_word_dups(s: str) -> str:
 
 def _display_clean(s: str) -> str:
     if not s: return s
+    s = _collapse_vertical_tokens(s)
     s = _join_short_chopped_hangul(s)
     s = _collapse_adjacent_word_dups(s)
     s = re.sub(r"\s{2,}", " ", s).strip()
