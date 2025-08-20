@@ -1,7 +1,15 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import UserProfile, InsuranceRecommendation, ChatHistory, RecommendationStatistics, UserBehaviorLog
+from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+from .models import (
+    UserProfile,
+    InsuranceRecommendation,
+    RecommendationStatistics,
+    UserBehaviorLog,
+)
 
 
 class UserProfileInline(admin.StackedInline):
@@ -107,34 +115,6 @@ class InsuranceRecommendationAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(ChatHistory)
-class ChatHistoryAdmin(admin.ModelAdmin):
-    """채팅 내역 관리"""
-
-    list_display = (
-        "user",
-        "message_type",
-        "session_id",
-        "content_preview",
-        "created_at",
-    )
-    list_filter = ("message_type", "created_at")
-    search_fields = ("user__username", "content", "session_id")
-    readonly_fields = ("created_at",)
-
-    def content_preview(self, obj):
-        """메시지 내용 미리보기"""
-        return obj.content[:50] + "..." if len(obj.content) > 50 else obj.content
-
-    content_preview.short_description = "메시지 내용"
-
-    fieldsets = (
-        ("기본 정보", {"fields": ("user", "message_type", "session_id")}),
-        ("메시지 내용", {"fields": ("content",)}),
-        ("시간 정보", {"fields": ("created_at",), "classes": ("collapse",)}),
-    )
-
-
 @admin.register(RecommendationStatistics)
 class RecommendationStatisticsAdmin(admin.ModelAdmin):
     """보험 추천 통계 관리"""
@@ -150,14 +130,27 @@ class RecommendationStatisticsAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
 
     fieldsets = (
-        ("기본 정보", {"fields": ("date", "total_recommendations", "total_selections", "average_premium")}),
+        (
+            "기본 정보",
+            {
+                "fields": (
+                    "date",
+                    "total_recommendations",
+                    "total_selections",
+                    "average_premium",
+                )
+            },
+        ),
         ("연령대별 통계", {"fields": ("age_group_stats",)}),
         ("성별 통계", {"fields": ("gender_stats",)}),
         ("차종별 통계", {"fields": ("car_type_stats",)}),
         ("보험사별 통계", {"fields": ("company_preference_stats",)}),
         ("보장 수준별 통계", {"fields": ("coverage_level_stats",)}),
         ("지역별 통계", {"fields": ("region_stats",)}),
-        ("시간 정보", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+        (
+            "시간 정보",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
     )
 
 

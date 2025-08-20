@@ -24,7 +24,11 @@ class InsuranceRecommendationService:
         try:
             profile = user.profile
             return {
-                "birth_date": profile.birth_date.strftime("%Y-%m-%d") if profile.birth_date else "1990-01-01",
+                "birth_date": (
+                    profile.birth_date.strftime("%Y-%m-%d")
+                    if profile.birth_date
+                    else "1990-01-01"
+                ),
                 "gender": profile.gender or "M",
                 "residence_area": profile.residence_area or "서울",
                 "driving_experience": profile.driving_experience or 5,
@@ -47,7 +51,7 @@ class InsuranceRecommendationService:
             }
 
     def calculate_insurance_recommendations(
-        self, user: User, mode: str = "standard"
+        self, user: User, mode: str = "standard", chat_session=None
     ) -> Dict[str, Any]:
         """
         보험 추천 계산 및 결과 저장
@@ -71,6 +75,7 @@ class InsuranceRecommendationService:
             recommendation_reason=self._generate_recommendation_reason(
                 result, user_profile
             ),
+            chat_session=chat_session,  # 채팅 세션 연결
         )
 
         # 결과에 세션 ID 추가
@@ -83,7 +88,7 @@ class InsuranceRecommendationService:
         self, result: Dict[str, Any], user_profile: Dict[str, Any]
     ) -> str:
         """
-        추천 이유 생성
+        LLM 기반 개인화된 추천 이유 생성
         """
         quotes = result["quotes"]
         if not quotes:
@@ -99,29 +104,110 @@ class InsuranceRecommendationService:
         # 사용자 위험도
         risk_level = result["user_info"]["risk_level"]
 
-        reasons = []
+        # 기본 추천 이유 (LLM 없을 때의 폴백)
+        basic_reasons = []
 
         # 가격 기반 추천
-        reasons.append(f"최저가 보험사: {lowest_company} ({lowest_premium:,}원)")
+        basic_reasons.append(f"최저가 보험사: {lowest_company} ({lowest_premium:,}원)")
 
         # 가성비 기반 추천
         if best_value != lowest_company:
-            reasons.append(f"가성비 최고: {best_value}")
+            basic_reasons.append(f"가성비 최고: {best_value}")
 
         # 위험도 기반 추천
         if risk_level == "높음":
-            reasons.append("위험도가 높아 고급 보장을 권장합니다.")
+            basic_reasons.append("위험도가 높아 고급 보장을 권장합니다.")
         elif risk_level == "낮음":
-            reasons.append("위험도가 낮아 기본 보장으로도 충분합니다.")
+            basic_reasons.append("위험도가 낮아 기본 보장으로도 충분합니다.")
 
         # 연령대 기반 추천
         age_category = result["user_info"]["age_category"]
         if age_category == "young":
-            reasons.append("젊은 운전자로 무사고 할인 혜택을 받을 수 있습니다.")
+            basic_reasons.append("젊은 운전자로 무사고 할인 혜택을 받을 수 있습니다.")
         elif age_category == "senior":
-            reasons.append("경험 많은 운전자로 할인 혜택을 받을 수 있습니다.")
+            basic_reasons.append("경험 많은 운전자로 할인 혜택을 받을 수 있습니다.")
 
-        return " | ".join(reasons)
+        # LLM을 활용한 개인화된 추천 이유 생성 시도
+        try:
+            llm_reason = self._generate_llm_recommendation_reason(result, user_profile)
+            if llm_reason:
+                return llm_reason
+        except Exception as e:
+            logger.warning(f"LLM 추천 이유 생성 실패, 기본 이유 사용: {e}")
+
+        return " | ".join(basic_reasons)
+
+    def _generate_llm_recommendation_reason(
+        self, result: Dict[str, Any], user_profile: Dict[str, Any]
+    ) -> str:
+        """
+        LLM을 활용한 개인화된 추천 이유 생성
+        """
+        try:
+            from django.conf import settings
+            import openai
+
+            if not hasattr(settings, "OPENAI_API_KEY") or not settings.OPENAI_API_KEY:
+                return ""
+
+            openai.api_key = settings.OPENAI_API_KEY
+
+            # 추천 데이터 준비
+            quotes = result["quotes"][:3]  # 상위 3개만
+            market_analysis = result.get("market_analysis", {})
+            user_info = result.get("user_info", {})
+
+            # 프롬프트 구성
+            prompt = f"""
+당신은 자동차 보험 전문 상담사입니다. 다음 정보를 바탕으로 개인화된 보험 추천 이유를 자연스럽고 친근한 톤으로 작성해주세요.
+
+**사용자 정보:**
+- 연령대: {user_info.get('age_category', '알 수 없음')}
+- 위험도: {user_info.get('risk_level', '알 수 없음')}
+- 추천 보장: {user_info.get('recommended_coverage', '알 수 없음')}
+
+**추천 보험사 정보:**
+{chr(10).join([f"- {quote['company']}: {quote['annual_premium']:,}원 (보장: {quote['coverage_level']}, 만족도: {quote['customer_satisfaction']}/5.0)" for quote in quotes])}
+
+**시장 분석:**
+- 최저가: {market_analysis.get('lowest_premium', 0):,}원
+- 평균가: {market_analysis.get('average_premium', 0):,}원
+- 가성비 최고: {market_analysis.get('best_value', 'N/A')}
+
+**요구사항:**
+1. 사용자의 연령대와 위험도를 고려한 맞춤형 조언
+2. 추천 보험사의 강점을 구체적으로 설명
+3. 가격과 보장의 균형점 제시
+4. 친근하고 이해하기 쉬운 언어 사용
+5. 200자 이내로 간결하게 작성
+
+**추천 이유:**"""
+
+            # OpenAI API 호출
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "당신은 친근하고 전문적인 자동차 보험 상담사입니다.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=300,
+                temperature=0.7,
+            )
+
+            llm_reason = response.choices[0].message.content.strip()
+
+            # 응답 검증
+            if len(llm_reason) > 50 and "보험" in llm_reason:
+                return llm_reason
+            else:
+                return ""
+
+        except Exception as e:
+            logger.error(f"LLM 추천 이유 생성 중 오류: {e}")
+            return ""
 
     def get_user_recommendation_history(
         self, user: User, limit: int = 10

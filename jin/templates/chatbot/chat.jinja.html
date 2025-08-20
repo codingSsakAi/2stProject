@@ -6,76 +6,170 @@
 {% block content %}
 {% csrf_token %}
 <div class="chatbot-container">
-  <!-- 챗봇 헤더 -->
-  <div class="chatbot-header">
+  <!-- 챗봇 네비게이션 바 -->
+  <nav class="chatbot-navbar navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="chatbot-title">
-          <h1 class="h3 mb-0">
-            <i class="fas fa-robot text-primary me-2"></i>
-            AI 보험 상담사
-          </h1>
-          {% if current_session %}
-            <small class="text-muted">{{ current_session.title }}</small>
-          {% endif %}
-        </div>
-        <div class="session-controls">
-          <div class="session-controls-grid">
-            <a href="{% url 'home' %}" class="btn btn-outline-success btn-sm">
-              <i class="fas fa-home me-1"></i>
-              홈으로
+      <a class="navbar-brand" href="{% url 'home' %}">
+        <i class="bi bi-car-front"></i>
+        보험 추천 챗봇
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#chatbotNavbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="chatbotNavbar">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'home' %}">
+              <i class="bi bi-house"></i>
+              홈
             </a>
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="startNewSession()">
-              <i class="fas fa-plus me-1"></i>
-              새 대화
-            </button>
-            {% if current_session %}
-              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="editSessionTitle()">
-                <i class="fas fa-edit me-1"></i>
-                제목 수정
-              </button>
-              <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteCurrentSession()">
-                <i class="fas fa-trash me-1"></i>
-                대화 삭제
-              </button>
-            {% endif %}
-          </div>
-        </div>
+          </li>
+          {% if user.is_staff or user.is_superuser %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'chatbot:document_list' %}">
+              <i class="bi bi-file-earmark-text"></i>
+              문서 관리
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'chatbot:search_documents' %}">
+              <i class="bi bi-search"></i>
+              문서 검색
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'chatbot:embedding_stats' %}">
+              <i class="bi bi-graph-up"></i>
+              Embedding 통계
+            </a>
+          </li>
+          {% endif %}
+          <li class="nav-item">
+            <a class="nav-link active" href="{% url 'chatbot:chat' %}">
+              <i class="bi bi-chat-dots"></i>
+              챗봇 상담
+            </a>
+          </li>
+        </ul>
+
+        <ul class="navbar-nav">
+          {% if user.is_authenticated %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i>
+              {{ user.username }}
+            </a>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                  <i class="bi bi-person"></i>
+                  프로필
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'accounts:profile_update' %}">
+                  <i class="bi bi-gear"></i>
+                  설정
+                </a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="{% url 'accounts:logout' %}">
+                  <i class="bi bi-box-arrow-right"></i>
+                  로그아웃
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:login' %}">
+              <i class="bi bi-box-arrow-in-right"></i>
+              로그인
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:register' %}">
+              <i class="bi bi-person-plus"></i>
+              회원가입
+            </a>
+          </li>
+          {% endif %}
+        </ul>
       </div>
     </div>
-      </div>
+  </nav>
 
   <div class="container-fluid">
-    <div class="row">
+  <div class="row">
       <!-- 사이드바 -->
       <div class="col-lg-4 col-xl-3">
         <div class="chat-sidebar">
+          <!-- 세션 컨트롤 -->
+          <div class="sidebar-section">
+            <h6 class="sidebar-title">
+              <i class="fas fa-cog me-2"></i>
+              세션 관리
+            </h6>
+            <div class="session-controls">
+              <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="startNewSession()">
+                <i class="fas fa-plus me-1"></i>
+                새 대화
+              </button>
+              {% if current_session %}
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="editSessionTitle()">
+                  <i class="fas fa-edit me-1"></i>
+                  제목 수정
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm w-100 mb-2" onclick="deleteCurrentSession()">
+                  <i class="fas fa-trash me-1"></i>
+                  대화 삭제
+                </button>
+              {% endif %}
+            </div>
+          </div>
+          
           <!-- 이전 대화 기록 -->
           <div class="sidebar-section">
             <h6 class="sidebar-title">
               <i class="fas fa-history me-2"></i>
               이전 대화
             </h6>
-            <div class="chat-history">
-              {% if chat_sessions %}
-                {% for session in chat_sessions %}
-                  <div class="history-item {% if session.id == current_session.id %}active{% endif %}">
-                    <a href="{% url 'chatbot:chat' %}?session_id={{ session.id }}" class="history-link">
-                      <div class="history-content">
-                        <div class="history-title">{{ session.title|default:"새로운 채팅" }}</div>
-                        <div class="history-meta">
-                          <small class="text-muted">{{ session.created_at|date:"m/d H:i" }}</small>
-                          <small class="text-muted ms-2">{{ session.message_count }}개 메시지</small>
-        </div>
-                      </div>
-                    </a>
-                  </div>
-                {% endfor %}
-              {% else %}
-                <div class="empty-history">
-                  <p class="text-muted text-center">이전 대화가 없습니다.</p>
-                </div>
-              {% endif %}
+            
+            <!-- 검색창 -->
+            <div class="search-container mb-3">
+              <div class="input-group">
+                <input type="text" id="session-search" class="form-control form-control-sm" placeholder="대화 검색...">
+                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="searchSessions()">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+      </div>
+
+            <div id="chat-history" class="chat-history">
+              <!-- AJAX로 로딩될 내용 -->
+            </div>
+            
+            <!-- 페이징 컨트롤 -->
+            <div id="pagination-controls" class="pagination-controls mt-3" style="display: none;">
+              <div class="d-flex justify-content-between align-items-center">
+                <button id="prev-page" class="btn btn-outline-primary btn-sm" onclick="loadPreviousPage()" disabled>
+                  <i class="fas fa-chevron-left"></i> 이전
+                </button>
+                <span id="page-info" class="text-muted small"></span>
+                <button id="next-page" class="btn btn-outline-primary btn-sm" onclick="loadNextPage()">
+                  다음 <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- 로딩 스피너 -->
+            <div id="loading-spinner" class="text-center mt-3" style="display: none;">
+              <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">로딩 중...</span>
+              </div>
             </div>
           </div>
         </div>
@@ -84,6 +178,16 @@
       <!-- 채팅 메인 영역 -->
       <div class="col-lg-8 col-xl-9">
         <div class="chat-main">
+          <!-- 현재 대화 제목 -->
+          <div class="chatbot-title-container">
+            <div class="chatbot-title">
+          <h5 class="mb-0">
+                <i class="fas fa-comments me-2"></i>
+                <span id="current-session-title">{{ current_session.title|default:"새로운 채팅" }}</span>
+          </h5>
+        </div>
+          </div>
+          
           <!-- 채팅 메시지 영역 -->
           <div id="chat-messages" class="chat-messages-container">
             {% if chat_history %}
@@ -236,7 +340,112 @@
     </div>
   </div>
 
-  
+  <!-- 보험 추천 프로필 입력 폼 (채팅 영역에 직접 표시) -->
+  <div id="insurance-profile-form-container" class="insurance-profile-form-container" style="display: none;">
+    <div class="profile-form-card">
+      <div class="profile-form-header">
+                <h6 class="mb-0">
+          <i class="fas fa-user-edit me-2"></i>
+                  보험 추천 정보 입력
+                </h6>
+        <button type="button" class="btn-close" onclick="hideInsuranceProfileForm()">
+          <i class="fas fa-times"></i>
+        </button>
+              </div>
+      <div class="profile-form-body">
+        <form id="insurance-profile-form">
+                  {% csrf_token %}
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="birth_date" class="form-label">생년월일 *</label>
+                      <input type="date" class="form-control" id="birth_date" name="birth_date" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="gender" class="form-label">성별 *</label>
+                      <select class="form-control" id="gender" name="gender" required>
+                        <option value="">선택하세요</option>
+                        <option value="M">남성</option>
+                        <option value="F">여성</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="residence_area" class="form-label">거주 지역 *</label>
+                      <select class="form-control" id="residence_area" name="residence_area" required>
+                        <option value="">선택하세요</option>
+                        <option value="서울">서울</option>
+                        <option value="부산">부산</option>
+                        <option value="대구">대구</option>
+                        <option value="인천">인천</option>
+                        <option value="광주">광주</option>
+                        <option value="대전">대전</option>
+                        <option value="울산">울산</option>
+                        <option value="세종">세종</option>
+                        <option value="기타">기타</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="driving_experience" class="form-label">운전 경력 (년) *</label>
+                      <input type="number" class="form-control" id="driving_experience" name="driving_experience" min="0" max="50" required>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="car_type" class="form-label">차종 *</label>
+                      <select class="form-control" id="car_type" name="car_type" required>
+                        <option value="">선택하세요</option>
+                        <option value="경차">경차</option>
+                        <option value="소형">소형</option>
+                        <option value="준중형">준중형</option>
+                        <option value="중형">중형</option>
+                        <option value="대형">대형</option>
+                        <option value="SUV">SUV</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="annual_mileage" class="form-label">연간 주행거리 (km) *</label>
+                      <input type="number" class="form-control" id="annual_mileage" name="annual_mileage" min="1000" max="100000" required>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="accident_history" class="form-label">사고 경력 (횟수) *</label>
+                      <input type="number" class="form-control" id="accident_history" name="accident_history" min="0" max="10" value="0" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="coverage_level" class="form-label">보장 수준 *</label>
+                      <select class="form-control" id="coverage_level" name="coverage_level" required>
+                        <option value="">선택하세요</option>
+                        <option value="기본">기본</option>
+                        <option value="표준" selected>표준</option>
+                        <option value="고급">고급</option>
+                        <option value="프리미엄">프리미엄</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="additional_coverage_interest" name="additional_coverage_interest">
+                      <label class="form-check-label" for="additional_coverage_interest">
+                        추가 특약에 관심이 있나요?
+                      </label>
+                    </div>
+                  </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" onclick="hideInsuranceProfileForm()">
+                      취소
+                    </button>
+            <button type="button" class="btn btn-primary" onclick="submitInsuranceProfile()">
+              <i class="fas fa-paper-plane me-1"></i>
+              추천 받기
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+            </div>
 
 <style>
 /* 챗봇 컨테이너 */
@@ -253,35 +462,130 @@
   z-index: 1;
 }
 
-/* 챗봇 헤더 */
-.chatbot-header {
-  background: white;
-  border-bottom: 1px solid #e9ecef;
-  padding: 1rem 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  z-index: 1000;
-  position: sticky;
-  top: 0;
+/* 챗봇 네비게이션 바 */
+.chatbot-navbar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 0.75rem 0;
 }
 
-.chatbot-title h1 {
-  color: #2d3748;
+.chatbot-navbar .navbar-brand {
+  font-size: 1.5rem;
   font-weight: 600;
+  color: white !important;
 }
 
-/* 세션 컨트롤 그리드 */
-.session-controls-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  width: 100%;
+.chatbot-navbar .navbar-brand .bi {
+  font-size: 1.5rem;
+  margin-right: 0.5rem;
 }
 
-.session-controls-grid .btn {
+.chatbot-navbar .nav-link {
+  color: rgba(255,255,255,0.9) !important;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem !important;
+  transition: all 0.3s ease;
+}
+
+.chatbot-navbar .nav-link:hover,
+.chatbot-navbar .nav-link.active {
+  color: white !important;
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+}
+
+.chatbot-navbar .nav-link .bi {
+  font-size: 1rem;
+  margin-right: 0.5rem;
+}
+
+.chatbot-navbar .dropdown-menu {
+  border: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  border-radius: 8px;
+}
+
+.chatbot-navbar .dropdown-item {
+  padding: 0.75rem 1rem;
+  color: #495057;
+  transition: all 0.3s ease;
+}
+
+.chatbot-navbar .dropdown-item:hover {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+.chatbot-navbar .dropdown-item .bi {
+  margin-right: 0.5rem;
+  width: 1rem;
+}
+
+/* 세션 컨트롤 버튼들 */
+.session-controls {
+  margin-bottom: 1rem;
+}
+
+.session-controls .btn {
   width: 100%;
-  white-space: nowrap;
-  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
   padding: 0.5rem 0.75rem;
+}
+
+/* 검색창 스타일 */
+.search-container .input-group {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-container .form-control {
+  border: 1px solid #e9ecef;
+  border-radius: 6px 0 0 6px;
+}
+
+.search-container .btn {
+  border: 1px solid #e9ecef;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: white;
+  color: #6c757d;
+}
+
+.search-container .btn:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+/* 페이징 컨트롤 스타일 */
+.pagination-controls {
+  border-top: 1px solid #e9ecef;
+  padding-top: 1rem;
+}
+
+.pagination-controls .btn {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.pagination-controls .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#page-info {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+/* 로딩 스피너 스타일 */
+#loading-spinner {
+  padding: 1rem 0;
+}
+
+#loading-spinner .spinner-border {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 /* 모바일 반응형 */
@@ -297,12 +601,7 @@
     max-width: 100% !important;
   }
   
-  .session-controls-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.25rem;
-  }
-  
-  .session-controls-grid .btn {
+  .session-controls .btn {
     font-size: 0.75rem;
     padding: 0.4rem 0.5rem;
   }
@@ -1183,9 +1482,47 @@
   }
 }
 
+/* 현재 대화 제목 컨테이너 스타일 (PC 버전) */
+.chatbot-title-container {
+  padding: 1.5rem 2rem 1rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatbot-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #495057;
+  font-weight: 600;
+}
+
+.title-icon {
+  font-size: 1.25rem;
+  color: #667eea;
+}
+
+.title-content span {
+  font-size: 1.1rem;
+  color: #495057;
+}
+
 @media (max-width: 767.98px) {
+  .chatbot-title-container {
+    padding: 1.25rem 1.5rem 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  
   .chatbot-header {
     padding: 0.75rem 0;
+  }
+  
+  /* 현재 대화 제목 컨테이너 스타일 */
+  .chatbot-title-container {
+    padding: 1.5rem 2rem 1rem 1.5rem;
+    margin-bottom: 1rem;
   }
   
   .chatbot-title h1 {
@@ -1213,7 +1550,140 @@
   .message-content {
     max-width: 90%;
   }
-}
+  }
+
+  /* 보험 추천 프로필 입력 폼 스타일 */
+  .insurance-profile-form-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    overflow-y: auto;
+    animation: slideInForm 0.3s ease-out;
+  }
+
+  @keyframes slideInForm {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -60%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  .profile-form-card {
+    padding: 0;
+  }
+
+  .profile-form-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 15px 15px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .profile-form-header h6 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .profile-form-header .btn-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+  }
+
+  .profile-form-header .btn-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .profile-form-body {
+    padding: 2rem;
+  }
+
+  .profile-form-body .form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+  }
+
+  .profile-form-body .form-control,
+  .profile-form-body .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .profile-form-body .form-control:focus,
+  .profile-form-body .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  }
+
+  .profile-form-body .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .profile-form-body .btn-primary:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    transform: translateY(-1px);
+  }
+
+  .profile-form-body .btn-outline-secondary {
+    border: 2px solid #6c757d;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .profile-form-body .form-check-label {
+    color: #6c757d;
+    font-weight: 400;
+  }
+
+  /* 모바일 반응형 */
+  @media (max-width: 768px) {
+    .insurance-profile-form-container {
+      width: 95%;
+      max-height: 95vh;
+    }
+    
+    .profile-form-body {
+      padding: 1.5rem;
+    }
+    
+    .profile-form-header {
+      padding: 1rem;
+    }
+    
+    .profile-form-header h6 {
+      font-size: 1rem;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -1680,7 +2150,20 @@
           if (botMessage && botMessage.message) {
             addMessageToChat(botMessage.message, false, botMessage.metadata || {});
             
-
+            // 보험 추천 관련 키워드 감지하여 폼 표시
+            const message = botMessage.message.toLowerCase();
+            const insuranceKeywords = [
+              '보험 추천', '프로필', '정보 입력', '맞춤형', '추천을 위해', 
+              '필요한 정보', '입력해주세요', '맞춤 추천', '보험 상품',
+              '자동차보험', '추천 받으시려면', '정보가 필요합니다'
+            ];
+            const shouldShowForm = insuranceKeywords.some(keyword => message.includes(keyword));
+            
+            if (shouldShowForm) {
+              setTimeout(() => {
+                showInsuranceProfileForm();
+              }, 1000); // 1초 후 폼 표시
+            }
         } else {
             showError('서버에서 응답을 받지 못했습니다.');
           }
@@ -1688,6 +2171,13 @@
           // 세션 정보 업데이트 (필요한 경우)
           if (data.session_id) {
             updateSessionInfo(data.session_id, data.session_title);
+          }
+          
+          // 제목이 업데이트된 경우 화면에 반영
+          if (data.title_updated && data.new_title) {
+            updateSessionTitle(data.new_title);
+            // 세션 목록도 새로고침하여 업데이트된 제목 반영
+            loadChatSessions(currentPage, searchQuery);
           }
           
           // 보험 추천 요청인 경우 프로필 입력 폼 표시 (추후 구현)
@@ -1909,6 +2399,119 @@
     }
 
 
+
+    // 보험 추천 프로필 폼 표시/숨기기
+    function showInsuranceProfileForm() {
+      const formContainer = document.getElementById('insurance-profile-form-container');
+      if (formContainer) {
+        formContainer.style.display = 'block';
+        // 첫 번째 입력 필드에 포커스
+        const firstInput = formContainer.querySelector('input[type="date"]');
+        if (firstInput) {
+          setTimeout(() => firstInput.focus(), 100);
+        }
+      }
+    }
+
+    function hideInsuranceProfileForm() {
+      const formContainer = document.getElementById('insurance-profile-form-container');
+      if (formContainer) {
+        formContainer.style.display = 'none';
+      }
+    }
+
+    // 보험 추천 프로필 제출
+    function submitInsuranceProfile() {
+      const form = document.getElementById('insurance-profile-form');
+      const formData = new FormData(form);
+      const profileData = {};
+      
+      // 폼 데이터 수집 및 검증
+      for (let [key, value] of formData.entries()) {
+        if (key === 'additional_coverage_interest') {
+          profileData[key] = value === 'on';
+        } else if (key === 'driving_experience' || key === 'annual_mileage' || key === 'accident_history') {
+          profileData[key] = parseInt(value) || 0;
+        } else {
+          profileData[key] = value;
+        }
+      }
+      
+      // 디버깅을 위한 로그
+      console.log('전송할 프로필 데이터:', profileData);
+
+      // 필수 필드 검증 (숫자 필드는 0도 유효한 값으로 처리)
+      const requiredFields = ['birth_date', 'gender', 'residence_area', 'driving_experience', 'car_type', 'annual_mileage', 'accident_history', 'coverage_level'];
+      for (let field of requiredFields) {
+        console.log(`검증 중: ${field} = ${profileData[field]} (타입: ${typeof profileData[field]})`);
+        
+        if (field === 'driving_experience' || field === 'annual_mileage' || field === 'accident_history') {
+          // 숫자 필드는 0 이상이면 유효 (undefined, null, 음수만 체크)
+          if (profileData[field] === undefined || profileData[field] === null || profileData[field] < 0) {
+            console.log(`검증 실패: ${field} = ${profileData[field]}`);
+            showAlert('모든 필수 항목을 입력해주세요.', 'warning');
+            return;
+          }
+        } else {
+          // 문자열 필드는 빈 값이 아니어야 함
+          if (!profileData[field] || profileData[field].toString().trim() === '') {
+            console.log(`검증 실패: ${field} = ${profileData[field]}`);
+            showAlert('모든 필수 항목을 입력해주세요.', 'warning');
+            return;
+          }
+        }
+      }
+      console.log('모든 필드 검증 통과');
+
+      // 현재 세션 ID 가져오기
+      const currentSessionId = '{{ current_session.id|default:"" }}';
+      
+      // 프로필 데이터에 세션 ID 추가
+      const requestData = {
+        ...profileData,
+        session_id: currentSessionId
+      };
+      
+      // 먼저 프로필 정보 저장
+      fetch('{% url "chatbot:api_insurance_profile" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(requestData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          hideInsuranceProfileForm();
+          showAlert('프로필 정보가 저장되었습니다.', 'success');
+          
+          // 프로필 저장 후 바로 보험 추천 결과 표시 (이미 데이터베이스에 저장됨)
+          if (data.recommendation) {
+            addMessageToChat(data.recommendation, false, {
+              insurance_recommendation: true,
+              generated_at: new Date().toISOString()
+            });
+            
+            // 세션 ID가 변경된 경우 URL 업데이트
+            if (data.session_id && data.session_id !== currentSessionId) {
+              const url = new URL(window.location);
+              url.searchParams.set('session_id', data.session_id);
+              window.history.replaceState({}, '', url);
+            }
+          } else {
+            showAlert('보험 추천 결과를 생성할 수 없습니다.', 'warning');
+          }
+        } else {
+          throw new Error(data.error || '프로필 저장 중 오류가 발생했습니다.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showAlert('프로필 저장 중 오류가 발생했습니다.', 'danger');
+      });
+    }
 
     // 알림 메시지 표시
     function showAlert(message, type) {
@@ -2135,8 +2738,10 @@
 
     // 전역 함수로 등록
     window.sendMessage = sendMessage;
+    window.showInsuranceProfileForm = showInsuranceProfileForm;
+    window.hideInsuranceProfileForm = hideInsuranceProfileForm;
+    window.submitInsuranceProfile = submitInsuranceProfile;
 
-    window.hideInsuranceProfileModal = hideInsuranceProfileModal;
     window.showAlert = showAlert;
     window.updateSessionInfo = updateSessionInfo;
     window.scrollToBottom = scrollToBottom;
@@ -2178,9 +2783,168 @@
     }
   }
   
-  // 페이지 로드 시 모바일 키보드 대응 초기화
+  // 페이지 로드 시 모바일 키보드 대응 초기화 및 스크롤 맨 아래로 이동
   document.addEventListener('DOMContentLoaded', function() {
     handleMobileKeyboard();
+    
+      // 페이지 로드 시 스크롤을 맨 아래로 이동
+  setTimeout(() => {
+      const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  }, 500); // 0.5초 후 실행하여 모든 콘텐츠가 로드된 후 스크롤
+  
+  // 페이징 초기화
+  loadChatSessions();
+  });
+
+  // 페이징 관련 전역 변수
+  let currentPage = 1;
+  let totalPages = 1;
+  let searchQuery = '';
+  
+  // 채팅 세션 목록 로딩
+  function loadChatSessions(page = 1, search = '') {
+    showLoadingSpinner();
+    
+    const params = new URLSearchParams({
+      page: page,
+      search: search,
+      current_session_id: '{{ current_session.id|default:0 }}'
+    });
+    
+    fetch(`{% url 'chatbot:api_get_chat_sessions' %}?${params}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          renderChatSessions(data);
+          updatePaginationControls(data);
+        } else {
+          showAlert('채팅 세션 목록을 불러오는 중 오류가 발생했습니다.', 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showAlert('채팅 세션 목록을 불러오는 중 오류가 발생했습니다.', 'danger');
+      })
+      .finally(() => {
+        hideLoadingSpinner();
+      });
+  }
+  
+  // 채팅 세션 목록 렌더링
+  function renderChatSessions(data) {
+    const historyContainer = document.getElementById('chat-history');
+    
+    if (data.sessions.length === 0) {
+      historyContainer.innerHTML = `
+        <div class="empty-history">
+          <p class="text-muted text-center">이전 대화가 없습니다.</p>
+            </div>
+      `;
+      return;
+    }
+    
+    let html = '';
+    data.sessions.forEach(session => {
+      const activeClass = session.is_current ? 'active' : '';
+      html += `
+        <div class="history-item ${activeClass}">
+          <a href="{% url 'chatbot:chat' %}?session_id=${session.id}" class="history-link" onclick="switchSession(${session.id})">
+            <div class="history-content">
+              <div class="history-title">${session.title}</div>
+              <div class="history-meta">
+                <small class="text-muted">${session.created_at}</small>
+                <small class="text-muted ms-2">${session.message_count}개 메시지</small>
+              </div>
+          </div>
+          </a>
+        </div>
+      `;
+    });
+    
+    historyContainer.innerHTML = html;
+  }
+  
+  // 페이징 컨트롤 업데이트
+  function updatePaginationControls(data) {
+    const controls = document.getElementById('pagination-controls');
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    const pageInfo = document.getElementById('page-info');
+    
+    currentPage = data.current_page;
+    totalPages = data.total_pages;
+    
+    if (data.total_pages > 1) {
+      controls.style.display = 'block';
+      prevBtn.disabled = !data.has_previous;
+      nextBtn.disabled = !data.has_next;
+      pageInfo.textContent = `${data.current_page} / ${data.total_pages} (총 ${data.total_count}개)`;
+    } else {
+      controls.style.display = 'none';
+    }
+  }
+  
+  // 이전 페이지 로딩
+  function loadPreviousPage() {
+    if (currentPage > 1) {
+      loadChatSessions(currentPage - 1, searchQuery);
+    }
+  }
+  
+  // 다음 페이지 로딩
+  function loadNextPage() {
+    if (currentPage < totalPages) {
+      loadChatSessions(currentPage + 1, searchQuery);
+    }
+  }
+  
+  // 검색 기능
+  function searchSessions() {
+    const searchInput = document.getElementById('session-search');
+    searchQuery = searchInput.value.trim();
+    loadChatSessions(1, searchQuery);
+  }
+  
+  // 로딩 스피너 표시/숨김
+  function showLoadingSpinner() {
+    document.getElementById('loading-spinner').style.display = 'block';
+  }
+  
+  function hideLoadingSpinner() {
+    document.getElementById('loading-spinner').style.display = 'none';
+  }
+  
+  // 세션 제목 업데이트 함수
+  function updateSessionTitle(newTitle) {
+    const titleElement = document.getElementById('current-session-title');
+    if (titleElement) {
+      titleElement.textContent = newTitle;
+    }
+  }
+  
+  // 세션 전환 함수
+  function switchSession(sessionId) {
+    // 현재 URL에서 session_id 파라미터만 변경
+    const url = new URL(window.location);
+    url.searchParams.set('session_id', sessionId);
+    
+    // 페이지 새로고침으로 세션 변경
+    window.location.href = url.toString();
+  }
+  
+  // 검색창 엔터키 이벤트
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('session-search');
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          searchSessions();
+        }
+      });
+    }
   });
 
   // 세션 관리 함수들 (전역 스코프)
@@ -2191,7 +2955,7 @@
   }
 
   function editSessionTitle() {
-    const titleElement = document.querySelector('.chatbot-title small');
+    const titleElement = document.getElementById('current-session-title');
     let currentTitle = '새로운 채팅';
     
     if (titleElement && titleElement.textContent) {

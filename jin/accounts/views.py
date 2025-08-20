@@ -9,7 +9,6 @@ from django import forms
 from django.contrib.auth.models import User
 from .forms import CustomUserCreationForm, UserProfileUpdateForm
 from .models import UserProfile
-from chatbot.statistics_service import StatisticsService
 
 
 # 사용자 기본 정보 폼 (User 모델)
@@ -101,16 +100,19 @@ def profile_view(request):
 
     # 사용자의 최근 추천 내역 조회
     from chatbot.insurance_service import InsuranceRecommendationService
+    from chatbot.models import ChatSession
+    from django.utils import timezone
+    from datetime import date, timedelta
+    from .models import InsuranceRecommendation
+    from django.db.models import Count, Avg
 
     insurance_service = InsuranceRecommendationService()
-    recent_recommendations = insurance_service.get_user_recommendation_history(
-        user=request.user, limit=5
-    )
+    # 최근 추천 내역 조회 (chat_session이 있는 항목만)
+    recent_recommendations = InsuranceRecommendation.objects.filter(
+        user=request.user, chat_session__isnull=False  # chat_session이 연결된 항목만
+    ).order_by("-created_at")[:5]
 
     # 실제 통계 데이터 조회
-    from .models import RecommendationStatistics, InsuranceRecommendation
-    from django.db.models import Count, Avg
-    from datetime import date, timedelta
 
     # 최근 30일간의 통계 데이터
     end_date = date.today()
@@ -130,37 +132,52 @@ def profile_view(request):
     ).select_related("user__profile")
 
     for rec in recent_recommendations_data:
-        profile_data = rec.user.profile
+        try:
+            profile_data = rec.user.profile
 
-        # 연령대별
-        age_group = profile_data.get_age_group()
-        age_group_stats[age_group] = age_group_stats.get(age_group, 0) + 1
+            # 연령대별
+            age_group = profile_data.get_age_group()
+            age_group_stats[age_group] = age_group_stats.get(age_group, 0) + 1
 
-        # 성별
-        gender_stats[profile_data.gender] += 1
+            # 성별
+            gender_stats[profile_data.gender] += 1
 
-        # 차종별
-        car_type = profile_data.car_type
-        if car_type:
-            car_type_stats[car_type] = car_type_stats.get(car_type, 0) + 1
+            # 차종별
+            car_type = profile_data.car_type
+            if car_type:
+                car_type_stats[car_type] = car_type_stats.get(car_type, 0) + 1
 
-        # 지역별
-        region = profile_data.residence_area
-        if region:
-            region_stats[region] = region_stats.get(region, 0) + 1
+            # 지역별
+            region = profile_data.residence_area
+            if region:
+                region_stats[region] = region_stats.get(region, 0) + 1
 
-        # 보장 수준별
-        coverage = profile_data.coverage_level
-        coverage_level_stats[coverage] = coverage_level_stats.get(coverage, 0) + 1
+            # 보장 수준별
+            coverage = profile_data.coverage_level
+            coverage_level_stats[coverage] = coverage_level_stats.get(coverage, 0) + 1
 
-        # 보험사별 선호도 (선택된 경우)
-        if rec.is_selected and rec.selected_company:
-            company_preference_stats[rec.selected_company] = (
-                company_preference_stats.get(rec.selected_company, 0) + 1
-            )
+            # 보험사별 선호도 (선택된 경우)
+            if rec.is_selected and rec.selected_company:
+                company_preference_stats[rec.selected_company] = (
+                    company_preference_stats.get(rec.selected_company, 0) + 1
+                )
+        except Exception as e:
+            print(f"통계 계산 중 오류: {e}")
+            continue
+
+    # 사용자 통계 계산
+    total_recommendations = InsuranceRecommendation.objects.filter(
+        user=request.user,
+        chat_session__isnull=False,  # chat_session이 연결된 항목만 카운트
+    ).count()
+    total_chat_sessions = ChatSession.objects.filter(user=request.user).count()
+    days_since_joined = (timezone.now().date() - request.user.date_joined.date()).days
 
     # 디버깅을 위한 출력
     print("=== 전달되는 통계 데이터 ===")
+    print(f"총 추천: {total_recommendations}")
+    print(f"총 채팅 세션: {total_chat_sessions}")
+    print(f"가입일: {days_since_joined}")
     print(f"연령대별: {age_group_stats}")
     print(f"성별: {gender_stats}")
     print(f"차종별: {car_type_stats}")
@@ -171,6 +188,9 @@ def profile_view(request):
     context = {
         "profile": profile,
         "recent_recommendations": recent_recommendations,
+        "total_recommendations": total_recommendations,
+        "total_chat_sessions": total_chat_sessions,
+        "days_since_joined": days_since_joined,
         "version": "1.0.0",  # 버전 정보
         "age_group_stats": age_group_stats,
         "gender_stats": gender_stats,
@@ -208,8 +228,10 @@ def profile_update_view(request):
             print(f"DEBUG: 새 비밀번호 입력: {new_password}")
             print(f"DEBUG: 확인 비밀번호 입력: {confirm_password}")
             print(f"DEBUG: 사용자 비밀번호 해시: {request.user.password[:50]}...")
-            print(f"DEBUG: check_password 결과: {request.user.check_password(current_password)}")
-            
+            print(
+                f"DEBUG: check_password 결과: {request.user.check_password(current_password)}"
+            )
+
             if not current_password:
                 messages.error(request, "현재 비밀번호를 입력해주세요.")
             elif not new_password:
@@ -219,7 +241,9 @@ def profile_update_view(request):
             elif len(new_password) < 8:
                 messages.error(request, "새 비밀번호는 8자 이상이어야 합니다.")
             elif new_password != confirm_password:
-                messages.error(request, "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.")
+                messages.error(
+                    request, "새 비밀번호와 확인 비밀번호가 일치하지 않습니다."
+                )
             elif not request.user.check_password(current_password):
                 print(f"DEBUG: 현재 비밀번호 확인 실패")
                 print(f"DEBUG: 입력된 비밀번호: {current_password}")
@@ -236,7 +260,9 @@ def profile_update_view(request):
                     messages.success(request, "비밀번호가 성공적으로 변경되었습니다.")
                 except Exception as e:
                     print(f"DEBUG: 비밀번호 변경 오류: {str(e)}")
-                    messages.error(request, f"비밀번호 변경 중 오류가 발생했습니다: {str(e)}")
+                    messages.error(
+                        request, f"비밀번호 변경 중 오류가 발생했습니다: {str(e)}"
+                    )
 
         # 프로필 정보 저장
         profile_saved = False
@@ -244,7 +270,7 @@ def profile_update_view(request):
             # 실제로 변경사항이 있는지 확인
             profile_has_changes = profile_form.has_changed()
             user_has_changes = user_form.has_changed()
-            
+
             if profile_has_changes or user_has_changes:
                 try:
                     if profile_has_changes:
@@ -254,7 +280,9 @@ def profile_update_view(request):
                     profile_saved = True
                     messages.success(request, "프로필이 성공적으로 업데이트되었습니다.")
                 except Exception as e:
-                    messages.error(request, f"프로필 저장 중 오류가 발생했습니다: {str(e)}")
+                    messages.error(
+                        request, f"프로필 저장 중 오류가 발생했습니다: {str(e)}"
+                    )
             else:
                 messages.info(request, "변경사항이 없습니다.")
 
@@ -327,13 +355,10 @@ def api_statistics_view(request):
         from datetime import date, timedelta
         from .models import InsuranceRecommendation
 
-        end_date = date.today()
-        start_date = end_date - timedelta(days=30)
-
-        # 실제 통계 데이터 조회
-        recent_recommendations_data = InsuranceRecommendation.objects.filter(
-            created_at__date__gte=start_date
-        ).select_related("user__profile")
+        # 전체 데이터 조회 (최근 30일 제한 제거)
+        recent_recommendations_data = (
+            InsuranceRecommendation.objects.all().select_related("user__profile")
+        )
 
         # 연령대별 통계
         age_group_stats = {}

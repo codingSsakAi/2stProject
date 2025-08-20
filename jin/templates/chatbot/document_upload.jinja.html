@@ -88,11 +88,26 @@
         <!-- 처리 상태 표시 -->
         <div id="processingStatus" class="mt-4" style="display: none">
           <div class="alert alert-warning">
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center mb-3">
               <div class="spinner-border spinner-border-sm me-2" role="status">
                 <span class="visually-hidden">처리중...</span>
               </div>
-              <span>PDF 파일을 처리하고 있습니다. 잠시만 기다려주세요...</span>
+              <span id="currentStage">PDF 파일을 처리하고 있습니다...</span>
+            </div>
+            
+            <!-- 진행률 바 -->
+            <div class="progress mb-3">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                   role="progressbar" 
+                   id="progressBar" 
+                   style="width: 0%">
+                <span id="progressText">0%</span>
+              </div>
+            </div>
+            
+            <!-- 로그 메시지 -->
+            <div id="logMessages" class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+              <div class="text-muted">로그 메시지가 여기에 표시됩니다...</div>
             </div>
           </div>
         </div>
@@ -158,12 +173,101 @@
     const uploadForm = document.getElementById('uploadForm');
     const processingStatus = document.getElementById('processingStatus');
     const uploadBtn = document.getElementById('uploadBtn');
+    const currentStage = document.getElementById('currentStage');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const logMessages = document.getElementById('logMessages');
+    
+    let documentId = null;
+    let progressInterval = null;
 
     // 폼 제출 시 처리 상태 표시
-    uploadForm.addEventListener('submit', function () {
+    uploadForm.addEventListener('submit', function (e) {
       processingStatus.style.display = 'block';
       uploadBtn.disabled = true;
       uploadBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 처리중...';
+      
+      // 진행상황 폴링 시작 (1초 후부터)
+      setTimeout(() => {
+        startProgressPolling();
+      }, 1000);
+    });
+    
+    function startProgressPolling() {
+      progressInterval = setInterval(() => {
+        if (documentId) {
+          fetchProgress(documentId);
+        }
+      }, 2000); // 2초마다 폴링
+    }
+    
+    function fetchProgress(docId) {
+      fetch(`/chatbot/documents/${docId}/progress/`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            updateProgressDisplay(data.progress);
+            
+            // 완료되면 폴링 중지
+            if (data.progress.is_completed) {
+              clearInterval(progressInterval);
+              setTimeout(() => {
+                window.location.href = `/chatbot/documents/${docId}/`;
+              }, 2000);
+            }
+          }
+        })
+        .catch(error => {
+          console.error('진행상황 조회 실패:', error);
+        });
+    }
+    
+    function updateProgressDisplay(progress) {
+      // 현재 단계 업데이트
+      const stageMap = {
+        'uploading': '문서 업로드 중...',
+        'pdf_processing': 'PDF 파일 처리 중...',
+        'text_extraction': '텍스트 추출 중...',
+        'chunk_creation': '청크 생성 중...',
+        'metadata_generation': '메타데이터 생성 중...',
+        'embedding_processing': 'Embedding 처리 중...',
+        'pinecone_upload': 'Pinecone 업로드 중...',
+        'completed': '처리 완료!',
+        'error': '오류 발생'
+      };
+      
+      currentStage.textContent = stageMap[progress.current_stage] || progress.current_stage;
+      
+      // 진행률 바 업데이트
+      const percentage = Math.round(progress.progress_percentage);
+      progressBar.style.width = percentage + '%';
+      progressText.textContent = percentage + '%';
+      
+      // 로그 메시지 업데이트
+      if (progress.log_messages && progress.log_messages.length > 0) {
+        const logHtml = progress.log_messages.map(log => 
+          `<div>[${log.timestamp}] ${log.message}</div>`
+        ).join('');
+        logMessages.innerHTML = logHtml;
+        logMessages.scrollTop = logMessages.scrollHeight;
+      }
+      
+      // 오류 메시지 표시
+      if (progress.error_message) {
+        logMessages.innerHTML += `<div class="text-danger">[오류] ${progress.error_message}</div>`;
+      }
+    }
+    
+    // 폼 제출 후 문서 ID 추출 (간단한 방법)
+    uploadForm.addEventListener('submit', function() {
+      setTimeout(() => {
+        // URL에서 문서 ID 추출 시도
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('document_id');
+        if (docId) {
+          documentId = docId;
+        }
+      }, 1000);
     });
   });
 </script>

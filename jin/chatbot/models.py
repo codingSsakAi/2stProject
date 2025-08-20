@@ -75,6 +75,13 @@ class InsuranceDocument(models.Model):
     )
     error_message = models.TextField("오류 메시지", blank=True)
 
+    # 핵심 문서 메타데이터
+    document_version = models.CharField(
+        "문서버전", max_length=50, blank=True, null=True
+    )
+    effective_date = models.DateField("시행일자", blank=True, null=True)
+    insurance_type = models.CharField("보험종류", max_length=100, blank=True, null=True)
+
     class Meta:
         verbose_name = "보험 약관 문서"
         verbose_name_plural = "보험 약관 문서 목록"
@@ -107,13 +114,28 @@ class DocumentChunk(models.Model):
     )
     chunk_text = models.TextField("청크 텍스트")
     chunk_index = models.PositiveIntegerField("청크 인덱스")
+
+    # 핵심 메타데이터 필드들
+    title = models.CharField("제목", max_length=500, blank=True, null=True)
+    category = models.CharField("카테고리", max_length=100, blank=True, null=True)
+    article_number = models.PositiveIntegerField("조문번호", blank=True, null=True)
+    keywords = models.JSONField("키워드", default=list, blank=True)
+    summary = models.TextField("요약", blank=True, null=True)
+
+    # 품질 관리 메타데이터
+    extraction_method = models.CharField(
+        "추출방법", max_length=50, default="rule_based"
+    )
+    confidence_score = models.FloatField("신뢰도", default=0.0)
+    review_status = models.CharField("검토상태", max_length=20, default="pending")
+
     created_at = models.DateTimeField("생성일시", auto_now_add=True)
+    updated_at = models.DateTimeField("수정일시", auto_now=True)
 
     class Meta:
         verbose_name = "문서 청크"
         verbose_name_plural = "문서 청크 목록"
         ordering = ["document", "chunk_index"]
-        unique_together = ["document", "chunk_index"]
 
     def __str__(self):
         return f"{self.document.title} - 청크 {self.chunk_index}"
@@ -319,3 +341,97 @@ class PineconeUsage(models.Model):
         usage.storage_gb = storage_gb
         usage.save()
         logger.info(f"Pinecone 저장소 사용량 업데이트: {storage_gb:.2f}GB")
+
+
+class ProcessingProgress(models.Model):
+    """문서 처리 진행상황 추적 모델"""
+
+    document = models.ForeignKey(
+        InsuranceDocument,
+        on_delete=models.CASCADE,
+        verbose_name="문서",
+        related_name="processing_progress",
+    )
+
+    # 처리 단계
+    STAGE_CHOICES = [
+        ("uploading", "업로드 중"),
+        ("pdf_processing", "PDF 처리 중"),
+        ("text_extraction", "텍스트 추출 중"),
+        ("chunk_creation", "청크 생성 중"),
+        ("metadata_generation", "메타데이터 생성 중"),
+        ("embedding_processing", "Embedding 처리 중"),
+        ("pinecone_upload", "Pinecone 업로드 중"),
+        ("completed", "완료"),
+        ("error", "오류"),
+    ]
+
+    current_stage = models.CharField(
+        "현재 단계", max_length=30, choices=STAGE_CHOICES, default="uploading"
+    )
+
+    # 진행률 정보
+    total_chunks = models.PositiveIntegerField("전체 청크 수", default=0)
+    processed_chunks = models.PositiveIntegerField("처리된 청크 수", default=0)
+    progress_percentage = models.FloatField("진행률 (%)", default=0.0)
+
+    # 로그 메시지
+    log_messages = models.JSONField("로그 메시지", default=list)
+
+    # 시간 정보
+    started_at = models.DateTimeField("시작 시간", auto_now_add=True)
+    updated_at = models.DateTimeField("수정 시간", auto_now=True)
+    completed_at = models.DateTimeField("완료 시간", null=True, blank=True)
+
+    # 오류 정보
+    error_message = models.TextField("오류 메시지", blank=True)
+
+    class Meta:
+        verbose_name = "처리 진행상황"
+        verbose_name_plural = "처리 진행상황 목록"
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"{self.document.title} - {self.current_stage}"
+
+    def add_log_message(self, message: str):
+        """로그 메시지 추가"""
+        if not self.log_messages:
+            self.log_messages = []
+
+        timestamp = timezone.now().strftime("%H:%M:%S")
+        self.log_messages.append({"timestamp": timestamp, "message": message})
+
+        # 최대 100개 메시지만 유지
+        if len(self.log_messages) > 100:
+            self.log_messages = self.log_messages[-100:]
+
+        self.save()
+
+    def update_progress(self, stage: str, processed: int = None, total: int = None):
+        """진행상황 업데이트"""
+        self.current_stage = stage
+
+        if processed is not None:
+            self.processed_chunks = processed
+
+        if total is not None:
+            self.total_chunks = total
+
+        if self.total_chunks > 0:
+            self.progress_percentage = (self.processed_chunks / self.total_chunks) * 100
+
+        self.save()
+
+    def complete(self, success: bool = True, error_message: str = ""):
+        """처리 완료"""
+        if success:
+            self.current_stage = "completed"
+            self.progress_percentage = 100.0
+            self.processed_chunks = self.total_chunks
+        else:
+            self.current_stage = "error"
+            self.error_message = error_message
+
+        self.completed_at = timezone.now()
+        self.save()
