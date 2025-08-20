@@ -1,0 +1,143 @@
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <h2>교통사고 신속처리 표준 협의서</h2>
+
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td><label>사고일시</label><br><input type="datetime-local" name="accident_date" style="width: 100%;"></td>
+      <td><label>사고장소</label><br><input type="text" name="location" style="width: 100%;"></td>
+      <td>
+        <label>날씨</label><br>
+        <label><input type="checkbox" name="weather" value="맑음"> 맑음</label>
+        <label><input type="checkbox" name="weather" value="흐림"> 흐림</label>
+        <label><input type="checkbox" name="weather" value="비"> 비</label>
+        <label><input type="checkbox" name="weather" value="눈"> 눈</label>
+        <label><input type="checkbox" name="weather" value="안개"> 안개</label>
+      </td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <div style="display: flex; width: 100%;">
+    <!-- A 차량 정보 -->
+    <div style="width: 37.5%; padding: 10px; border: 1px solid #ccc;">
+      <h3>A 차량</h3>
+      <label>성명</label><input type="text" name="a_name" style="width: 100%;">
+      <label>주민번호</label><input type="text" name="a_id" style="width: 100%;">
+      <label>전화번호</label><input type="text" name="a_phone" style="width: 100%;">
+      <label>주소</label><input type="text" name="a_address" style="width: 100%;">
+      <label>탑승인원</label><input type="text" name="a_passengers" style="width: 100%;">
+    </div>
+
+    <!-- B 차량 정보 -->
+    <div style="width: 37.5%; padding: 10px; border: 1px solid #ccc;">
+      <h3>B 차량</h3>
+      <label>성명</label><input type="text" name="b_name" style="width: 100%;">
+      <label>주민번호</label><input type="text" name="b_id" style="width: 100%;">
+      <label>전화번호</label><input type="text" name="b_phone" style="width: 100%;">
+      <label>주소</label><input type="text" name="b_address" style="width: 100%;">
+      <label>탑승인원</label><input type="text" name="b_passengers" style="width: 100%;">
+    </div>
+
+    <!-- 기타 정보 (보행자 등) -->
+    <div style="width: 25%; padding: 10px; border: 1px solid #ccc;">
+      <h3>보행자</h3>
+      <label>성명</label><input type="text" name="p_name" style="width: 100%;">
+      <label>주민번호</label><input type="text" name="p_id" style="width: 100%;">
+      <label>전화번호</label><input type="text" name="p_phone" style="width: 100%;">
+      <label>주소</label><input type="text" name="p_address" style="width: 100%;">
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- 파손 부위 이미지 업로드 -->
+  <h3>차량 파손 부위</h3>
+  <input type="file" name="damage_photo" accept="image/*" onchange="previewImage(event)">
+  <br>
+  <img id="damage-preview" src="#" alt="파손부위 미리보기" style="max-width: 500px; display: none; margin-top: 10px;">
+
+  <script>
+    function previewImage(event) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        const output = document.getElementById('damage-preview');
+        output.src = reader.result;
+        output.style.display = 'block';
+      };
+      reader.readAsDataURL(event.target.files[0]);
+    }
+  </script>
+
+  <!-- 설명 텍스트 -->
+  <hr>
+<!-- A 차량 파손 -->
+<h3>A 차량 파손 부위 및 특이사항</h3>
+<div style="border: 1px solid #999; padding: 10px;">
+  <input type="file" name="a_damage_photo" accept="image/*" multiple onchange="previewMultiple(event, 'a_preview')" />
+  <div id="a_preview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
+  <textarea name="a_damage_description" placeholder="구체적 파손 정도 및 특이사항" rows="3" style="width: 100%; margin-top: 10px;"></textarea>
+</div>
+
+<!-- B 차량 파손 -->
+<h3>B 차량 파손 부위 및 특이사항</h3>
+<div style="border: 1px solid #999; padding: 10px;">
+  <input type="file" name="b_damage_photo" accept="image/*" multiple onchange="previewMultiple(event, 'b_preview')" />
+  <div id="b_preview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
+  <textarea name="b_damage_description" placeholder="구체적 파손 정도 및 특이사항" rows="3" style="width: 100%; margin-top: 10px;"></textarea>
+</div>
+
+<!-- 보행자 특이사항 -->
+<h3>보행자 특이사항</h3>
+<textarea name="p_damage_description" rows="5" style="width: 100%; border: 1px solid #999;"></textarea>
+
+<hr>
+
+<!-- 사고 내용 + 약도 -->
+<h3>사고 내용 및 약도</h3>
+<div style="display: flex; width: 100%; border: 1px solid #000;">
+  <!-- 사고 내용 좌측 -->
+  <div style="width: 65%; padding: 10px; border-right: 1px solid #000;">
+    <strong>1. 사고 형태</strong><br>
+    <label><input type="checkbox" name="accident_type" value="자동차-자동차-정면"> 정면충돌</label>
+    <label><input type="checkbox" name="accident_type" value="자동차-자동차-후미"> 후미추돌</label>
+    <label><input type="checkbox" name="accident_type" value="자동차-보행자-무단횡단"> 무단횡단</label><br>
+    <label><input type="checkbox" name="accident_type" value="자동차-보행자-횡단보도"> 횡단보도</label>
+    <label><input type="checkbox" name="accident_type" value="보도통행"> 보도통행</label>
+
+    <br><br><strong>2. 사고 원인</strong><br>
+    <label><input type="checkbox" name="accident_cause" value="음주"> 음주</label>
+    <label><input type="checkbox" name="accident_cause" value="신호위반"> 신호위반</label>
+    <label><input type="checkbox" name="accident_cause" value="중앙선침범"> 중앙선침범</label>
+    <label><input type="checkbox" name="accident_cause" value="기타"> 기타</label>
+
+    <br><br>
+    <strong>3. 구체적 사고 개요 및 특이사항</strong><br>
+    <textarea name="accident_description" rows="5" style="width: 100%;"></textarea>
+  </div>
+
+  <!-- 사고 약도 우측 -->
+  <div style="width: 35%; background-color: #fff;">
+    <div style="height: 100%; text-align: center; padding-top: 30%; color: #ccc;">
+      <em>[ 사고 약도 공간 ]</em>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- 보험청구 서명 테이블 -->
+<h3>보험청구 및 서명</h3>
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+  <tr>
+    <td style="width: 33%; border: 1px solid #000;">A 차량: <br><br>(서명)</td>
+    <td style="width: 33%; border: 1px solid #000;">B 차량: <br><br>(서명)</td>
+    <td style="width: 33%; border: 1px solid #000;">보행자: <br><br>(서명)</td>
+  </tr>
+</table>
+
+  <br><br>
+  <button type="submit">PDF 생성</button>
+</form>
