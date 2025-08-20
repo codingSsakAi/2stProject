@@ -91,7 +91,6 @@
   bottom: auto !important;
   transform: translateY(-50%) !important;
   z-index: 1050;
-  width:80px;
   height:60px;
 }
 

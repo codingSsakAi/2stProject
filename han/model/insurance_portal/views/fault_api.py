@@ -3,7 +3,6 @@ from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 import json, logging
 
-from insurance_portal.services.fault_answerer import answer_fault
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,7 @@ def fault_answer_view(request):
         if not query:
             return JsonResponse({"ok": False, "error": "empty query"}, status=400)
 
+        from insurance_portal.services.fault_answerer import answer_fault
         result = answer_fault(query)
         return JsonResponse({"ok": True, "result": result}, json_dumps_params={"ensure_ascii": False})
 
