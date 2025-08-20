@@ -49,6 +49,48 @@
   border-top-right-radius:16px;
 }
 
+/* 헤더 컨트롤 버튼들 */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.header-btn:active {
+  transform: scale(0.95);
+}
+
+#chatbot-reset:hover {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+#chatbot-close:hover {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
 /* ✅ 메시지 영역: 남는 높이를 차지하고 세로 스크롤 */
 #chatbot-messages{
   flex: 1 1 auto;
@@ -163,6 +205,16 @@ body.noselect { user-select: none; }
 .clarify-bubble h5:first-child,
 .clarify-bubble h6:first-child {
   margin-top: 0 !important;
+}
+
+/* 초기화 메시지 스타일 */
+.reset-message {
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e40af;
 }
 
 /* 팔로우업 버튼 컨테이너 */
@@ -338,6 +390,12 @@ body.noselect { user-select: none; }
     right: 2.5vw;
     bottom: 2.5vh;
   }
+  
+  .header-btn {
+    min-width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -352,5 +410,232 @@ body.noselect { user-select: none; }
   .bubble table th,
   .bubble table td {
     padding: 4px;
+  }
+  
+  .header-controls {
+    gap: 4px;
+  }
+}
+/* 기존 chatbot.css 내용 + 새로운 질문/옵션 스타일 추가 */
+
+/* 다중 선택 및 일괄 전송 UI 스타일 */
+
+/* 질문 섹션 기본 스타일 */
+.questions-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0f9ff;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+}
+
+.question-item {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.question-item:last-child {
+  margin-bottom: 1rem;
+}
+
+.question-text {
+  font-weight: 600;
+  color: #1e40af;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+}
+
+.question-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 옵션 버튼 스타일 */
+.option-btn {
+  background: #ffffff !important;
+  border: 2px solid #e5e7eb !important;
+  color: #374151 !important;
+  border-radius: 20px !important;
+  padding: 8px 16px !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+.option-btn:hover {
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.option-btn.btn-primary {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.option-btn.btn-primary:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  transform: translateY(-1px);
+}
+
+/* 선택 표시 */
+.selected-indicator {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: #dcfce7;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
+.selected-indicator i {
+  color: #16a34a;
+}
+
+.selected-value {
+  font-weight: 600;
+  color: #15803d;
+}
+
+/* 전송 섹션 */
+.submit-section {
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.btn-submit-answers {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  color: white !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-submit-answers:hover {
+  background: #059669 !important;
+  border-color: #059669 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-reset-answers {
+  border-color: #d1d5db !important;
+  color: #6b7280 !important;
+  background: white !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-reset-answers:hover {
+  border-color: #9ca3af !important;
+  color: #374151 !important;
+  background: #f9fafb !important;
+}
+
+/* 최종 안내문 스타일 */
+.final-notice {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #0ea5e9;
+  border-radius: 8px;
+}
+
+.final-notice .notice-content {
+  line-height: 1.6;
+}
+
+.final-notice p {
+  margin-bottom: 1rem;
+}
+
+.final-notice a {
+  color: #0ea5e9;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.final-notice a:hover {
+  text-decoration: underline;
+}
+
+.reference-info {
+  padding-top: 0.75rem;
+  border-top: 1px solid #bfdbfe;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 0 0 4px 4px;
+  margin: 0 -0.75rem -0.75rem -0.75rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .question-options {
+    flex-direction: column;
+  }
+  
+  .option-btn {
+    width: 100%;
+    text-align: center;
+    padding: 10px 12px !important;
+  }
+  
+  .question-text {
+    font-size: 0.9rem;
+  }
+  
+  .questions-section {
+    padding: 0.75rem;
+  }
+  
+  .question-item {
+    padding: 0.5rem;
+  }
+  
+  .submit-section {
+    padding: 0.75rem;
+  }
+  
+  .btn-submit-answers,
+  .btn-reset-answers {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .btn-reset-answers {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .option-btn {
+    font-size: 0.8rem !important;
+    padding: 8px 10px !important;
+  }
+  
+  .final-notice {
+    padding: 0.75rem;
+  }
+  
+  .final-notice p {
+    font-size: 0.875rem;
   }
 }

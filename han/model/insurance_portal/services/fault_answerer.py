@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 프롬프트(SYSTEM/USER) 적용 → RAG 소스 정렬/포맷 → LLM 호출 → JSON 파싱/스키마 강제 → 결과 리턴.
+- 대화 히스토리 지원 추가
 - 모델 일탈 방지: response_format=json_object 시도 + 파싱 보정
 - 재질문/최종답변 분기 강제: needs_more_input에 따라 필드 비움/채움 규칙 적용
 - 로깅: 프롬프트 해시, 요청/응답 요약
 """
 import os, json, re, time, hashlib, logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 # 프롬프트 원본
 from insurance_portal.services.prompt_fault import SYSTEM_PROMPT, USER_PROMPT  # 경로는 프로젝트에 맞춰 조정
@@ -77,6 +78,27 @@ def _format_sources(hits: List[Dict[str, Any]], limit: int = 7) -> Tuple[str, Li
         cits.append({"id": hid, "file": file, "page": page, "score": h.get("score", 0)})
     return "\n\n".join(blocks).strip(), cits
 
+def _format_conversation_history(history: List[Dict[str, str]], max_turns: int = 3) -> str:
+    """대화 히스토리를 프롬프트용 문자열로 포맷"""
+    if not history:
+        return ""
+    
+    # 최근 N턴만 사용 (너무 길면 토큰 제한 문제)
+    recent_history = history[-max_turns * 2:] if len(history) > max_turns * 2 else history
+    
+    formatted = []
+    for msg in recent_history:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role == "user":
+            formatted.append(f"사용자: {content}")
+        elif role == "assistant":
+            formatted.append(f"AI: {content}")
+    
+    if formatted:
+        return f"\n이전 대화 내역:\n" + "\n".join(formatted) + "\n\n"
+    return ""
+
 def _enforce_schema(obj: Dict[str, Any]) -> Dict[str, Any]:
     """프롬프트 스키마 강제: 재질문이면 결과 필드 비우기, 최종답변이면 final_answer 필수"""
     if not isinstance(obj, dict):
@@ -107,20 +129,32 @@ def _enforce_schema(obj: Dict[str, Any]) -> Dict[str, Any]:
         obj["followups"] = as_list(obj.get("followups"))
     return obj
 
-def answer_fault(query: str, top_k: int = TOP_K) -> Dict[str, Any]:
-    """뷰에서 호출하는 진입점"""
+def answer_fault(
+    query: str, 
+    conversation_history: Optional[List[Dict[str, str]]] = None,
+    top_k: int = TOP_K
+) -> Dict[str, Any]:
+    """뷰에서 호출하는 진입점 - 대화 히스토리 지원"""
     t0 = time.time()
 
     hits = retrieve_fault_sources(query, top_k=top_k)
     sources_str, citations_meta = _format_sources(hits, limit=top_k)
+    
+    # 대화 히스토리 포맷
+    history_context = _format_conversation_history(conversation_history or [])
+    
+    # 프롬프트에 히스토리 추가
+    user_content = f"{history_context}현재 질문: {query}\n\n참고자료:\n{sources_str}"
 
-    sys_hash, usr_hash = _h(SYSTEM_PROMPT), _h(USER_PROMPT)
+    sys_hash, usr_hash = _h(SYSTEM_PROMPT), _h(user_content)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": USER_PROMPT.format(query=query, sources=sources_str)},
+        {"role": "user", "content": user_content},
     ]
-    logger.info("[fault] system_hash=%s user_hash=%s qlen=%d slen=%d",
-                sys_hash, usr_hash, len(query), len(sources_str))
+    
+    logger.info("[fault] system_hash=%s user_hash=%s qlen=%d slen=%d history_len=%d",
+                sys_hash, usr_hash, len(query), len(sources_str), 
+                len(conversation_history or []))
 
     raw = _chat_completion(messages, OPENAI_MODEL)
     took = (time.time() - t0) * 1000
