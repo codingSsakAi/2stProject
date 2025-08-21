@@ -1,0 +1,27 @@
+{% load static %}
+<div style="font-family:'Malgun Gothic','맑은 고딕',NanumGothic,sans-serif; font-size:14px;">
+
+<h2 style="text-align:center; margin-bottom:12px;">그룹 구조 판단 기능 테이블</h2>
+
+<!-- 포맷 1: 사고일시 메타보기 -->
+<table style="width:100%; border-collapse:collapse; margin-bottom:8px;">
+  <tr>
+    <th style="width:12%; border:1px solid #000; padding:6px;">사고일시</th>
+    <td style="width:33%; border:1px solid #000; padding:6px;">{{ accident_date }}</td>
+    <th style="width:10%; border:1px solid #000; padding:6px;">사고장소</th>
+    <td style="width:30%; border:1px solid #000; padding:6px;">{{ location }}</td>
+    <th style="width:7%; border:1px solid #000; padding:6px;">날씨</th>
+    <td style="border:1px solid #000; padding:6px;">{{ weather_join }}</td>
+  </tr>
+</table>
+
+<!-- 사고관계자 정보 / 피해상태 / 파손부위 -->
+{% include "report_form/partials/_party_info.html" %}
+
+<!-- 사고내용 / 사고약도 -->
+{% include "report_form/partials/_accident_detail.html" %}
+
+<!-- 보험청구 -->
+{% include "report_form/partials/_insurance_claim.html" %}
+
+</div>

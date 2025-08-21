@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>교통사고 신속처리 표준 협의서</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* Django 템플릿 충돌 방지를 위해 CSS 변수 제거 */
+    * { box-sizing: border-box; }
+    body { 
+      font-family: 'Malgun Gothic', '맑은 고딕', NanumGothic, Arial, sans-serif; 
+      margin: 0; 
+      padding: 8px; 
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    h2 { 
+      margin: 0 0 8px 0; 
+      text-align: center; 
+      font-size: 16px; 
+    }
+
+    input, textarea, select { 
+      width: 100%; 
+      padding: 2px; 
+      font-size: 10px; 
+      border: none; 
+      background: transparent; 
+    }
+    
+    .box { 
+      border: 1px solid #000; 
+      background: #fff; 
+      margin-bottom: 4px; 
+    }
+    
+    .grid { display: grid; }
+    .row { display: flex; }
+    
+    .cell { 
+      padding: 4px; 
+      border-bottom: 1px solid #000; 
+      border-right: 1px solid #000; 
+    }
+    
+    .cell:last-child { border-right: 0; }
+    .hdr { background: #f7f7f7; font-weight: 700; }
+    .tight { padding: 2px; }
+    .label { font-weight: 700; white-space: nowrap; }
+
+    /* 상단 메타 */
+    table.meta { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-bottom: 4px; 
+    }
+    
+    table.meta th, table.meta td { 
+      border: 1px solid #000; 
+      padding: 3px 4px; 
+      text-align: left; 
+      vertical-align: middle; 
+      font-size: 9px;
+    }
+    
+    .weather-row { 
+      display: flex; 
+      gap: 6px; 
+      align-items: center; 
+      white-space: nowrap; 
+      flex-wrap: wrap; 
+    }
+    
+    .weather-row label { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 3px; 
+      font-size: 8px;
+    }
+    
+    .weather-row input[type="checkbox"] { 
+      transform: scale(0.7); 
+      margin: 0; 
+    }
+
+    /* 좌측 세로 라벨 */
+    .title-v { 
+      writing-mode: vertical-rl; 
+      text-align: center; 
+      font-weight: 700; 
+      padding: 4px 2px; 
+      border-right: 1px solid #000; 
+      font-size: 10px;
+    }
+
+    /* 3단 비율 - A4 가로에 최적화 */
+    .cols-3 { grid-template-columns: 33% 33% 34%; }
+    .two-col { grid-template-columns: 18% 82%; }
+
+    /* 파손부위 도면 + 마킹 */
+    .damage-wrap { padding: 3px 4px; }
+    .damage-head { 
+      font-weight: 700; 
+      margin-bottom: 3px; 
+      font-size: 8px; 
+    }
+    
+    .damage-img-box {
+      border: 1px solid #000; 
+      height: 90px; 
+      display: flex;
+      align-items: center; 
+      justify-content: center; 
+      background: #fff; 
+      position: relative; 
+      overflow: hidden;
+    }
+    
+    .damage-img-box img { 
+      max-width: 95%; 
+      max-height: 95%; 
+      object-fit: contain; 
+    }
+    
+    /* 파손 마크 */
+    .mark {
+      position: absolute; 
+      width: 12px; 
+      height: 12px; 
+      border: 2px solid #d00; 
+      border-radius: 50%;
+      transform: translate(-50%, -50%); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      font-size: 8px; 
+      font-weight: 900; 
+      color: #d00; 
+      background: rgba(255,255,255,0.9);
+    }
+
+    .desc-area { 
+      height: 40px; 
+      border: 1px solid #000; 
+    }
+
+    /* 사고내용 표 */
+    table.acc { 
+      width: 100%; 
+      border-collapse: collapse; 
+    }
+    
+    table.acc th, table.acc td { 
+      border: 1px solid #000; 
+      padding: 3px 4px; 
+      vertical-align: top; 
+      font-size: 9px;
+    }
+
+    /* '사고내용/약도' 2열 */
+    .acc-wrap { 
+      display: grid; 
+      grid-template-columns: 75% 25%; 
+    }
+    
+    .acc-left { border-right: 1px solid #000; }
+    
+    .acc-right { 
+      position: relative; 
+      background: #fff; 
+      min-height: 100px; 
+    }
+    
+    .acc-right .tag { 
+      position: absolute; 
+      top: 3px; 
+      left: 4px; 
+      font-weight: 700; 
+      font-size: 9px;
+    }
+
+    /* 보험청구 서명 */
+    .sign-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+    }
+    
+    .sign-table td { 
+      border: 1px solid #000; 
+      padding: 6px; 
+      text-align: center; 
+      font-size: 9px;
+    }
+
+    /* 섹션 타이틀 */
+    .section-title { 
+      font-weight: 800; 
+      margin: 3px 0; 
+      font-size: 10px; 
+    }
+
+    /* A4 가로 출력 최적화 */
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+
+    @media print {
+      body { 
+        margin: 0; 
+        padding: 2px; 
+        font-size: 8px; 
+      }
+      .no-print { display: none !important; }
+      input, textarea { border: none; background: transparent; }
+      input[type="checkbox"]:checked::after { content: "✓"; }
+      .damage-img-box { height: 70px; }
+      h2 { font-size: 12px; }
+      .weather-row label { font-size: 7px; }
+      table.meta th, table.meta td { font-size: 7px; }
+      table.acc th, table.acc td { font-size: 7px; }
+      .sign-table td { font-size: 7px; }
+    }
+
+    /* 반응형 (모바일) */
+    @media (max-width: 900px) {
+      body { padding: 6px; font-size: 10px; }
+      .cols-3 { grid-template-columns: 1fr; }
+      .acc-wrap { grid-template-columns: 1fr; }
+      .title-v {
+        writing-mode: initial;
+        border-right: 0; 
+        border-bottom: 1px solid #000;
+        padding: 4px 6px; 
+        text-align: left;
+      }
+      .damage-img-box { height: 80px; }
+      table.meta th, table.meta td { padding: 3px; }
+      .two-col { grid-template-columns: 25% 75%; }
+    }
+  </style>
+</head>
+<body>
+  <h2>교통사고 신속처리 표준 협의서</h2>
+
+  <!-- 상단 메타 정보 -->
+  <table class="meta">
+    <tr>
+      <th style="width:12%">사고일시</th>
+      <td style="width:25%"><input type="datetime-local" name="accident_date" readonly /></td>
+      <th style="width:10%">사고장소</th>
+      <td style="width:28%"><input type="text" name="location" readonly /></td>
+      <th style="width:7%">날씨</th>
+      <td>
+        <div class="weather-row">
+          <label><input type="checkbox" name="weather" value="맑음" disabled />맑음</label>
+          <label><input type="checkbox" name="weather" value="흐림" disabled />흐림</label>
+          <label><input type="checkbox" name="weather" value="비" disabled />비</label>
+          <label><input type="checkbox" name="weather" value="눈" disabled />눈</label>
+          <label><input type="checkbox" name="weather" value="안개" disabled />안개</label>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- 사고 관계자 정보 및 피해상태 -->
+  <div class="box">
+    <div class="row" style="border-bottom:1px solid #000; align-items:stretch;">
+      <div class="title-v">사고 관계자 정보 및 피해상태</div>
+      <div style="flex:1;">
+        <div class="grid cols-3">
+
+          <!-- A 차량 -->
+          <div style="border-right:1px solid #000;">
+            <div class="section-title">A 차량</div>
+            <div class="grid two-col">
+              <div class="cell hdr">차량번호</div><div class="cell"><input name="a_plate" readonly /></div>
+              <div class="cell hdr">보험사</div><div class="cell"><input name="a_insurer" readonly /></div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">운전자<br/>정보</div><div class="cell tight"></div>
+              <div class="cell hdr">성 명</div><div class="cell"><input name="a_name" readonly /></div>
+              <div class="cell hdr">주민번호</div><div class="cell"><input name="a_id" readonly /></div>
+              <div class="cell hdr">전화번호</div><div class="cell"><input name="a_phone" readonly /></div>
+              <div class="cell hdr">주 소</div><div class="cell"><input name="a_address" readonly /></div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">탑승인원<br/><span style="font-weight:400;">(운전자제외)</span></div>
+              <div class="cell">
+                <div style="display:flex; gap:4px; align-items:center;">
+                  남 <input type="number" min="0" id="a_male" style="width:40px" readonly />
+                  여 <input type="number" min="0" id="a_female" style="width:40px" readonly />
+                  <span style="flex:1"></span><b>합계</b> <span id="a_total">0</span>명
+                </div>
+              </div>
+            </div>
+
+            <div class="damage-wrap">
+              <div class="damage-head">[파손부위] : 해당 부위에 V 표시</div>
+              <div class="damage-img-box" id="a_imgbox">
+                <img src="images/damage_outline.png" alt="A차량 파손부위 도면" />
+              </div>
+            </div>
+
+            <div style="border-top:1px solid #000;">
+              <div class="cell hdr" style="border-bottom:0;">[구체적 파손정도 및 특이사항 기술]</div>
+              <div class="desc-area"><textarea name="a_damage_desc" style="height:100%" readonly></textarea></div>
+            </div>
+          </div>
+
+          <!-- B 차량 -->
+          <div style="border-right:1px solid #000;">
+            <div class="section-title">B 차량</div>
+            <div class="grid two-col">
+              <div class="cell hdr">차량번호</div><div class="cell"><input name="b_plate" readonly /></div>
+              <div class="cell hdr">보험사</div><div class="cell"><input name="b_insurer" readonly /></div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">운전자<br/>정보</div><div class="cell tight"></div>
+              <div class="cell hdr">성 명</div><div class="cell"><input name="b_name" readonly /></div>
+              <div class="cell hdr">주민번호</div><div class="cell"><input name="b_id" readonly /></div>
+              <div class="cell hdr">전화번호</div><div class="cell"><input name="b_phone" readonly /></div>
+              <div class="cell hdr">주 소</div><div class="cell"><input name="b_address" readonly /></div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">탑승인원<br/><span style="font-weight:400;">(운전자제외)</span></div>
+              <div class="cell">
+                <div style="display:flex; gap:4px; align-items:center;">
+                  남 <input type="number" min="0" id="b_male" style="width:40px" readonly />
+                  여 <input type="number" min="0" id="b_female" style="width:40px" readonly />
+                  <span style="flex:1"></span><b>합계</b> <span id="b_total">0</span>명
+                </div>
+              </div>
+            </div>
+
+            <div class="damage-wrap">
+              <div class="damage-head">[파손부위] : 해당 부위에 V 표시</div>
+              <div class="damage-img-box" id="b_imgbox">
+                <img src="images/damage_outline.png" alt="B차량 파손부위 도면" />
+              </div>
+            </div>
+
+            <div style="border-top:1px solid #000;">
+              <div class="cell hdr" style="border-bottom:0;">[구체적 파손정도 및 특이사항 기술]</div>
+              <div class="desc-area"><textarea name="b_damage_desc" style="height:100%" readonly></textarea></div>
+            </div>
+          </div>
+
+          <!-- 보행자 -->
+          <div>
+            <div class="section-title">보행자</div>
+            <div class="grid two-col">
+              <div class="cell hdr">성명:</div><div class="cell"><input name="p_name" readonly /></div>
+              <div class="cell hdr">주민번호:</div><div class="cell"><input name="p_id" readonly /></div>
+              <div class="cell hdr">전화번호:</div><div class="cell"><input name="p_phone" readonly /></div>
+              <div class="cell hdr">주소:</div><div class="cell"><input name="p_address" readonly /></div>
+            </div>
+            <div style="border-top:1px solid #000;">
+              <div class="cell hdr" style="border-bottom:0;">[구체적 피해정도 및 특이사항 기술]</div>
+              <div class="desc-area" style="height:190px;"><textarea name="p_damage_desc" style="height:100%" readonly></textarea></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사고내용/사고약도 -->
+  <div class="box" style="border-top:0;">
+    <div class="row" style="align-items:stretch;">
+      <div class="title-v">사고내용</div>
+      <div style="flex:1;" class="acc-wrap">
+        <div class="acc-left">
+          <table class="acc">
+            <tr>
+              <th style="width:70px;">사고형태</th>
+              <td>
+                <div class="label">자동차대 자동차</div>
+                <div class="weather-row" style="margin:2px 0;">
+                  <label><input type="checkbox" name="type_cc" value="정면충돌" disabled> 정면충돌</label>
+                  <label><input type="checkbox" name="type_cc" value="후미추돌(진행중)" disabled> 후미추돌(진행중)</label>
+                  <label><input type="checkbox" name="type_cc" value="후미추돌(주정차중)" disabled> 후미추돌(주정차중)</label>
+                  <label><input type="checkbox" name="type_cc" value="측면충돌" disabled> 측면충돌</label>
+                  <label><input type="checkbox" name="type_cc" value="후진사고" disabled> 후진사고</label>
+                </div>
+                <div class="label" style="margin-top:2px;">자동차대 보행자</div>
+                <div class="weather-row" style="margin:2px 0;">
+                  <label><input type="checkbox" name="type_cp" value="횡단보도 통행중" disabled> 횡단보도 통행중</label>
+                  <label><input type="checkbox" name="type_cp" value="무단횡단중" disabled> 무단횡단중</label>
+                  <label><input type="checkbox" name="type_cp" value="차도가장자리 통행중" disabled> 차도가장자리 통행중</label>
+                  <label><input type="checkbox" name="type_cp" value="보도 통행중" disabled> 보도 통행중</label>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>사고원인</th>
+              <td>
+                <div class="weather-row">
+                  <label><input type="checkbox" name="cause" value="음주/주취운전" disabled> 음주·주취운전</label>
+                  <label><input type="checkbox" name="cause" value="신호위반" disabled> 신호위반</label>
+                  <label><input type="checkbox" name="cause" value="중앙선침범" disabled> 중앙선침범</label>
+                  <label><input type="checkbox" name="cause" value="속도위반" disabled> 속도위반</label>
+                  <label><input type="checkbox" name="cause" value="횡단보도위반" disabled> 횡단보도위반</label>
+                  <label><input type="checkbox" name="cause" value="기타" disabled> 기타</label>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>[구체적 사고 개요 및 특이사항]</th>
+              <td><textarea name="accident_description" rows="3" style="border:0; width:100%;" readonly></textarea></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="acc-right">
+          <div class="tag">[사고약도]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 보험청구 -->
+  <div class="box" style="border-top:0;">
+    <div class="row">
+      <div class="title-v">보험청구</div>
+      <div style="flex:1; padding:4px;">
+        위 기재사항이 사실과 다름이 없음을 확인하고, 신속한 사고처리 및 보험금 청구를 위하여 상호 서명날인합니다.
+        <table class="sign-table" style="margin-top:4px;">
+          <tr>
+            <td>A 차량 : (서명)</td>
+            <td>B 차량 : (서명)</td>
+            <td>보행자 : (서명)</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function bindPassengerCalc(prefix) {
+      const male = document.getElementById(prefix+'_male');
+      const female = document.getElementById(prefix+'_female');
+      const total = document.getElementById(prefix+'_total');
+      const update = () => {
+        const m = parseInt(male?.value||'0', 10);
+        const f = parseInt(female?.value||'0', 10);
+        if(total) total.textContent = (m+f).toString();
+      };
+      if(male) male.addEventListener('input', update);
+      if(female) female.addEventListener('input', update);
+      update();
+    }
+    bindPassengerCalc('a');
+    bindPassengerCalc('b');
+
+    function loadFormData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      document.querySelectorAll('input, textarea').forEach(element => {
+        const value = urlParams.get(element.name);
+        if (value && element.type !== 'checkbox') {
+          element.value = value;
+        } else if (element.type === 'checkbox' && urlParams.getAll(element.name).includes(element.value)) {
+          element.checked = true;
+        }
+      });
+
+      ['a', 'b'].forEach(prefix => {
+        for (let i = 1; i <= 5; i++) {
+          const x = urlParams.get(`${prefix}_x_${i}`);
+          const y = urlParams.get(`${prefix}_y_${i}`);
+          
+          if (x && y) {
+            createPrintMark(prefix, parseFloat(x), parseFloat(y));
+          }
+        }
+      });
+    }
+
+    function createPrintMark(prefix, x, y) {
+      const container = document.getElementById(`${prefix}_imgbox`);
+      const img = container.querySelector('img');
+      
+      if (!img || !container) return;
+      
+      const mark = document.createElement('div');
+      mark.className = 'mark';
+      
+      function positionMark() {
+        const imgRect = img.getBoundingClientRect();
+        const boxRect = container.getBoundingClientRect();
+        
+        const actualX = ((imgRect.left - boxRect.left) / boxRect.width * 100) + 
+                        (x / 100 * imgRect.width / boxRect.width * 100);
+        const actualY = ((imgRect.top - boxRect.top) / boxRect.height * 100) + 
+                        (y / 100 * imgRect.height / boxRect.height * 100);
+        
+        mark.style.left = actualX + '%';
+        mark.style.top = actualY + '%';
+        mark.textContent = 'V';
+        
+        container.appendChild(mark);
+      }
+      
+      if (img.complete) {
+        positionMark();
+      } else {
+        img.onload = positionMark;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadFormData();
+      
+      // 인쇄 버튼 추가
+      const printBtn = document.createElement('button');
+      printBtn.textContent = '인쇄하기';
+      printBtn.className = 'no-print';
+      printBtn.style.cssText = 'position:fixed; top:10px; right:10px; z-index:1000; padding:8px 12px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;';
+      printBtn.onclick = () => window.print();
+      document.body.appendChild(printBtn);
+    });
+  </script>
+</body>
+</html>

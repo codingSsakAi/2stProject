@@ -1,0 +1,15 @@
+{% comment %} 피해자 정보 및 피해상태 영역 {% endcomment %}
+<div class="box">
+  <div class="row" style="align-items:stretch;">
+    <div class="title-v">사고 관계자 정보 및 피해상태</div>
+    <div style="flex:1;">
+      <div class="grid cols-3">
+
+        {% include "report_form/partials/_party_info.html" with vehicle_type="A" %}
+        {% include "report_form/partials/_party_info.html" with vehicle_type="B" %}
+        {% include "report_form/partials/_party_info_pedestrian.html" %}
+
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,16 @@
+<!-- templates/print.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>교통사고 협의서 출력</title>
+    <link rel="stylesheet" href="{% static 'css/print.css' %}">
+</head>
+<body>
+    <div class="pdf-container">
+        {% include 'partials/_party_info.html' %}
+        {% include 'partials/_insurance_claim.html' %}
+    </div>
+</body>
+</html>
