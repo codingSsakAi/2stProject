@@ -1,0 +1,40 @@
+{% if vehicle_type == "A" %}
+  {% with plate=a_plate insurer=a_insurer name=a_name id=a_id phone=a_phone address=a_address male=a_male female=a_female total=a_total x_1=a_x_1 y_1=a_y_1 view_1=a_view_1 x_2=a_x_2 y_2=a_y_2 view_2=a_view_2 x_3=a_x_3 y_3=a_y_3 view_3=a_view_3 damage_desc=a_damage_desc %}
+{% elif vehicle_type == "B" %}
+  {% with plate=b_plate insurer=b_insurer name=b_name id=b_id phone=b_phone address=b_address male=b_male female=b_female total=b_total x_1=b_x_1 y_1=b_y_1 view_1=b_view_1 x_2=b_x_2 y_2=b_y_2 view_2=b_view_2 x_3=b_x_3 y_3=b_y_3 view_3=b_view_3 damage_desc=b_damage_desc %}
+{% endif %}
+
+  <div style="border-right:1px solid #000; padding:6px;">
+    <div class="section-title">{{ vehicle_type }} 차량</div>
+    <table>
+      <tr><th style="width:22%;">차량번호</th><td>{{ plate }}</td></tr>
+      <tr><th>보험사</th><td>{{ insurer }}</td></tr>
+      <tr><th>성 명</th><td>{{ name }}</td></tr>
+      <tr><th>주민번호</th><td>{{ id }}</td></tr>
+      <tr><th>전화번호</th><td>{{ phone }}</td></tr>
+      <tr><th>주 소</th><td>{{ address }}</td></tr>
+      <tr><th>탑승인원(운전자제외)</th><td>남 {{ male }} / 여 {{ female }} → 합계 {{ total }} 명</td></tr>
+    </table>
+
+    <div class="damage-wrap">
+      <div class="damage-head">[파손부위] : 해당 부위에 V 표시</div>
+      <div class="damage-img-box">
+        <img src="{% static 'images/damage_outline.png' %}" alt="{{ vehicle_type }}차량 도면">
+        {% if view_1 and x_1 and y_1 %}<div class="mark" style="left:{{ x_1 }}%; top:{{ y_1 }}%;">V</div>{% endif %}
+        {% if view_2 and x_2 and y_2 %}<div class="mark" style="left:{{ x_2 }}%; top:{{ y_2 }}%;">V</div>{% endif %}
+        {% if view_3 and x_3 and y_3 %}<div class="mark" style="left:{{ x_3 }}%; top:{{ y_3 }}%;">V</div>{% endif %}
+      </div>
+      {% if view_1 or view_2 or view_3 %}
+      <div style="font-size:12px; margin-top:4px;">
+        선택: {{ view_1 }} {% if view_2 %}/ {{ view_2 }}{% endif %} {% if view_3 %}/ {{ view_3 }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div style="border:1px solid #000; margin-top:6px;">
+      <div style="border-bottom:1px solid #000; padding:6px 8px; font-weight:700;">[구체적 파손정도 및 특이사항 기술]</div>
+      <div class="desc-area">{{ damage_desc }}</div>
+    </div>
+  </div>
+
+{% endwith %}

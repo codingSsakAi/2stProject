@@ -1,0 +1,34 @@
+{# report_form/partials/_accident_info.html #}
+<div class="box">
+  <div class="row">
+    <div class="title-v">사고내용</div>
+    <div style="flex:1;" class="acc-wrap">
+
+      <!-- 왼쪽: 사고 형태/원인/기억 -->
+      <div class="acc-left">
+        <table>
+          <tr>
+            <th style="width:110px;">사고형태</th>
+            <td>
+              <div><span class="label">자동차대 자동차</span> : {{ type_cc_join }}</div>
+              <div><span class="label">자동차대 보험자</span> : {{ type_cp_join }}</div>
+            </td>
+          </tr>
+          <tr>
+            <th>사고원인</th>
+            <td>{{ cause_join }}</td>
+          </tr>
+          <tr>
+            <th>[규체적 사고 개요 및 특이사항]</th>
+            <td>{{ accident_description|linebreaksbr }}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- 오른쪽: 사고약도 -->
+      <div class="acc-right">
+        <div class="tag">[사고약도]</div>
+      </div>
+    </div>
+  </div>
+</div>
