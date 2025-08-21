@@ -5,7 +5,7 @@
 
 (() => {
   const BTN_ID = 'weekly-fab';
-  const MODAL_ID = 'knowhowModal';
+  const MODAL_ID = 'knowhow-modal';
   const LIST_ID = 'kh-list';
   const DETAIL_ID = 'kh-detail';
 
@@ -20,18 +20,40 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  function renderWeeklyHTML(raw){
+  // 불필요한 내용 필터링 함수
+  function filterContent(text) {
+    if (!text) return text;
+    return text
+      .replace(/\*\s*\*\*보험통계\*\*[^*]*(?:\*[^*]*)*?(?=\*\s*\*\*|$)/g, '')
+      .replace(/\*\s*\*\*알쓸보험\*\*[^*]*(?:\*[^*]*)*?(?=\*\s*\*\*|$)/g, '')
+      .replace(/\*\s*\*\*MY보험\*\*[^*]*(?:\*[^*]*)*?(?=\*\s*\*\*|$)/g, '')
+      .replace(/\*\s*\*\*보험소식\*\*[^*]*(?:\*[^*]*)*?(?=\*\s*\*\*|$)/g, '')
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .trim();
+  }
+
+    function renderWeeklyHTML(raw){
     const parts = [];
-    if (raw.main_h4) parts.push(`<h6 class="kh-subtitle">${esc(raw.main_h4)}</h6>`);
+    if (raw.main_h4) {
+      const filteredH4 = filterContent(raw.main_h4);
+      if (filteredH4) parts.push(`<h6 class="kh-subtitle">${esc(filteredH4)}</h6>`);
+    }
     if (Array.isArray(raw.main_strongs) && raw.main_strongs.length) {
-      parts.push('<ul class="kh-strongs">');
-      for (const s of raw.main_strongs) parts.push(`<li>${esc(s)}</li>`);
-      parts.push('</ul>');
+      const filteredStrongs = raw.main_strongs
+        .map(s => filterContent(s))
+        .filter(s => s && !/(보험통계|알쓸보험|MY보험|보험소식)/.test(s));
+      if (filteredStrongs.length) {
+        parts.push('<ul class="kh-strongs">');
+        for (const s of filteredStrongs) parts.push(`<li>${esc(s)}</li>`);
+        parts.push('</ul>');
+      }
     }
     if (Array.isArray(raw.main_ps) && raw.main_ps.length) {
       for (const p of raw.main_ps) {
-        const text = (p ?? '').toString().trim();
-        if (text) parts.push(`<p>${esc(text)}</p>`);
+        const text = filterContent((p ?? '').toString().trim());
+        if (text && !/(보험통계|알쓸보험|MY보험|보험소식)/.test(text)) {
+          parts.push(`<p>${esc(text)}</p>`);
+        }
       }
     }
     if (raw.url) {
@@ -41,7 +63,6 @@
     }
     return parts.join('');
   }
-
   function normItem(raw, idx) {
     return {
       id: idx,
@@ -103,8 +124,32 @@
     loaded = true;
   }
 
+// 모달 열기/닫기 함수
+  function openModal(){
+    const modal = document.getElementById(MODAL_ID);
+    modal.removeAttribute('hidden');
+    requestAnimationFrame(() => { modal.classList.add('show'); });
+  }
+  
+  function closeModal(){
+    const modal = document.getElementById(MODAL_ID);
+    modal.classList.remove('show');
+    const dlg = modal.querySelector('.kh-dialog');
+    const onEnd = (e) => {
+      if (e.target !== dlg) return;
+      modal.setAttribute('hidden', '');
+      dlg.removeEventListener('transitionend', onEnd);
+    };
+    dlg.addEventListener('transitionend', onEnd);
+  }
+
+  // 이벤트 리스너 등록
   document.getElementById(BTN_ID)?.addEventListener('click', async () => {
     await loadOnce();
-    new bootstrap.Modal(document.getElementById(MODAL_ID)).show();
+    openModal();
   });
+
+  // 모달 닫기 이벤트
+  document.querySelector('#knowhow-modal .kh-close')?.addEventListener('click', closeModal);
+  document.querySelector('#knowhow-modal .kh-backdrop')?.addEventListener('click', closeModal);
 })();

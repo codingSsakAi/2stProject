@@ -92,9 +92,11 @@ function renderDetail(category, index){
   if(!item){
     detailEl.innerHTML = '<div class="ckm-empty">좌측에서 사례를 선택하세요.</div>'; return;
   }
-  const body = (item.body || '').replace(/\n{3,}/g, '\n\n');
+  const body = (item.body || '')
+    .replace(/\. /g, '.\n')           // 마침표 + 공백을 마침표 + 줄바꿈으로 변환
+    .replace(/\n{3,}/g, '\n\n');     // 기존 연속 줄바꿈 정리 로직 유지
   detailEl.innerHTML = '<div class="d-title">'+(item.title || '(제목 없음)')+'</div>'+
-                       '<div class="d-body">'+body+'</div>';
+                      '<div class="d-body">'+body+'</div>';
 }
 function selectTab(btn){
   tabs.forEach(t => t.setAttribute('aria-selected', t===btn ? 'true' : 'false'));
