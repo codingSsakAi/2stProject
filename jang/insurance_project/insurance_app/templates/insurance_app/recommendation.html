@@ -161,7 +161,7 @@
         if(!terms.length) return text;
         let out = text;
         terms.forEach(t=>{
-          const esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\\\$&');
           out = out.replace(new RegExp(esc, 'gi'), m => `<mark>${m}</mark>`);
         });
         return out;
@@ -194,24 +194,19 @@
 
         const answerHtml = highlight((data.answer||'').replace(/\n/g,'\n'), q);
 
+        /* ▼ 근거 표시: "회사 / p.N · 해당 페이지" + /documents/<회사>/<회사>.pdf#page=N */
         const refs=(data.references||[]).map((s,i)=>{
-          const sc = typeof s.score==='number' ? (clamp01(s.score)*100).toFixed(1)+'%' : '';
-          const file = s.file || '';
           const page = s.page || '';
-          // PDF 파일(.pdf)이고 page가 있을 때만 '원문 열기' 표시
-          const linkable = file && /\.pdf$/i.test(file) && page;
-          const link = linkable ? `<a href="${MEDIA_BASE}${encodePath(file)}#page=${page}" target="_blank">원문 열기</a>` : '';
-          return `(${i+1}) ${s.company||'?'}${file?` | ${file}`:''}${page?` | p.${page}`:''} ${link} ${sc?`<span style="color:#8892a6">(${sc})</span>`:''}`;
+          const company = s.company || '?';
+          // 회사명 기반 문서 경로 조합
+          const docPath = `${encodePath(company)}/${encodePath(company)}.pdf`;
+          const link = page ? `<a href="/documents/${docPath}#page=${page}" target="_blank">해당 페이지</a>` : '';
+          return `(${i+1}) ${company}${page?` / p.${page}`:''} ${link}`;
         }).join('<br/>');
-
-        const meta = [];
-        if (data.used_model) meta.push(`모델: ${data.used_model}`);
-        if (typeof data.total_results === 'number') meta.push(`검색수: ${data.total_results}`);
 
         const html = `
           <div style="white-space:pre-wrap">${answerHtml}</div>
           ${refs? `<div class="meta">근거<br/>${refs}</div>`:''}
-          ${meta.length? `<div class="meta">${meta.join(' · ')}</div>`:''}
         `;
         replaceBubble(pendingId, html);
       }catch(e){
