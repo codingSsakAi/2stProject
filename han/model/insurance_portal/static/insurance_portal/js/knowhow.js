@@ -1,7 +1,5 @@
 // static/insurance_portal/js/knowhow.js
-// 변경 요약:
-// - 기본 JSON 경로를 포털 경로로 수정: '/static/insurance_portal/json/weekly_articles.json'
-// - window.KNOWHOW_JSON_URL가 있으면 우선 사용
+// 최신 수정 적용 버전: FAB 대응 + 외부 openKnowhow 함수 제공
 
 (() => {
   const BTN_ID = 'weekly-fab';
@@ -17,10 +15,11 @@
 
   const esc = (s) =>
     String(s ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
 
-  // 불필요한 내용 필터링 함수
   function filterContent(text) {
     if (!text) return text;
     return text
@@ -32,7 +31,7 @@
       .trim();
   }
 
-    function renderWeeklyHTML(raw){
+  function renderWeeklyHTML(raw) {
     const parts = [];
     if (raw.main_h4) {
       const filteredH4 = filterContent(raw.main_h4);
@@ -63,6 +62,7 @@
     }
     return parts.join('');
   }
+
   function normItem(raw, idx) {
     return {
       id: idx,
@@ -124,14 +124,13 @@
     loaded = true;
   }
 
-// 모달 열기/닫기 함수
-  function openModal(){
+  function openModal() {
     const modal = document.getElementById(MODAL_ID);
     modal.removeAttribute('hidden');
     requestAnimationFrame(() => { modal.classList.add('show'); });
   }
-  
-  function closeModal(){
+
+  function closeModal() {
     const modal = document.getElementById(MODAL_ID);
     modal.classList.remove('show');
     const dlg = modal.querySelector('.kh-dialog');
@@ -143,13 +142,21 @@
     dlg.addEventListener('transitionend', onEnd);
   }
 
-  // 이벤트 리스너 등록
   document.getElementById(BTN_ID)?.addEventListener('click', async () => {
     await loadOnce();
     openModal();
   });
 
-  // 모달 닫기 이벤트
   document.querySelector('#knowhow-modal .kh-close')?.addEventListener('click', closeModal);
   document.querySelector('#knowhow-modal .kh-backdrop')?.addEventListener('click', closeModal);
+
+  // 외부 FAB 등을 위한 전역 함수 등록
+  window.openKnowhow = async () => {
+    try {
+      await loadOnce();
+      openModal();
+    } catch (e) {
+      console.error('보험상식 모달 열기 실패:', e);
+    }
+  };
 })();

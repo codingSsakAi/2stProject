@@ -151,3 +151,5 @@ async function openGuide(){
   }
 }
 document.getElementById('guide-fab')?.addEventListener('click', openGuide);
+
+window.openGuide = openGuide;

@@ -1,11 +1,14 @@
 // -*- coding: utf-8 -*-
-// 완전한 과실비율 대화형 챗봇 (모든 누락된 함수 포함)
+// 완전한 과실비율 대화형 챗봇 (FAB 시스템 연동 개선)
 
-console.info("[FAULT-BOT] loaded with full conversation support. endpoint=/api/fault/answer/");
+console.info("[FAULT-BOT] loaded with full conversation support and FAB integration. endpoint=/api/fault/answer/");
 const FAULT_ASK_URL = "/api/fault/answer/";
 
 // 선택된 답변들을 저장하는 객체
 let selectedAnswers = {};
+
+// FAB 컨트롤러와의 연동을 위한 참조
+let fabController = null;
 
 // ---- 대화 히스토리 관리 ----
 class ConversationSession {
@@ -230,7 +233,8 @@ function wireDrag(){
 
   HEADER.style.cursor = "move";
   HEADER.addEventListener("mousedown", (ev)=>{
-    if (ev.target.closest('.header-btn')) return;
+    // 헤더 버튼 클릭 시에는 드래그 시작하지 않음
+    if (ev.target.closest('.header-btn') || ev.target.closest('.header-buttons')) return;
     
     if (ev.button !== 0) return;
     isDragging = true;
@@ -274,6 +278,28 @@ function wireDrag(){
   });
 }
 
+// ---- FAB 상태 동기화 함수 ----
+function notifyFABStateChange(isOpen) {
+    try {
+        // FAB 컨트롤러가 존재하면 상태 동기화
+        if (window.FloatingFABController && fabController) {
+            if (isOpen) {
+                fabController.syncActiveState('chatbot');
+            } else {
+                fabController.clearActiveAction();
+            }
+        }
+        
+        // 전역 이벤트 발생 (다른 시스템에서 감지 가능)
+        const event = new CustomEvent('chatbotStateChange', {
+            detail: { isOpen: isOpen }
+        });
+        document.dispatchEvent(event);
+    } catch (error) {
+        console.warn('FAB 상태 동기화 중 오류:', error);
+    }
+}
+
 // ---- open/close ----
 function openBot(){
   if (!CONTAINER) return;
@@ -285,12 +311,20 @@ function openBot(){
 
   setTimeout(()=>INPUT && INPUT.focus(), 0);
   setTimeout(scrollBottom, 0);
+  
+  // FAB 상태 동기화
+  notifyFABStateChange(true);
+  
   console.info("[FAULT-BOT] open");
 }
 
 function closeBot(){
   if (!CONTAINER) return;
   CONTAINER.style.display = "none";
+  
+  // FAB 상태 동기화
+  notifyFABStateChange(false);
+  
   console.info("[FAULT-BOT] close");
 }
 
@@ -298,11 +332,44 @@ function wireOpenClose(){
   if (CONTAINER && getComputedStyle(CONTAINER).display !== "none"){
     CONTAINER.style.display = "none";
   }
-  if (FAB)      FAB.addEventListener("click", openBot);
+  
+  // 기존 FAB 버튼 (호환성)
+  if (FAB) FAB.addEventListener("click", openBot);
+  
+  // 새로운 FAB 시스템에서도 호출 가능하도록 전역으로 노출
+  window.chatbotOpen = openBot;
+  window.chatbotClose = closeBot;
+  
+  // 헤더 버튼들
   if (CLOSEBTN) CLOSEBTN.addEventListener("click", closeBot);
   if (RESETBTN) RESETBTN.addEventListener("click", resetConversation);
-  document.addEventListener("keydown", (e)=>{ if (e.key === "Escape") closeBot(); });
+  
+  // ESC 키로 닫기
+  document.addEventListener("keydown", (e)=>{ 
+    if (e.key === "Escape" && CONTAINER && getComputedStyle(CONTAINER).display !== "none") {
+      closeBot(); 
+    }
+  });
+  
   wireDrag();
+}
+
+// ---- FAB 컨트롤러 참조 획득 ----
+function initFABIntegration() {
+    // FAB 컨트롤러 로드를 기다림
+    const checkFABController = () => {
+        if (window.FloatingFABController) {
+            // 전역 컨트롤러 인스턴스 찾기 (디버깅용)
+            console.info('[CHATBOT] FAB Controller detected');
+            return true;
+        }
+        return false;
+    };
+    
+    // 즉시 확인하고, 없으면 잠시 후 다시 확인
+    if (!checkFABController()) {
+        setTimeout(checkFABController, 500);
+    }
 }
 
 // ---- 다중 선택 렌더링 ----
@@ -589,7 +656,9 @@ function wireInput(){
   }
 }
 
+// ---- 초기화 ----
 document.addEventListener("DOMContentLoaded", ()=>{
   wireOpenClose();
   wireInput();
+  initFABIntegration();
 });
