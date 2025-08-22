@@ -733,3 +733,8 @@ def glossary_api(request: HttpRequest) -> HttpResponse:
         "updated_at": t.updated_at.isoformat(),
     } for t in terms[:max(1, min(500, limit))]]
     return JsonResponse({"success": True, "count": len(payload), "results": payload})
+
+
+
+
+
