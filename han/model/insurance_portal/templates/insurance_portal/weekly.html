@@ -10,13 +10,17 @@
 
   <!-- 아이콘 (FAB/버튼용) -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  
+  <!-- Material Symbols (가이드 아이콘용) -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
 
-  <!-- 분리한 CSS -->
-  <link rel="stylesheet" href="{% static 'insurance_portal/css/fab.css' %}">
-  <link rel="stylesheet" href="{% static 'insurance_portal/css/chatbot.css' %}">
+  <!-- 분리한 CSS - 순서 중요 -->
   <link rel="stylesheet" href="{% static 'insurance_portal/css/guide.css' %}">
   <link rel="stylesheet" href="{% static 'insurance_portal/css/knowhow.css' %}">
   <link rel="stylesheet" href="{% static 'insurance_portal/css/claim_knowledge.css' %}">
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/chatbot.css' %}">
+  <!-- FAB CSS는 마지막에 로드하여 다른 스타일을 덮어씀 -->
+  <link rel="stylesheet" href="{% static 'insurance_portal/css/fab.css' %}">
 </head>
 <body class="bg-light">
 
@@ -82,7 +86,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
       </div>
       <div class="modal-body" id="guideBody">
-        <!-- guide.js가 여기로 카드/흐름을 렌더 -->
+        <!-- guide.js가 여기로 카드/플로우를 렌더 -->
       </div>
     </div>
   </div>
@@ -134,21 +138,79 @@
 <div id="chatbot-container" aria-live="polite" aria-label="보험 약관 상담 챗봇">
   <div id="chatbot-header">
     <span>보험 약관 상담</span>
-    <button id="chatbot-close" title="닫기">닫기</button>
+    <div class="header-buttons">
+      <button id="chatbot-reset" class="header-btn" title="대화 초기화" aria-label="대화 초기화">
+        <i class="fas fa-redo"></i>
+      </button>
+      <button id="chatbot-close" class="header-btn" title="닫기" aria-label="챗봇 닫기">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
   </div>
   <div id="chatbot-messages"></div>
   <div id="chatbot-input">
-    <input id="chatbot-text" type="text" placeholder="사고 상황이나 궁금한 점을 입력하세요">
-    <button id="chatbot-send" type="button">전송</button>
+    <input id="chatbot-text" type="text" placeholder="사고 상황이나 궁금한 점을 입력하세요" aria-label="챗봇 메시지 입력">
+    <button id="chatbot-send" type="button" aria-label="메시지 전송">
+      <i class="fas fa-paper-plane"></i>
+    </button>
   </div>
 </div>
 
-<!-- ====== 우측 하단 FAB 아이콘 버튼 ====== -->
-<div class="fab-wrap">
-  <button id="guide-fab" class="fab-btn"><i class="fa-solid fa-route"></i><span>가이드</span></button>
-  <button id="weekly-fab" class="fab-btn secondary"><i class="fa-solid fa-book-open"></i><span>보험상식</span></button>
-  <button id="claim-knowledge-fab" class="fab-btn warn"><i class="fa-solid fa-scale-balanced"></i><span>보상상식</span></button>
-  <button id="chatbot-fab" class="fab-btn dark"><i class="fa-solid fa-comments"></i><span>챗봇</span></button>
+<!-- ====== 새로운 플로팅 액션 버튼 시스템 ====== -->
+<div id="floating-fab" class="floating-fab-container">
+  <!-- 메인 토글 버튼 -->
+  <button id="fab-main-toggle" class="fab-main-btn" aria-label="메뉴 열기" aria-expanded="false">
+    <i class="fa-solid fa-plus fab-main-icon"></i>
+  </button>
+  
+  <!-- 서브 액션 버튼들 (초기에 숨김) -->
+  <div id="fab-sub-actions" class="fab-sub-container" role="menu" aria-label="기능 메뉴">
+    
+    <!-- 보상상식 -->
+    <div class="fab-action-item" data-action="claim-knowledge" role="none">
+      <span class="fab-label">자동차 보상상식</span>
+      <button class="fab-sub-btn fab-reward" 
+              data-target="claim-knowledge" 
+              aria-label="자동차 사고 보상상식 열기"
+              role="menuitem">
+        <i class="fa-solid fa-car-burst"></i>
+      </button>
+    </div>
+    
+    <!-- 사고처리 가이드 -->
+    <div class="fab-action-item" data-action="guide" role="none">
+      <span class="fab-label">사고처리 가이드</span>
+      <button class="fab-sub-btn fab-guide" 
+              data-target="guide" 
+              aria-label="사고처리 가이드 열기"
+              role="menuitem">
+        <i class="fa-solid fa-route"></i>
+      </button>
+    </div>
+    
+    <!-- 보험상식 -->
+    <div class="fab-action-item" data-action="knowhow" role="none">
+      <span class="fab-label">자동차 보험상식</span>
+      <button class="fab-sub-btn fab-knowhow" 
+              data-target="weekly" 
+              aria-label="보험상식 열기"
+              role="menuitem">
+        <i class="fa-solid fa-book-open"></i>
+      </button>
+    </div>
+    
+    <!-- 챗봇 -->
+    <div class="fab-action-item" data-action="chatbot" role="none">
+      <span class="fab-label">과실 문의 챗봇</span>
+      <button class="fab-sub-btn fab-chatbot" 
+              data-target="chatbot" 
+              aria-label="과실 문의 챗봇 열기"
+              role="menuitem">
+        <i class="fa-solid fa-headset"></i>
+      </button>
+    </div>
+    
+  </div>
 </div>
 
 <!-- JSON/엔드포인트/정적 경로 상수 주입 -->
@@ -171,24 +233,17 @@
   window.STATIC_PREFIX = "{% static 'insurance_portal/' %}";
 </script>
 
-<!-- 기능 JS -->
+<!-- Bootstrap JS (다른 JS보다 먼저 로드) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 기능 JS - 의존성 순서에 따라 로드 -->
 <script src="{% static 'insurance_portal/js/knowhow.js' %}"></script>
 <script src="{% static 'insurance_portal/js/guide.js' %}"></script>
 <script src="{% static 'insurance_portal/js/claim_knowledge.js' %}"></script>
 <script src="{% static 'insurance_portal/js/chatbot.js' %}"></script>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- 보상상식 FAB 클릭 → 커스텀 모달 열기 -->
-<script>
-  document.getElementById('claim-knowledge-fab')?.addEventListener('click', function(){
-    const modal = document.getElementById('claim-knowledge-modal');
-    if(!modal) return;
-    modal.removeAttribute('hidden');
-    requestAnimationFrame(()=> modal.classList.add('show'));
-  });
-</script>
+<!-- 새로운 FAB 컨트롤러는 마지막에 로드 (다른 모든 시스템 초기화 후) -->
+<script src="{% static 'insurance_portal/js/fab-controller.js' %}"></script>
 
 </body>
 </html>

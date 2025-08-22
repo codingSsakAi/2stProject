@@ -19,7 +19,7 @@
   max-height: 90vh;
 
   /* 팝업은 세로 플렉스여야 내부 스크롤이 제대로 동작함 */
-  display: flex;
+  display: none;
   flex-direction: column;
 
   /* 팝업 외곽은 이중 스크롤 방지 */

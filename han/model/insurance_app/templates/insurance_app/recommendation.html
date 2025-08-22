@@ -63,11 +63,12 @@
   </div>
 
   <!-- 우측 패널 및 모달 include: 포털 버전으로 교체 -->
-  {% include "insurance_portal/partials/_side_actions.html" %}
   {% include "insurance_portal/partials/_chatbot.html" %}
   {% include "insurance_portal/partials/_claim_knowledge.html" %}
   {% include "insurance_portal/partials/_guide_modal.html" %}
   {% include "insurance_portal/partials/_knowhow_modal.html" %}
+  <!-- 새로운 FAB include 추가 -->
+  {% include "insurance_portal/partials/_floating_fab.html" %}
   {% comment %} {% include "insurance_portal/partials/_fault_answer.html" %} {% endcomment %}
 
   <!-- Bootstrap JS -->
@@ -94,11 +95,12 @@
   <script src="{% static 'insurance_portal/js/knowhow.js' %}"></script>
   <script src="{% static 'insurance_portal/js/guide.js' %}"></script>
   <script src="{% static 'insurance_portal/js/claim_knowledge.js' %}"></script>
+  <script src="{% static 'insurance_portal/js/chatbot.js' %}"></script>
   <!-- 필수: marked -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- A안 전용 챗봇: 과실 프롬프트 스키마 전용 (/api/fault/answer/) -->
-  <script src="{% static 'insurance_portal/js/chatbot.js' %}?v=20250819"></script>
+  <!-- 새로운 FAB 컨트롤러 추가 -->
+  <script src="{% static 'insurance_portal/js/fab-controller.js' %}"></script>
 
 </body>
 </html>

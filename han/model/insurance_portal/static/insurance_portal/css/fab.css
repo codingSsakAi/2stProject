@@ -1,130 +1,426 @@
 /* ===========================
- * Floating Action Buttons (FAB)
- * 위치/버튼/아이콘 색상
+ * 새로운 플로팅 액션 버튼 시스템
+ * 스크롤 추적, 확장/수축 애니메이션
  * =========================== */
-.fab-wrap{
+
+:root {
+  --fab-size: 56px;
+  --fab-sub-size: 60px;
+  --fab-spacing: 16px;
+  --fab-primary: #2563eb;
+  --fab-reward: #dc2626;
+  --fab-guide: #059669;
+  --fab-knowhow: #7c3aed;
+  --fab-chatbot: #1f2937;
+  --fab-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --fab-shadow-hover: 0 8px 28px rgba(0, 0, 0, 0.25);
+  --animation-speed: 0.3s;
+  --animation-fast: 0.2s;
+  --label-bg: rgba(0, 0, 0, 0.8);
+  --fab-backdrop: rgba(0, 0, 0, 0.1);
+}
+
+.floating-fab-container {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 24px;
+  /* top: 50%; 삭제 */
+  /* transform: translateY(-50%); 삭제 */
   z-index: 1050;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, top;
 }
-.fab-btn{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 12px;
-  border-radius:12px;
-  border:none;
-  background:#1f5eff;
-  color:#fff;
-  box-shadow:0 8px 18px rgba(0,0,0,0.15);
-  cursor:pointer;
-}
-.fab-btn.secondary{ background:#0a7d5d; }
-.fab-btn.warn{ background:#b05c00; }
-.fab-btn.dark{ background:#2d2f36; }
 
-/* ========== Side Actions (기존 마크업 호환) ========== */
-.side-actions{
+/* 확장 시 반투명 배경 (선택적) */
+.floating-fab-container.expanded::before {
+  content: '';
   position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 1050;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--fab-backdrop);
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--animation-speed) ease;
+}
+
+.floating-fab-container.expanded::before {
+  opacity: 1;
+}
+
+/* 메인 토글 버튼 */
+.fab-main-btn {
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 50%;
+  border: none;
+  background: var(--fab-primary);
+  color: white;
+  box-shadow: var(--fab-shadow);
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.side-button{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 12px;
-  border-radius:12px;
-  border:none;
-  background:#1f5eff;
-  color:#fff;
-  box-shadow:0 8px 18px rgba(0,0,0,0.15);
-  cursor:pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 10;
+  outline: none;
 }
 
-.side-button .material-symbols-outlined{line-height:1;}
-
-/* 색상 변형 */
-.side-button.btn-knowhow{ background:#0a7d5d; }   /* 보험상식 */
-.side-button.btn-reward { background:#b05c00; }   /* 보상상식 */
-.side-button.btn-chatbot{ background:#2d2f36; }   /* 챗봇 */
-
-
-/* ======================================================
- * 배치 변경: 챗봇을 우측 중앙, 나머지 3개는 챗봇 위로 쌓기
- * (HTML은 side-actions/side-button 구조를 그대로 사용)
- * ====================================================== */
-
-:root{
-  --side-btn-h: 44px;   /* 버튼 높이 (라벨 포함) */
-  --side-gap:   10px;   /* 버튼 사이 간격 */
-  --side-right: 16px;   /* 화면 오른쪽 여백 */
+.fab-main-btn:hover {
+  transform: scale(1.1);
+  box-shadow: var(--fab-shadow-hover);
+  background: #1d4ed8;
 }
 
-/* 컨테이너의 우하단 고정은 해제(자식들을 개별 위치 고정) */
-.side-actions{
-  position: static !important;
-  right: auto !important;
-  bottom: auto !important;
-  display: block !important;
+.fab-main-btn:active {
+  transform: scale(0.95);
 }
 
-/* 라벨을 사용하는 버튼 높이/정렬 보정 */
-.side-button{
-  min-height: var(--side-btn-h);
-  white-space: nowrap;          /* 라벨 줄바꿈 방지 */
+.fab-main-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-/* 챗봇: 우측 정중앙 고정 */
-#chatbot-fab{
-  position: fixed !important;
-  right: var(--side-right) !important;
-  top: 50% !important;
-  bottom: auto !important;
-  transform: translateY(-50%) !important;
-  z-index: 1050;
-  height:60px;
+/* 메인 아이콘 회전 애니메이션 */
+.fab-main-icon {
+  font-size: 24px;
+  transition: transform var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 나머지 3개: 챗봇 위로 스택 (위로 갈수록 지표 증가) */
-#weekly-fab, #guide-fab, #claim-knowledge-fab{
-  position: fixed !important;
-  right: var(--side-right) !important;
-  bottom: auto !important;
-  z-index: 1050;
-  width:160px;
-  height:60px;
+.floating-fab-container.expanded .fab-main-icon {
+  transform: rotate(45deg);
 }
 
-/* 챗봇 위 1단 */
-#weekly-fab{
-  top: calc(50% - (var(--side-btn-h) + var(--side-gap)) * 2) !important;
+/* 서브 액션 컨테이너 */
+.fab-sub-container {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
 }
 
-/* 챗봇 위 2단 */
-#guide-fab{
-  top: calc(50% - (var(--side-btn-h) + var(--side-gap)) * 3.5) !important;
+.floating-fab-container.expanded .fab-sub-container {
+  pointer-events: auto;
 }
 
-/* 챗봇 위 3단 (맨 위) */
-#claim-knowledge-fab{
-  top: calc(50% - (var(--side-btn-h) + var(--side-gap)) * 5) !important;
+/* 개별 액션 아이템 */
+.fab-action-item {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: scale(0) translateY(0);
+  opacity: 0;
+  transition: all var(--animation-speed) cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity; /* 성능 최적화 */
 }
 
-/* 작은 세로 화면에서 버튼 크기/간격 살짝 축소(선택) */
-@media (max-height: 640px){
-  :root{
-    --side-btn-h: 40px;
-    --side-gap:   8px;
+/* 확장 시 개별 아이템 위치 - 스태거 애니메이션 */
+.floating-fab-container.expanded .fab-action-item:nth-child(1) {
+  transform: scale(1) translateY(-80px);
+  opacity: 1;
+  transition-delay: 0.05s;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(2) {
+  transform: scale(1) translateY(-160px);
+  opacity: 1;
+  transition-delay: 0.1s;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(3) {
+  transform: scale(1) translateY(-240px);
+  opacity: 1;
+  transition-delay: 0.15s;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(4) {
+  transform: scale(1) translateY(-320px);
+  opacity: 1;
+  transition-delay: 0.2s;
+}
+
+/* 반원 배치 스타일 (왼쪽 반원) */
+.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) {
+  /* 챗봇 - 12시 방향 */
+  transform: scale(1) translate(0, -80px);
+  opacity: 1;
+  transition-delay: 0.1s;
+}
+
+.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(2) {
+  /* 사고가이드 - 7.5시 방향 */
+  transform: scale(1) translate(-70px, 38px);
+  opacity: 1;
+  transition-delay: 0.15s;
+}
+
+.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(3) {
+  /* 보험상식 - 10.5시 방향 */
+  transform: scale(1) translate(-70px, -38px);
+  opacity: 1;
+  transition-delay: 0.2s;
+}
+
+.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) {
+  /* 보상상식 - 6시 방향 */
+  transform: scale(1) translate(0, 80px);
+  opacity: 1;
+  transition-delay: 0.25s;
+}
+
+/* 반원 배치에서 라벨 위치 조정 */
+/* 12시, 6시 방향 라벨 */
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) .fab-label{
+  transform: translateX(-10%);
+  transform: translateY(-10%);
+  margin-bottom: 5px;
+}
+
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) .fab-label {
+  transform: translateX(-10%);
+  transform: translateY(40%);
+  margin-bottom: 5px;
+}
+
+/* 좌측 방향 라벨 */
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(2) .fab-label,
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(3) .fab-label {
+  transform: translateY(-10%);
+  margin-right: 10px;
+}
+
+/* 반원 배치 라벨 화살표 조정 */
+/* .floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) .fab-label::after,
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) .fab-label::after {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--label-bg);
+  border-bottom: none;
+} */
+
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) .fab-label::after,
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(2) .fab-label::after,
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(3) .fab-label::after, 
+.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) .fab-label::after{
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 4px solid var(--label-bg);
+  border-right: none;
+}
+
+/* 수축 시 빠른 애니메이션 */
+.floating-fab-container:not(.expanded) .fab-action-item {
+  transition-delay: 0s;
+  transition-duration: var(--animation-fast);
+}
+
+/* 서브 버튼 스타일 */
+.fab-sub-btn {
+  width: var(--fab-sub-size);
+  height: var(--fab-sub-size);
+  border-radius: 50%;
+  border: none;
+  color: white;
+  box-shadow: var(--fab-shadow);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--animation-fast) cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 26px;
+  outline: none;
+}
+
+.fab-sub-btn:hover {
+  transform: scale(1.15);
+  box-shadow: var(--fab-shadow-hover);
+}
+
+.fab-sub-btn:active {
+  transform: scale(0.9);
+}
+
+.fab-sub-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 개별 버튼 색상 */
+.fab-reward { background: var(--fab-reward); }
+.fab-guide { background: var(--fab-guide); }
+.fab-knowhow { background: var(--fab-knowhow); }
+.fab-chatbot { background: var(--fab-chatbot); }
+
+.fab-reward:hover { background: #b91c1c; }
+.fab-guide:hover { background: #047857; }
+.fab-knowhow:hover { background: #6d28d9; }
+.fab-chatbot:hover { background: #111827; }
+
+/* 활성화 상태 */
+.fab-action-item.active .fab-sub-btn {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3);
+  animation: pulse-active 2s infinite;
+}
+
+@keyframes pulse-active {
+  0% { 
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3);
+    transform: scale(1.2);
   }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.1);
+    transform: scale(1.25);
+  }
+  100% { 
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3);
+    transform: scale(1.2);
+  }
+}
+
+/* 라벨 스타일 */
+.fab-label {
+  background: var(--label-bg);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all var(--animation-fast) cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  user-select: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.fab-action-item:hover .fab-label {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* 라벨에 화살표 추가 */
+.fab-label::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid var(--label-bg);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+/* 스크롤 시 부드러운 이동 */
+.floating-fab-container.scrolling {
+  transition: all 0.1s ease-out;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  :root {
+    --fab-size: 48px;
+    --fab-sub-size: 40px;
+    --fab-spacing: 12px;
+  }
+  
+  .floating-fab-container {
+    right: 16px;
+  }
+  
+  .fab-label {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .fab-main-icon {
+    font-size: 20px;
+  }
+  
+  .fab-sub-btn {
+    font-size: 16px;
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .fab-main-btn:hover,
+  .fab-sub-btn:hover {
+    transform: none;
+  }
+  
+  .fab-label {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  
+  .fab-action-item {
+    gap: 8px;
+  }
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .fab-main-btn,
+  .fab-sub-btn {
+    border: 2px solid white;
+  }
+  
+  .fab-label {
+    border: 1px solid white;
+  }
+}
+
+/* 모션 감소 설정 준수 */
+@media (prefers-reduced-motion: reduce) {
+  .floating-fab-container,
+  .fab-action-item,
+  .fab-main-icon,
+  .fab-sub-btn,
+  .fab-label {
+    transition: none;
+    animation: none;
+  }
+  
+  .fab-action-item.active .fab-sub-btn {
+    animation: none;
+  }
+}
+
+/* 기존 시스템과의 호환성 - 더 안전한 방식 */
+.fab-wrap:not(.floating-fab-container),
+.side-actions:not(.floating-fab-container) {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  left: -9999px;
+}
+
+/* Z-index 관리 */
+.floating-fab-container {
+  z-index: 1050;
+}
+
+.floating-fab-container.expanded {
+  z-index: 1051;
 }
 
 /* ===========================
@@ -335,4 +631,23 @@
   #fa-ratio-summary {
     font-size: 1.1rem;
   }
+}
+/* 포커스 아웃라인 완전 제거 */
+.fab-main-btn:focus,
+.fab-main-btn:focus-visible {
+  outline: none !important;
+  box-shadow: var(--fab-shadow) !important; /* 기본 shadow만 유지 */
+}
+
+.fab-sub-btn:focus,
+.fab-sub-btn:focus-visible {
+  outline: none !important;
+  box-shadow: var(--fab-shadow) !important; /* 기본 shadow만 유지 */
+}
+
+/* 모든 버튼의 기본 아웃라인 제거 */
+.fab-main-btn,
+.fab-sub-btn {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }

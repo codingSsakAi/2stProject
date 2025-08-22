@@ -1,0 +1,44 @@
+<!-- 새로운 플로팅 액션 버튼 시스템 -->
+<div id="floating-fab" class="floating-fab-container">
+  <!-- 메인 토글 버튼 -->
+  <button id="fab-main-toggle" class="fab-main-btn" aria-label="메뉴 열기">
+    <i class="fa-solid fa-plus fab-main-icon"></i>
+  </button>
+  
+  <!-- 서브 액션 버튼들 (초기에 숨김) -->
+  <div id="fab-sub-actions" class="fab-sub-container">
+    
+    <!-- 보상상식 -->
+    <div class="fab-action-item" data-action="claim-knowledge">
+      <span class="fab-label">자동차 보상상식</span>
+      <button class="fab-sub-btn fab-reward" data-target="claim-knowledge" aria-label="자동차 사고 보상상식">
+        <i class="fa-solid fa-car-burst"></i>
+      </button>
+    </div>
+    
+    <!-- 사고처리 가이드 -->
+    <div class="fab-action-item" data-action="guide">
+      <span class="fab-label">사고처리 가이드</span>
+      <button class="fab-sub-btn fab-guide" data-target="guide" aria-label="사고처리 가이드">
+        <i class="fa-solid fa-route"></i>
+      </button>
+    </div>
+    
+    <!-- 보험상식 -->
+    <div class="fab-action-item" data-action="knowhow">
+      <span class="fab-label">자동차 보험상식</span>
+      <button class="fab-sub-btn fab-knowhow" data-target="weekly" aria-label="보험상식">
+        <i class="fa-solid fa-book-open"></i>
+      </button>
+    </div>
+    
+    <!-- 챗봇 -->
+    <div class="fab-action-item" data-action="chatbot">
+      <span class="fab-label">과실 문의 챗봇</span>
+      <button class="fab-sub-btn fab-chatbot" data-target="chatbot" aria-label="챗봇">
+        <i class="fa-solid fa-headset"></i>
+      </button>
+    </div>
+    
+  </div>
+</div>
