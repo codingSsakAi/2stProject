@@ -1,0 +1,13 @@
+<div class="search-box">
+  <input
+    type="text"
+    id="searchInput"
+    class="search-input"
+    placeholder="예: 음주운전으로 사고가 났을 때 보험금을 받을 수 있나요?"
+    onkeypress="handleKeyPress(event)"
+  >
+  <button id="searchBtn" class="search-btn" onclick="searchClauses()">검색</button>
+</div>
+<div id="loading" class="loading">
+  <div class="spinner"></div>AI가 관련 약관을 찾고 있습니다...
+</div>

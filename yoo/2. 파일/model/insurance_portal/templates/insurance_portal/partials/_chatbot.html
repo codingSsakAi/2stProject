@@ -1,0 +1,23 @@
+<!-- templates/insurance_app/partials/_chatbot.html -->
+<div id="chatbot-container">
+  <div id="chatbot-header">
+    <span>교통사고 과실비율 챗봇</span>
+    <div class="header-controls">
+      <button id="chatbot-reset" 
+              class="header-btn" 
+              title="대화 초기화">
+        <i class="fas fa-redo-alt"></i>
+      </button>
+      <button id="chatbot-close" 
+              class="header-btn" 
+              title="닫기">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+  <div id="chatbot-messages"></div>
+  <div id="chatbot-input">
+    <input id="chatbot-text" type="text" placeholder="사고 상황을 입력하세요. 예) 신호 때문에 멈췄는데 뒤에서 박음" />
+    <button id="chatbot-send">전송</button>
+  </div>
+</div>

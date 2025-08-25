@@ -1,0 +1,102 @@
+from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+UPSTAGE_API_KEY     = os.getenv("UPSTAGE_API_KEY")
+UPSTAGE_EMBED_MODEL = os.getenv("UPSTAGE_EMBED_MODEL", "solar-embedding-1-large")
+UPSTAGE_EMBED_URL   = os.getenv("UPSTAGE_EMBED_URL", "https://api.upstage.ai/v1/embeddings")
+
+# Pinecone
+PINECONE_API_KEY_MY = os.getenv("PINECONE_API_KEY_MY")
+FAULT_INDEX_NAME    = os.getenv("FAULT_INDEX_NAME") 
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret")
+DEBUG = True
+ALLOWED_HOSTS = []
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    'insurance_app',
+    'rest_framework',
+    'insurance_portal',
+    'accident_project',
+]
+
+# 🔑 커스텀 유저 모델 설정 추가
+AUTH_USER_MODEL = 'insurance_app.CustomUser'
+
+# 환경 변수 로드
+load_dotenv()
+PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+PINECONE_ENV = os.getenv('PINECONE_ENV')
+# 환경 변수 로드 부분에 추가
+PINECONE_API_KEY_MY = os.environ.get("PINECONE_API_KEY_MY")
+UPSTAGE_API_KEY = os.environ.get("UPSTAGE_API_KEY")
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')  # OpenAI API 키도 추가
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "insurance_project.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [
+            BASE_DIR / "templates",                  # ← 루트 templates
+            BASE_DIR / "insurance_app" / "templates" # (선택) 기존 경로 유지
+        ],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "insurance_project.wsgi.application"
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# 🌐 한국어/한국 시간대 설정
+LANGUAGE_CODE = "ko-kr"
+TIME_ZONE = "Asia/Seoul"
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = "/static/"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+USE_MOCK_API = True
+
+LOGIN_URL = '/login/'
+
+X_FRAME_OPTIONS = "SAMEORIGIN"  # 성미 추가 iframe 로 이동 가능
