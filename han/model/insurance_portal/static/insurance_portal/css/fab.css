@@ -1,6 +1,6 @@
 /* ===========================
- * 새로운 플로팅 액션 버튼 시스템
- * 스크롤 추적, 확장/수축 애니메이션
+ * 3D 플로팅 액션 버튼 시스템
+ * 3D Transform + 글로우 + 아이콘 3D 효과
  * =========================== */
 
 :root {
@@ -12,8 +12,6 @@
   --fab-guide: #059669;
   --fab-knowhow: #7c3aed;
   --fab-chatbot: #1f2937;
-  --fab-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  --fab-shadow-hover: 0 8px 28px rgba(0, 0, 0, 0.25);
   --animation-speed: 0.3s;
   --animation-fast: 0.2s;
   --label-bg: rgba(0, 0, 0, 0.8);
@@ -23,8 +21,6 @@
 .floating-fab-container {
   position: fixed;
   right: 24px;
-  /* top: 50%; 삭제 */
-  /* transform: translateY(-50%); 삭제 */
   z-index: 1050;
   transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform, top;
@@ -32,32 +28,29 @@
 
 /* 확장 시 반투명 배경 (선택적) */
 .floating-fab-container.expanded::before {
+  content: none !important; 
+  display: none !important;
+}
+/* FAB 확장 시, body에 전체화면 백드롭을 띄움 */
+body.fab-backdrop-active::before {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--fab-backdrop);
-  z-index: -1;
-  opacity: 0;
+  inset: 0;
+  background: var(--fab-backdrop); /* rgba(0,0,0,0.1) */
+  z-index: 1049; /* FAB 컨테이너(1050~)보다 낮게 */
   pointer-events: none;
+  opacity: 1;
   transition: opacity var(--animation-speed) ease;
 }
 
-.floating-fab-container.expanded::before {
-  opacity: 1;
-}
-
-/* 메인 토글 버튼 */
+/* 메인 3D 버튼 */
 .fab-main-btn {
   width: var(--fab-size);
   height: var(--fab-size);
   border-radius: 50%;
   border: none;
-  background: var(--fab-primary);
+  background: linear-gradient(145deg, #3b82f6, var(--fab-primary), #1e40af);
   color: white;
-  box-shadow: var(--fab-shadow);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -66,31 +59,49 @@
   position: relative;
   z-index: 10;
   outline: none;
+  
+  /* 3D Transform + 글로우 효과 */
+  transform: perspective(500px) rotateX(15deg) rotateY(-5deg) translateZ(20px);
+  box-shadow: 
+    0 8px 20px rgba(37, 99, 235, 0.4),
+    0 0 30px rgba(37, 99, 235, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .fab-main-btn:hover {
-  transform: scale(1.1);
-  box-shadow: var(--fab-shadow-hover);
-  background: #1d4ed8;
+  transform: perspective(500px) rotateX(5deg) rotateY(5deg) translateZ(40px) scale(1.1);
+  box-shadow: 
+    0 15px 35px rgba(37, 99, 235, 0.5),
+    0 0 40px rgba(37, 99, 235, 0.4),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(145deg, #60a5fa, #3b82f6, #2563eb);
 }
 
 .fab-main-btn:active {
-  transform: scale(0.95);
+  transform: perspective(500px) rotateX(25deg) rotateY(-10deg) translateZ(10px) scale(0.95);
+  box-shadow: 
+    0 5px 15px rgba(37, 99, 235, 0.3),
+    0 0 20px rgba(37, 99, 235, 0.2),
+    inset 0 1px 3px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.fab-main-btn:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* 메인 아이콘 회전 애니메이션 */
+/* 메인 아이콘 3D 효과 */
 .fab-main-icon {
   font-size: 24px;
-  transition: transform var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  text-shadow: 
+    0 1px 0 #1e40af,
+    0 2px 0 #1e3a8a,
+    0 3px 6px rgba(0, 0, 0, 0.3);
+  transform: perspective(100px) rotateX(8deg);
+  display: inline-block;
 }
 
 .floating-fab-container.expanded .fab-main-icon {
-  transform: rotate(45deg);
+  transform: perspective(100px) rotateX(8deg) rotate(45deg);
 }
 
 /* 서브 액션 컨테이너 */
@@ -116,123 +127,43 @@
   transform: scale(0) translateY(0);
   opacity: 0;
   transition: all var(--animation-speed) cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: transform, opacity; /* 성능 최적화 */
+  will-change: transform, opacity;
 }
 
-/* 확장 시 개별 아이템 위치 - 스태거 애니메이션 */
+/* 반원 배치 - 기본 확장 스타일 */
 .floating-fab-container.expanded .fab-action-item:nth-child(1) {
-  transform: scale(1) translateY(-80px);
+  transform: scale(1) translate(0, -100px);
   opacity: 1;
-  transition-delay: 0.05s;
+  transition-delay: 0.1s;
 }
-
 .floating-fab-container.expanded .fab-action-item:nth-child(2) {
-  transform: scale(1) translateY(-160px);
-  opacity: 1;
-  transition-delay: 0.1s;
-}
-
-.floating-fab-container.expanded .fab-action-item:nth-child(3) {
-  transform: scale(1) translateY(-240px);
-  opacity: 1;
-  transition-delay: 0.15s;
-}
-
-.floating-fab-container.expanded .fab-action-item:nth-child(4) {
-  transform: scale(1) translateY(-320px);
-  opacity: 1;
-  transition-delay: 0.2s;
-}
-
-/* 반원 배치 스타일 (왼쪽 반원) */
-.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) {
-  /* 챗봇 - 12시 방향 */
-  transform: scale(1) translate(0, -80px);
-  opacity: 1;
-  transition-delay: 0.1s;
-}
-
-.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(2) {
-  /* 사고가이드 - 7.5시 방향 */
   transform: scale(1) translate(-70px, 38px);
   opacity: 1;
   transition-delay: 0.15s;
 }
-
-.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(3) {
-  /* 보험상식 - 10.5시 방향 */
+.floating-fab-container.expanded .fab-action-item:nth-child(3) {
   transform: scale(1) translate(-70px, -38px);
   opacity: 1;
   transition-delay: 0.2s;
 }
-
-.floating-fab-container.expanded[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) {
-  /* 보상상식 - 6시 방향 */
-  transform: scale(1) translate(0, 80px);
+.floating-fab-container.expanded .fab-action-item:nth-child(4) {
+  transform: scale(1) translate(0, 90px);
   opacity: 1;
   transition-delay: 0.25s;
 }
 
-/* 반원 배치에서 라벨 위치 조정 */
-/* 12시, 6시 방향 라벨 */
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) .fab-label{
-  transform: translateX(-10%);
-  transform: translateY(-10%);
-  margin-bottom: 5px;
-}
-
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) .fab-label {
-  transform: translateX(-10%);
-  transform: translateY(40%);
-  margin-bottom: 5px;
-}
-
-/* 좌측 방향 라벨 */
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(2) .fab-label,
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(3) .fab-label {
-  transform: translateY(-10%);
-  margin-right: 10px;
-}
-
-/* 반원 배치 라벨 화살표 조정 */
-/* .floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) .fab-label::after,
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) .fab-label::after {
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 4px solid var(--label-bg);
-  border-bottom: none;
-} */
-
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(1) .fab-label::after,
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(2) .fab-label::after,
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(3) .fab-label::after, 
-.floating-fab-container[data-expand-direction="semicircle"] .fab-action-item:nth-child(4) .fab-label::after{
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 4px solid var(--label-bg);
-  border-right: none;
-}
-
-/* 수축 시 빠른 애니메이션 */
 .floating-fab-container:not(.expanded) .fab-action-item {
   transition-delay: 0s;
   transition-duration: var(--animation-fast);
 }
 
-/* 서브 버튼 스타일 */
+/* 서브 3D 버튼 공통 스타일 */
 .fab-sub-btn {
   width: var(--fab-sub-size);
   height: var(--fab-sub-size);
   border-radius: 50%;
   border: none;
   color: white;
-  box-shadow: var(--fab-shadow);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -240,52 +171,114 @@
   transition: all var(--animation-fast) cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 26px;
   outline: none;
+  transform: perspective(400px) rotateX(12deg) rotateY(-3deg) translateZ(15px);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 0, 0, 0.1),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .fab-sub-btn:hover {
-  transform: scale(1.15);
-  box-shadow: var(--fab-shadow-hover);
+  transform: perspective(400px) rotateX(5deg) rotateY(5deg) translateZ(30px) scale(1.15);
+  box-shadow: 
+    0 12px 28px rgba(0, 0, 0, 0.25),
+    0 0 35px rgba(0, 0, 0, 0.15),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
 }
-
 .fab-sub-btn:active {
-  transform: scale(0.9);
+  transform: perspective(400px) rotateX(20deg) rotateY(-8deg) translateZ(8px) scale(0.9);
+}
+.fab-sub-btn i {
+  text-shadow: 
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.3),
+    0 3px 4px rgba(0, 0, 0, 0.2);
+  transform: perspective(80px) rotateX(8deg);
+  display: inline-block;
+  transition: transform var(--animation-fast) ease;
 }
 
-.fab-sub-btn:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
+/* 개별 버튼 색상 + 글로우 */
+.fab-reward { 
+  background: linear-gradient(145deg, #f87171, var(--fab-reward), #b91c1c);
+}
+.fab-reward:hover { 
+  background: linear-gradient(145deg, #fca5a5, #f87171, var(--fab-reward));
+  box-shadow: 
+    0 12px 28px rgba(220, 38, 38, 0.4),
+    0 0 35px rgba(220, 38, 38, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* 개별 버튼 색상 */
-.fab-reward { background: var(--fab-reward); }
-.fab-guide { background: var(--fab-guide); }
-.fab-knowhow { background: var(--fab-knowhow); }
-.fab-chatbot { background: var(--fab-chatbot); }
+.fab-guide { 
+  background: linear-gradient(145deg, #34d399, var(--fab-guide), #047857);
+}
+.fab-guide:hover { 
+  background: linear-gradient(145deg, #6ee7b7, #34d399, var(--fab-guide));
+  box-shadow: 
+    0 12px 28px rgba(5, 150, 105, 0.4),
+    0 0 35px rgba(5, 150, 105, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
 
-.fab-reward:hover { background: #b91c1c; }
-.fab-guide:hover { background: #047857; }
-.fab-knowhow:hover { background: #6d28d9; }
-.fab-chatbot:hover { background: #111827; }
+.fab-knowhow { 
+  background: linear-gradient(145deg, #a78bfa, var(--fab-knowhow), #6d28d9);
+}
+.fab-knowhow:hover { 
+  background: linear-gradient(145deg, #c4b5fd, #a78bfa, var(--fab-knowhow));
+  box-shadow: 
+    0 12px 28px rgba(124, 58, 237, 0.4),
+    0 0 35px rgba(124, 58, 237, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
 
-/* 활성화 상태 */
+.fab-chatbot { 
+  background: linear-gradient(145deg, #4b5563, var(--fab-chatbot), #111827);
+}
+.fab-chatbot:hover { 
+  background: linear-gradient(145deg, #6b7280, #4b5563, var(--fab-chatbot));
+  box-shadow: 
+    0 12px 28px rgba(31, 41, 55, 0.4),
+    0 0 35px rgba(31, 41, 55, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* 활성화 상태 3D 효과 */
 .fab-action-item.active .fab-sub-btn {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3);
-  animation: pulse-active 2s infinite;
+  transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateZ(40px) scale(1.2);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.3),
+    0 0 50px currentColor,
+    inset 0 4px 8px rgba(255, 255, 255, 0.3);
+  animation: pulse-active-3d 2s infinite;
 }
 
-@keyframes pulse-active {
+@keyframes pulse-active-3d {
   0% { 
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3);
-    transform: scale(1.2);
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.3),
+      0 0 40px currentColor,
+      inset 0 4px 8px rgba(255, 255, 255, 0.3);
+    transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateZ(40px) scale(1.2);
   }
   50% { 
-    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.1);
-    transform: scale(1.25);
+    box-shadow: 
+      0 20px 45px rgba(0, 0, 0, 0.4),
+      0 0 60px currentColor,
+      inset 0 6px 12px rgba(255, 255, 255, 0.4);
+    transform: perspective(400px) rotateX(-5deg) rotateY(5deg) translateZ(50px) scale(1.25);
   }
   100% { 
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3);
-    transform: scale(1.2);
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.3),
+      0 0 40px currentColor,
+      inset 0 4px 8px rgba(255, 255, 255, 0.3);
+    transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateZ(40px) scale(1.2);
   }
 }
 
@@ -306,19 +299,27 @@
   cursor: pointer;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  
+  /* 라벨도 약간의 3D 효과 */
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 .fab-action-item:hover .fab-label {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateX(0) perspective(200px) rotateY(5deg);
   pointer-events: auto;
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.25),
+    inset 0 2px 4px rgba(255, 255, 255, 0.15);
 }
 
-/* 라벨에 화살표 추가 */
+/* 라벨 화살표 */
 .fab-label::after {
   content: '';
   position: absolute;
-  right: -4px;
+  left: 100%;
   top: 50%;
   transform: translateY(-50%);
   width: 0;
@@ -326,6 +327,23 @@
   border-left: 4px solid var(--label-bg);
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
+}
+
+/* 라벨 위치 조정 - 반원 배치용 */
+.floating-fab-container.expanded .fab-action-item:nth-child(1) .fab-label{
+  transform: translateX(-10%) translateY(-35%);
+  margin-bottom: 5px;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(4) .fab-label {
+  transform: translateX(-10%) translateY(35%);
+  margin-bottom: 5px;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(2) .fab-label,
+.floating-fab-container.expanded .fab-action-item:nth-child(3) .fab-label {
+  transform: translateY(-10%);
+  margin-right: 10px;
 }
 
 /* 스크롤 시 부드러운 이동 */
@@ -357,13 +375,22 @@
   .fab-sub-btn {
     font-size: 16px;
   }
+  
+  /* 모바일에서는 3D 효과 약간 줄임 */
+  .fab-main-btn {
+    transform: perspective(400px) rotateX(10deg) rotateY(-3deg) translateZ(15px);
+  }
+  
+  .fab-sub-btn {
+    transform: perspective(300px) rotateX(8deg) rotateY(-2deg) translateZ(10px);
+  }
 }
 
 /* 터치 디바이스 최적화 */
 @media (hover: none) and (pointer: coarse) {
   .fab-main-btn:hover,
   .fab-sub-btn:hover {
-    transform: none;
+    transform: perspective(400px) rotateX(10deg) rotateY(-3deg) translateZ(20px);
   }
   
   .fab-label {
@@ -398,14 +425,22 @@
   .fab-label {
     transition: none;
     animation: none;
+    transform: none;
   }
   
   .fab-action-item.active .fab-sub-btn {
     animation: none;
   }
+  
+  /* 모션 감소 시에는 평면 스타일로 폴백 */
+  .fab-main-btn,
+  .fab-sub-btn {
+    appearance: none;
+    -webkit-appearance: none;
+  }
 }
 
-/* 기존 시스템과의 호환성 - 더 안전한 방식 */
+/* 기존 시스템과의 호환성 */
 .fab-wrap:not(.floating-fab-container),
 .side-actions:not(.floating-fab-container) {
   opacity: 0;
@@ -414,27 +449,68 @@
   left: -9999px;
 }
 
-/* Z-index 관리 */
 .floating-fab-container {
   z-index: 1050;
 }
-
 .floating-fab-container.expanded {
   z-index: 1051;
 }
 
+/* 포커스 아웃라인 완전 제거 */
+.fab-main-btn:focus,
+.fab-main-btn:focus-visible,
+.fab-sub-btn:focus,
+.fab-sub-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* === 추가 패치: 네이티브 박스 제거 === */
+.floating-fab-container,
+.floating-fab-container * {
+  -webkit-tap-highlight-color: transparent;
+}
+.fab-main-btn,
+.fab-sub-btn {
+  appearance: none;
+  -webkit-appearance: none;
+}
+.fab-main-btn:focus,
+.fab-main-btn:focus-visible,
+.fab-sub-btn:focus,
+.fab-sub-btn:focus-visible,
+.fab-main-btn:active,
+.fab-sub-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.fab-main-btn::-moz-focus-inner,
+.fab-sub-btn::-moz-focus-inner {
+  border: 0 !important;
+}
+.fab-main-btn:-moz-focusring,
+.fab-sub-btn:-moz-focusring {
+  outline: none !important;
+}
+@media (forced-colors: active) {
+  .fab-main-btn,
+  .fab-sub-btn {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
+
 /* ===========================
- * Fault Answer Components
+ * Fault Answer Components (기존 유지)
  * 과실비율 답변 카드 스타일
  * =========================== */
 
-/* 과실비율 요약 스타일 */
 #fa-ratio-summary {
   font-weight: bold;
   font-size: 1.5rem;
 }
 
-/* 표 스타일 개선 */
 #fa-table table {
   margin-bottom: 0;
 }
@@ -451,7 +527,6 @@
   vertical-align: middle;
 }
 
-/* 조정요소 리스트 스타일 */
 #fa-factors-plus ul, #fa-factors-minus ul {
   margin-bottom: 0;
   padding-left: 1rem;
@@ -461,7 +536,6 @@
   margin-bottom: 0.25rem;
 }
 
-/* 예시 버튼 스타일 */
 .example-btn {
   font-size: 0.875rem;
   padding: 0.25rem 0.5rem;
@@ -486,7 +560,6 @@
   transform: translateY(0);
 }
 
-/* 질문 옵션 스타일 */
 .question-options {
   display: flex;
   flex-wrap: wrap;
@@ -519,7 +592,6 @@
   transform: translateY(0);
 }
 
-/* 과실비율 카드 특별 스타일 */
 #fault-answer .card {
   border: none;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -531,7 +603,6 @@
   transform: translateY(-1px);
 }
 
-/* 카드 헤더 스타일 통일 */
 #fault-answer .card-header {
   border-bottom: 2px solid #f8f9fa;
   font-weight: 600;
@@ -543,14 +614,12 @@
   font-size: 1rem;
 }
 
-/* 아이콘 스타일 */
 #fault-answer .fas, 
 #fault-answer .far {
   width: 16px;
   text-align: center;
 }
 
-/* 조정요소 카드 내부 스타일 */
 #fa-factors-card .card-body {
   padding: 0.75rem;
 }
@@ -568,7 +637,6 @@
   padding: 0.75rem;
 }
 
-/* 접이식 버튼 스타일 */
 #fault-answer .btn-link {
   color: #495057;
   text-decoration: none;
@@ -587,14 +655,12 @@
   transform: rotate(180deg);
 }
 
-/* 법률 자문 안내 스타일 */
 #fa-disclaimer {
   border-left: 4px solid #17a2b8;
   background-color: #f0f9ff;
   border-color: #17a2b8;
 }
 
-/* 반응형 디자인 */
 @media (max-width: 768px) {
   #fa-factors-card .col-md-6 {
     margin-bottom: 1rem;
@@ -631,23 +697,4 @@
   #fa-ratio-summary {
     font-size: 1.1rem;
   }
-}
-/* 포커스 아웃라인 완전 제거 */
-.fab-main-btn:focus,
-.fab-main-btn:focus-visible {
-  outline: none !important;
-  box-shadow: var(--fab-shadow) !important; /* 기본 shadow만 유지 */
-}
-
-.fab-sub-btn:focus,
-.fab-sub-btn:focus-visible {
-  outline: none !important;
-  box-shadow: var(--fab-shadow) !important; /* 기본 shadow만 유지 */
-}
-
-/* 모든 버튼의 기본 아웃라인 제거 */
-.fab-main-btn,
-.fab-sub-btn {
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent;
 }

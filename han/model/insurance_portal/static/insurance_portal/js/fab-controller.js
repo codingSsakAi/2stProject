@@ -201,66 +201,6 @@ class FloatingFABController {
     }
   }
 
-  // 메인 아이콘 동적 위치 조정을 위한 공간 계산
-  calculateAvailableSpace() {
-    if (!this.fabContainer) return { up: 0, down: 0, maxDown: 0 };
-    
-    const rect = this.fabContainer.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    
-    return {
-      up: rect.top,
-      down: viewportHeight - rect.bottom,
-      maxDown: viewportHeight - 100 // 하단 여백 100px 확보
-    };
-  }
-
-  // 확장 방향 및 메인 아이콘 위치 결정
-  determineExpandDirection() {
-    const space = this.calculateAvailableSpace();
-    const requiredHeight = 320; // 4개 버튼 * 80px 간격
-    
-    // 현재 위치에서 위쪽 공간이 충분한 경우
-    if (space.up >= requiredHeight) {
-      return { direction: 'up', moveMain: false };
-    }
-    
-    // 메인 아이콘을 아래로 이동 후 공간 확인
-    const currentTop = this.fabContainer.getBoundingClientRect().top;
-    const maxMoveDown = Math.min(space.down, space.maxDown - currentTop);
-    const newUpSpace = space.up + maxMoveDown;
-    
-    if (newUpSpace >= requiredHeight && maxMoveDown > 0) {
-      return { 
-        direction: 'up', 
-        moveMain: true, 
-        moveDistance: Math.min(maxMoveDown, requiredHeight - space.up)
-      };
-    }
-    
-    // 공간 부족시 반원 배치
-    return { direction: 'semicircle', moveMain: false };
-  }
-
-  // 메인 아이콘 위치 조정
-  adjustMainPosition(moveDistance) {
-    if (!this.fabContainer || !moveDistance) return;
-    
-    const currentTop = parseFloat(this.fabContainer.style.top) || 50;
-    const newTop = currentTop + (moveDistance / window.innerHeight * 100);
-    
-    this.fabContainer.style.top = `${newTop}%`;
-    this.fabContainer.style.transform = 'translateY(-50%)';
-  }
-
-  // 메인 아이콘 원래 위치로 복원
-  restoreMainPosition() {
-    if (!this.fabContainer) return;
-    
-    // 스크롤 위치에 따른 동적 위치로 복원
-    this.updateFABPosition(0);
-  }
-
   toggleExpansion() {
     try {
       if (this.isExpanded) {
@@ -274,53 +214,40 @@ class FloatingFABController {
   }
 
   expandActions() {
-      try {
-        this.isExpanded = true;
-        const config = this.determineExpandDirection();
-        
-        // 메인 아이콘 위치 조정
-        if (config.moveMain && config.moveDistance) {
-          this.adjustMainPosition(config.moveDistance);
-        }
-        
-        this.fabContainer.classList.add('expanded');
-        this.fabContainer.setAttribute('data-expand-direction', config.direction);
-        this.mainToggle.setAttribute('aria-label', '메뉴 닫기');
-        
-        this.announceToScreenReader('메뉴가 열렸습니다');
-        
-        if (this.debugMode) {
-          console.log(`FAB 확장됨 (방향: ${config.direction}, 메인이동: ${config.moveMain})`);
-        }
-      } catch (error) {
-        this.handleError(error, 'expandActions');
-      }
+    try {
+      this.isExpanded = true;
+      this.fabContainer.classList.add('expanded');
+      this.mainToggle.setAttribute('aria-label', '메뉴 닫기');
+      this.mainToggle.setAttribute('aria-expanded', 'true');
+
+      // 추가: 백드롭 표시
+      document.body.classList.add('fab-backdrop-active');
+
+      this.announceToScreenReader('메뉴가 열렸습니다');
+      if (this.debugMode) console.log('FAB 확장됨 (반원 배치)');
+    } catch (error) {
+      this.handleError(error, 'expandActions');
     }
+  }
 
   collapseActions() {
-      try {
-        this.isExpanded = false;
-        this.fabContainer.classList.remove('expanded');
-        this.fabContainer.removeAttribute('data-expand-direction');
-        this.mainToggle.setAttribute('aria-label', '메뉴 열기');
-        
-        // 메인 아이콘 원래 위치로 복원
-        this.restoreMainPosition();
-        
-        // 활성화된 액션 해제
-        if (this.activeAction) {
-          this.clearActiveAction();
-        }
-        
-        this.announceToScreenReader('메뉴가 닫혔습니다');
-        
-        if (this.debugMode) {
-          console.log('FAB 접힘됨');
-        }
-      } catch (error) {
-        this.handleError(error, 'collapseActions');
-      }
+    try {
+      this.isExpanded = false;
+      this.fabContainer.classList.remove('expanded');
+      this.mainToggle.setAttribute('aria-label', '메뉴 열기');
+      this.mainToggle.setAttribute('aria-expanded', 'false');
+
+      // 추가: 백드롭 제거
+      document.body.classList.remove('fab-backdrop-active');
+
+      if (this.activeAction) this.clearActiveAction();
+      this.announceToScreenReader('메뉴가 닫혔습니다');
+      if (this.debugMode) console.log('FAB 접힘됨');
+    } catch (error) {
+      this.handleError(error, 'collapseActions');
     }
+  }
+
 
   handleActionClick(action, itemElement) {
     try {
@@ -577,7 +504,7 @@ class FloatingFABController {
     }
   }
 
-    executeGuide() {
+  executeGuide() {
     try {
         // 전역 오프너가 있으면 데이터 로딩+모달 표시를 한 번에
         if (typeof window.openGuide === 'function') {
@@ -597,10 +524,9 @@ class FloatingFABController {
     } catch (error) {
         this.handleError(error, 'executeGuide');
     }
-    }
+  }
 
-    // 기존: executeKnowhow()
-    executeKnowhow() {
+  executeKnowhow() {
     try {
         // 권장: 전역 오프너 사용
         if (typeof window.openKnowhow === 'function') {
@@ -618,7 +544,7 @@ class FloatingFABController {
     } catch (e) {
         this.handleError(e, 'executeKnowhow');
     }
-    }
+  }
 
   executeChatbot() {
     try {
