@@ -30,6 +30,8 @@ from django.db.models import Q
 from .pdf_processor import EnhancedPDFProcessor
 from .pinecone_search import retrieve_insurance_clauses
 
+from insurance_app.utils.buckets import BUCKETS, infer_bucket
+
 # ---------------------------------------------------------------------
 # (중요) 아카이브 내 기존 llm_client 재사용: 다양한 함수/클래스 시그니처 자동 탐색
 # ---------------------------------------------------------------------
@@ -683,26 +685,34 @@ def insurance_recommendation(request: HttpRequest) -> HttpResponse:
 # ────────────────────────────────────────────────────────────────────────────────
 # 용어 사전 페이지 & API
 # ────────────────────────────────────────────────────────────────────────────────
-def glossary(request: HttpRequest) -> HttpResponse:
+def glossary(request):
     q = (request.GET.get("q") or "").strip()
     cat = (request.GET.get("cat") or "").strip()
-    terms = GlossaryTerm.objects.all()
+
+    # 기본 조회(사전 정렬)
+    qs = GlossaryTerm.objects.all().order_by("term")
+
+    # 검색어 적용 (term/short/long + aliases 대충 포함검색)
     if q:
-        qs = q.lower()
-        terms = terms.filter(
+        qs = qs.filter(
             Q(term__icontains=q) |
             Q(short_def__icontains=q) |
             Q(long_def__icontains=q) |
-            Q(aliases__icontains=qs)
+            Q(aliases__icontains=q)
         )
-    if cat:
-        terms = terms.filter(category=cat)
-    categories = list(GlossaryTerm.objects.order_by().values_list("category", flat=True).distinct())
+
+    # 파이썬 레벨에서 3개 버킷 필터링(데이터 규모가 수백건 수준이라 충분히 가볍습니다)
+    terms_all = list(qs)
+    if cat and cat in BUCKETS:
+        terms = [t for t in terms_all if infer_bucket(t) == cat]
+    else:
+        terms = terms_all
+
     context = {
-        "terms": terms[:500],
+        "terms": terms,
+        "categories": BUCKETS,  # 드롭다운에 3개만 노출
         "q": q,
         "cat": cat,
-        "categories": categories,
     }
     return render(request, "insurance_app/glossary.html", context)
 
