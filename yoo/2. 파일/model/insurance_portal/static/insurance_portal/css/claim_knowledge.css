@@ -1,0 +1,145 @@
+/* ===========================================
+ * Claim Knowledge Custom Modal (Centered)
+ * =========================================== */
+
+/* 숨김 처리는 동일 */
+#claim-knowledge-modal[hidden]{ display:none; }
+
+/* 화면 전체를 덮고, 가운데 정렬 */
+#claim-knowledge-modal{
+  position:fixed;
+  inset:0;
+  z-index:1060;
+  display:flex;                 /* ⬅️ 중앙 정렬을 위해 flex 사용 */
+  align-items:center;           /* 수직 중앙 */
+  justify-content:center;       /* 수평 중앙 */
+}
+
+/* 반투명 배경은 그대로 절대배치 */
+#claim-knowledge-modal .ckm-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+}
+
+/* 대화상자: 우하단 고정 제거 → 중앙에서 뜨도록 변경 */
+#claim-knowledge-modal .ckm-dialog{
+  position:relative;
+  width:min(900px, 96vw);
+  max-height:min(90vh, 800px);
+  min-height:500px;
+  background:#fff;
+  border-radius:14px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 18px 36px rgba(0,0,0,0.25);
+
+  transform: translateY(8px);
+  opacity: 0;
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+/* show 상태일 때 중앙에 자리잡으며 보이기 */
+#claim-knowledge-modal.show .ckm-dialog{
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* 탭/리스트/상세 등 기존 스타일들은 그대로 유지 */
+.ckm-header{
+  background:#2d2f36;
+  color:#fff;
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.ckm-close{
+  background:#fff;
+  color:#2d2f36;
+  border:1px solid #cfd5df;
+  padding:4px 10px;
+  border-radius:8px;
+}
+
+.ckm-tabs{
+  display:flex;
+  gap:6px;
+  padding:8px 10px;
+  border-bottom:1px solid #eef1f5;
+}
+.ckm-tab{
+  border:1px solid #d7dbe3;
+  background:#f7f9fc;
+  padding:6px 10px;
+  border-radius:8px;
+}
+.ckm-tab[aria-selected="true"]{
+  background:#e6efff;
+  border-color:#bcd0ff;
+}
+
+.ckm-body{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap:0;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+#ckm-list{
+  padding:10px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  border-right:1px solid #eef1f5;
+  min-height:0;
+  max-height:100%;
+  scrollbar-width:thin;
+}
+#ckm-detail{
+  padding:14px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.d-body{ 
+  white-space:pre-wrap; 
+  line-height:1.5; 
+  flex:1;
+  word-wrap:break-word;
+  overflow-wrap:break-word;
+}
+
+.ckm-item{
+  border-bottom:1px solid #f0f2f6;
+  padding:8px 6px;
+  cursor:pointer;
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.ckm-item .num{
+  font-weight:700;
+  color:#2f5bd3;
+  width:40px;
+  display:inline-block;
+}
+.ckm-item.active{ background:#f7faff; }
+
+.d-title{ font-weight:700; font-size:16px; margin-bottom:8px; }
+.d-body{ white-space:pre-wrap; line-height:1.5; }
+
+/* 모바일 보정(선택): 작은 화면에서 조금 더 키우기 */
+@media (max-width: 576px){
+  #claim-knowledge-modal .ckm-dialog{
+    width: 96vw;
+    max-height: 92vh;
+    min-height: 400px;
+  }
+  .ckm-body{
+    grid-template-columns: 280px 1fr;
+  }
+}

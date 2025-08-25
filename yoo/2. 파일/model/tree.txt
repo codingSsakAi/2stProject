@@ -1,0 +1,182 @@
+model/
+├─ insurance_app/
+│  ├─ documents/
+│  │  ├─ DB손해보험/
+│  │  │  └─ DB손해보험.pdf  (1.1MB)
+│  │  ├─ MG손해보험/
+│  │  │  └─ MG손해보험.pdf  (5.6MB)
+│  │  ├─ 롯데손해보험/
+│  │  │  └─ 롯데손해보험.pdf  (8.3MB)
+│  │  ├─ 메리츠화재/
+│  │  │  └─ 메리츠화재.pdf  (3.0MB)
+│  │  ├─ 삼성화재/
+│  │  │  └─ 삼성화재.pdf  (9.8MB)
+│  │  ├─ 하나손해보험/
+│  │  │  └─ 하나손해보험.pdf  (3.5MB)
+│  │  ├─ 현대해상/
+│  │  │  └─ 현대해상.pdf  (20.0MB)
+│  │  └─ 흥국화재/
+│  │     └─ 흥국화재.pdf  (1.9MB)
+│  ├─ migrations/
+│  │  ├─ 0001_initial.py  (7.2KB)
+│  │  ├─ 0002_remove_customuser_car_model_code_and_more.py  (1.2KB)
+│  │  └─ __init__.py  (0.0B)
+│  ├─ static/
+│  │  └─ insurance_app/
+│  │     ├─ css/
+│  │     │  └─ recommendation.css  (4.0KB)
+│  │     └─ js/
+│  │        └─ search.js  (2.6KB)
+│  ├─ templates/
+│  │  ├─ insurance_app/
+│  │  │  ├─ partials/
+│  │  │  │  ├─ _results.html  (102.0B)
+│  │  │  │  └─ _search_box.html  (460.0B)
+│  │  │  ├─ home.html  (3.3KB)
+│  │  │  ├─ insurance_form.html  (772.0B)
+│  │  │  ├─ login.html  (4.4KB)
+│  │  │  ├─ recommend.html  (22.8KB)
+│  │  │  ├─ recommendation.html  (4.8KB)
+│  │  │  └─ signup.html  (2.9KB)
+│  │  ├─ insurance_form.html  (772.0B)
+│  │  └─ recommendation.html  (785.0B)
+│  ├─ __init__.py  (0.0B)
+│  ├─ admin.py  (66.0B)
+│  ├─ apps.py  (163.0B)
+│  ├─ codef_client.py  (6.2KB)
+│  ├─ forms.py  (1.2KB)
+│  ├─ insurance_api.py  (1.2KB)
+│  ├─ insurance_mock_server.py  (27.1KB)
+│  ├─ llm_client.py  (855.0B)
+│  ├─ models.py  (1.3KB)
+│  ├─ pdf_processor.py  (16.1KB)
+│  ├─ pdf_to_pinecone.py  (3.4KB)
+│  ├─ pinecone_client.py  (557.0B)
+│  ├─ pinecone_search.py  (1.1KB)
+│  ├─ rag_loader.py  (661.0B)
+│  ├─ rag_search.py  (478.0B)
+│  ├─ tests.py  (63.0B)
+│  ├─ upload_all_to_pinecone.py  (3.3KB)
+│  ├─ urls.py  (1.2KB)
+│  └─ views.py  (12.6KB)
+├─ insurance_portal/
+│  ├─ data/
+│  │  └─ fault_rules/
+│  │     └─ output.md  (1.4MB)
+│  ├─ management/
+│  │  └─ commands/
+│  │     ├─ __init__.py  (0.0B)
+│  │     └─ reindex_fault_md.py  (5.9KB)
+│  ├─ migrations/
+│  │  └─ __init__.py  (0.0B)
+│  ├─ services/
+│  │  ├─ __init__.py  (52.0B)
+│  │  ├─ fault_answerer.py  (6.8KB)
+│  │  ├─ kidi_weekly_crawler.py  (2.0KB)
+│  │  ├─ pinecone_search_fault.py  (5.1KB)
+│  │  └─ prompt_fault.py  (5.8KB)
+│  ├─ static/
+│  │  └─ insurance_portal/
+│  │     ├─ css/
+│  │     │  ├─ chatbot.css  (13.2KB)
+│  │     │  ├─ claim_knowledge.css  (3.1KB)
+│  │     │  ├─ fab.css  (7.1KB)
+│  │     │  ├─ guide.css  (1.5KB)
+│  │     │  └─ knowhow.css  (3.6KB)
+│  │     ├─ img/
+│  │     │  ├─ image1.png  (1.7MB)
+│  │     │  ├─ image2.png  (1.8MB)
+│  │     │  ├─ image3.png  (2.0MB)
+│  │     │  ├─ image4.png  (2.1MB)
+│  │     │  ├─ image5.png  (2.2MB)
+│  │     │  └─ image6.png  (2.2MB)
+│  │     ├─ js/
+│  │     │  ├─ chatbot.js  (19.0KB)
+│  │     │  ├─ claim_knowledge.js  (4.9KB)
+│  │     │  ├─ fault_answer.js  (6.5KB)
+│  │     │  ├─ guide.js  (7.5KB)
+│  │     │  └─ knowhow.js  (5.3KB)
+│  │     └─ json/
+│  │        ├─ accident_flow.json  (3.0KB)
+│  │        ├─ evidence_collection.json  (538.0B)
+│  │        ├─ merged_cases.jsonl  (27.7KB)
+│  │        ├─ other_processes.json  (4.8KB)
+│  │        └─ weekly_articles.json  (8.7KB)
+│  ├─ templates/
+│  │  └─ insurance_portal/
+│  │     ├─ partials/
+│  │     │  ├─ _chatbot.html  (822.0B)
+│  │     │  ├─ _claim_knowledge.html  (1.4KB)
+│  │     │  ├─ _fault_answer.html  (5.0KB)
+│  │     │  ├─ _guide_modal.html  (746.0B)
+│  │     │  ├─ _knowhow_modal.html  (872.0B)
+│  │     │  └─ _side_actions.html  (1.3KB)
+│  │     ├─ weekly.html  (7.8KB)
+│  │     └─ weekly_partial.html  (1.9KB)
+│  ├─ utils/
+│  │  ├─ __init__.py  (0.0B)
+│  │  └─ md_chunker.py  (8.0KB)
+│  ├─ views/
+│  │  ├─ __init__.py  (38.0B)
+│  │  ├─ chatbot.py  (1.2KB)
+│  │  ├─ fault_answer_view.py  (3.4KB)
+│  │  ├─ fault_api.py  (949.0B)
+│  │  └─ weekly.py  (1.5KB)
+│  ├─ __init__.py  (0.0B)
+│  ├─ admin.py  (66.0B)
+│  ├─ apps.py  (169.0B)
+│  ├─ models.py  (60.0B)
+│  ├─ tests.py  (63.0B)
+│  ├─ urls.py  (602.0B)
+│  └─ views.py  (66.0B)
+├─ insurance_project/
+│  ├─ __init__.py  (0.0B)
+│  ├─ asgi.py  (427.0B)
+│  ├─ db.sqlite3  (152.0KB)
+│  ├─ manage.py  (695.0B)
+│  ├─ settings.py  (3.1KB)
+│  ├─ urls.py  (996.0B)
+│  └─ wsgi.py  (427.0B)
+├─ out/
+│  └─ fault.jsonl  (2.0MB)
+├─ report_form/
+│  ├─ migrations/
+│  │  └─ __init__.py  (0.0B)
+│  ├─ static/
+│  │  └─ images/
+│  │     ├─ damage_outline.png  (54.2KB)
+│  │     └─ template.png  (308.6KB)
+│  ├─ templates/
+│  │  └─ report_form/
+│  │     ├─ form.html  (46.1KB)
+│  │     └─ print.html  (159.1KB)
+│  ├─ __init__.py  (0.0B)
+│  ├─ admin.py  (66.0B)
+│  ├─ apps.py  (193.0B)
+│  ├─ forms.py  (1.5KB)
+│  ├─ models.py  (60.0B)
+│  ├─ tests.py  (63.0B)
+│  ├─ urls.py  (285.0B)
+│  ├─ utils.py  (1.7KB)
+│  └─ views.py  (4.4KB)
+├─ !!230630_자동차사고과실비율인정기준(`23.6.)_최종.docx  (4.4MB)
+├─ !!230630_자동차사고과실비율인정기준(`23.6.)_최종.pdf  (14.7MB)
+├─ .env  (862.0B)
+├─ .gitignore  (62.0B)
+├─ db.sqlite3  (152.0KB)
+├─ imbedding.py  (4.5KB)
+├─ index_backup.py  (3.8KB)
+├─ manage.py  (695.0B)
+├─ move_scan.txt  (15.9KB)
+├─ new_imbedding.py  (4.5KB)
+├─ output.md  (8.0KB)
+├─ pinecone_copy.py  (9.2KB)
+├─ project_tree.txt  (2.7MB)
+├─ python  (0.0B)
+├─ requirements.txt  (23.4KB)
+├─ test.py  (5.0KB)
+├─ weekly_articles.json  (8.7KB)
+├─ wep.py  (5.4KB)
+└─ which  (0.0B)
+
+[Summary] dirs=44, files=135, root=C:\Users\Admin\Desktop\2차 프로젝트\2.코드\웹\model

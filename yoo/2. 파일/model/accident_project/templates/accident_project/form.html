@@ -1,0 +1,742 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>교통사고 협의서 작성</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#fff; --text:#1d2a39; --muted:#6b7688; --line:#e7edf3;
+    --primary:#2b78c5; --primary-2:#245f99; --chip:#eef2f7;
+    --radius:16px; --shadow:0 10px 26px rgba(0,0,0,.06);
+    --danger:#d94b48;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text);
+       font-family:system-ui,-apple-system,"Segoe UI","Noto Sans KR",Arial,sans-serif;}
+  .wrap{max-width:1100px; margin:20px auto; padding:0 16px}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; margin:6px 0 14px}
+  .back{display:inline-flex; gap:8px; align-items:center; padding:8px 12px; border-radius:999px;
+        background:#eef2f7; border:1px solid #e5e9f2; color:#243043; text-decoration:none; font-weight:700}
+  .back:hover{background:#e7edf6}
+
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px;
+       border:1px solid #e5e9f2; background:#eef2f7; color:#243043; text-decoration:none; cursor:pointer; font-weight:700}
+  .btn[disabled]{opacity:.55; cursor:not-allowed}
+  .btn-primary{background:var(--primary); color:#fff; border-color:transparent}
+  .btn-primary:hover{background:var(--primary-2)}
+  .tools{display:flex; gap:8px}
+
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; border:1px solid var(--line)}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width: 900px){ .grid-2{grid-template-columns:1fr} }
+  .row{display:grid; grid-template-columns:140px 1fr; gap:10px; align-items:center}
+  .row > label{color:#344b66; font-weight:700}
+  input[type=text], input[type=number], input[type=datetime-local], select, textarea{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid #dfe6ee; background:#fff; font-size:14px;
+  }
+  textarea{min-height:84px; resize:vertical}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{padding:8px 12px; border-radius:999px; background:var(--chip); border:1px solid #e6ecf3; cursor:pointer; user-select:none}
+  .chip.active{background:var(--primary); border-color:transparent; color:#fff}
+  .muted{color:#6b7688; font-size:13px}
+  .help{color:#6b7688; font-size:12px}
+
+  /* 안내사항(아코디언) */
+  .accordion{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px}
+  .accordion summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+  .accordion summary::-webkit-details-marker{display:none}
+  .accordion .acc-body{padding:0 16px 12px 16px;border-top:1px dashed #e6ecf3}
+  .acc-item{margin:12px 0}
+  .acc-item p{margin:0 0 6px 0;line-height:1.55}
+  .acc-foot{display:flex;gap:10px;align-items:center;margin-top:8px}
+
+  /* 작성요령 */
+  .note{margin:6px 0 0;color:#42546a;font-size:13px}
+  .note b{font-weight:800}
+
+  /* 손상 이미지(단일 도면) */
+  .figure.big{position:relative;border:1px dashed #d9e2ec;border-radius:12px;overflow:hidden;background:#fafbff;margin-top:8px}
+  .figure.big img{display:block;width:520px;max-width:100%;height:auto}
+  .figure.big .dot{position:absolute;width:14px;height:14px;border-radius:50%;background:#e23b3b;transform:translate(-50%,-50%);box-shadow:0 0 0 2px #fff}
+
+  .error{margin-top:6px; color:var(--danger); font-size:13px}
+  .invalid{border-color:var(--danger)!important}
+
+  /* 상단 배너 */
+  .banner{display:none;margin:0 0 12px 0;padding:10px 14px;border-radius:10px;font-weight:700}
+  .banner.error{background:#feecec;color:#a22626;border:1px solid #f4b4b4}
+  .banner.info{background:#eef6ff;color:#1b4f8a;border:1px solid #b7d5ff}
+
+  /* 토스트 */
+  .toast{position:fixed;right:16px;top:16px;z-index:9999;background:#1f2937;color:#fff;
+    padding:10px 14px;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.2);opacity:.95;display:none}
+
+  /* 폼 블로커(동의 전 클릭차단 + 클릭 시 안내) */
+  .blocker{position:relative}
+  .blocker::after{
+    content:"";position:absolute;inset:0;background:transparent;display:none;z-index:5
+  }
+  .blocker.blocked::after{display:block;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="back" href="{% url 'accident_project:home' %}" onclick="if(history.length>1){history.back();return false;}">← 홈으로 돌아가기</a>
+    <div class="tools">
+      <button type="button" class="btn" id="btn-preview" disabled>미리보기</button>
+      <button form="agreement-form" type="submit" class="btn btn-primary" id="btn-submit" disabled>저장 & 출력</button>
+    </div>
+  </div>
+
+  <div id="global-banner" class="banner error"></div>
+  <div id="global-toast" class="toast"></div>
+
+  <!-- 안내사항(모두 동의 시 작성 가능) -->
+  <details class="accordion" id="ack-accordion" open>
+    <summary>
+      【안내사항】<span class="muted" id="ack-counter">(0/5 동의)</span>
+    </summary>
+    <div class="acc-body">
+      <div class="acc-item">
+        <p>1. 본 양식을 운전자 모두가 작성ㆍ서명한 경우에는 뺑소니 사고로 간주되는 등의 위험에서 벗어날 수 있으며 특별한 사정이 없는 한 신속한<br>&nbsp;&nbsp;보상처리가 가능하므로 항상 차량에 비치하시고, 경미한 교통사고라도 본 양식을 사고현장에서 각 당사자(운전자)가 함께 작성ㆍ서명한 후<br>&nbsp;&nbsp;각각 1부씩 보관하시기 바랍니다.</p>
+        <label>&nbsp;&nbsp;<input type="checkbox" class="ack"> 확인했습니다.</label>
+      </div>
+      <div class="acc-item">
+        <p>2. 보험처리를 원하시는 경우에는 우선 별첨된 해당 보험사의 콜센터 등으로 사고를 접수하시고 본 협의서를 보험사에 Fax 등을 통해 제출하시면<br>&nbsp;&nbsp;신속한 보상처리를 받으실 수 있습니다. 본 협의서를 Fax 등을 통해 보험사에 제출하신 경우 반드시 담당 직원과의 전화통화 등을 통해<br>&nbsp;&nbsp;협의서 수신여부를 확인하시기 바랍니다.</p>
+        <label>&nbsp;&nbsp;<input type="checkbox" class="ack"> 확인했습니다.</label>
+      </div>
+      <div class="acc-item">
+        <p>3. 사고 상대방과 연락이 안되는 경우 작성된 협의서를 해당보험사에 제출하여 직접 청구하시면 일정 절차를 거쳐 보상처리를 받으실 수 있습니다.</p>
+        <label>&nbsp;&nbsp;<input type="checkbox" class="ack"> 확인했습니다.</label>
+      </div>
+      <div class="acc-item">
+        <p>4. 본 양식을 작성ㆍ서명했다는 사실만으로 그 사고에 대한 책임이 있는 것으로 간주되지 아니합니다. 본 양식은 단순히 사고와 관련된 사실관계를<br>&nbsp;&nbsp;확인하는데 그 목적이 있습니다.</p>
+        <label>&nbsp;&nbsp;<input type="checkbox" class="ack"> 확인했습니다.</label>
+      </div>
+      <div class="acc-item">
+        <p>5. 본 협의서를 작성과 더불어 사고현장, 차량 파손부위 등 피해사항에 대한 사진, 동영상 등을 촬영하여 보험사로 제출하시면 교통사고로 인한<br>&nbsp;&nbsp;불이익을 최소화할 수 있을 뿐만 아니라 보다 신속한 보상이 가능합니다.</p>
+        <label>&nbsp;&nbsp;<input type="checkbox" class="ack"> 확인했습니다.</label>
+      </div>
+      <div class="acc-foot muted">본 협의서 양식은 손해보험협회(www.knia.or.kr) 양식을 사용하였습니다.</div>
+    </div>
+  </details>
+
+  <form id="agreement-form" class="card" method="post" action="{% url 'accident_project:agreement_submit' %}">
+    {% csrf_token %}
+    <div id="form-blocker" class="blocker">
+      <fieldset id="form-body" disabled>
+        <!-- 기본정보 -->
+        <h2>기본정보</h2>
+        <p class="note"><b>사고장소는 인근의 큰 건물 등을 중심으로 구체적으로 기재해 주세요.</b></p>
+        <div class="grid-2">
+          <div class="row">
+            <label>사고 일시<span class="muted"> (필수)</span></label>
+            <div>
+              <input type="datetime-local" name="accident_date" id="accident_date" placeholder="YYYY-MM-DD HH:mm" required>
+              <div class="error" id="err-accident_date" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>사고 장소</label>
+            <div>
+              <input type="text" name="location" id="location" placeholder="예: 서울 강남구 ○○로">
+              <div class="error" id="err-location" style="display:none"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <label>날씨</label>
+          <div class="chips" data-name="weather" id="weather-chips">
+            {% for w in weather_options %}
+              <span class="chip" data-value="{{ w }}">{{ w }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 사고 형태 / 사고 원인 -->
+        <h2 style="margin-top:18px">사고 형태 / 사고 원인</h2>
+        <div class="card" style="padding:14px; margin-bottom:8px">
+          <div class="chips" id="accident-kind" style="margin-bottom:8px">
+            <span class="chip active" data-kind="cc">자동차–자동차</span>
+            <span class="chip" data-kind="cp">자동차–보행자</span>
+          </div>
+
+          <div id="pane-cc">
+            <div class="muted" style="margin-bottom:6px">사고 형태(자동차–자동차)</div>
+            <div class="chips" data-name="type_cc" id="chips-cc">
+              {% for opt in cc_options %}
+                <span class="chip" data-value="{{ opt }}">{{ opt }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div id="pane-cp" style="display:none">
+            <div class="muted" style="margin-bottom:6px">사고 형태(자동차–보행자)</div>
+            <div class="chips" data-name="type_cp" id="chips-cp">
+              {% for opt in cp_options %}
+                <span class="chip" data-value="{{ opt }}">{{ opt }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="muted" style="margin:10px 0 6px">사고 원인</div>
+          <div class="chips" data-name="cause" id="chips-cause">
+            {% for opt in cause_options %}
+              <span class="chip" data-value="{{ opt }}">{{ opt }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- A 차량 -->
+        <h2 style="margin-top:18px">A 차량</h2>
+        <p class="note"><b>차량번호, 주민번호, 운전자 성명과 연락처, 주소, 가입보험회사는 정확히 기재해 주세요. <em>운전자 이름·주민번호·연락처</em>를 정확히 써야 뺑소니 오해를 받지 않습니다.</b></p>
+        <div class="grid-2">
+          <div class="row">
+            <label>차량번호<span class="muted"> (필수)</span></label>
+            <div>
+              <input type="text" name="a_plate" id="a_plate" placeholder="예: 12가1234" required>
+              <div class="error" id="err-a_plate" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>보험사</label>
+            <div>
+              <select name="a_insurer" id="a_insurer"></select>
+              <div class="error" id="err-a_insurer" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>성명<span class="muted"> (필수)</span></label>
+            <div>
+              <input type="text" name="a_name" id="a_name" required>
+              <div class="error" id="err-a_name" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>주민번호</label>
+            <div>
+              <input type="text" name="a_id" id="a_id" placeholder="예: 901111-1234567">
+              <div class="error" id="err-a_id" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>전화번호</label>
+            <div>
+              <input type="text" name="a_phone" id="a_phone">
+              <div class="error" id="err-a_phone" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>주소</label>
+            <div>
+              <input type="text" name="a_address" id="a_address">
+              <div class="error" id="err-a_address" style="display:none"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:8px">
+          <div class="row"><label>남</label><div><input type="number" name="a_male" id="a_male" value="0" min="0"><div class="error" id="err-a_male" style="display:none"></div></div></div>
+          <div class="row"><label>여</label><div><input type="number" name="a_female" id="a_female" value="0" min="0"><div class="error" id="err-a_female" style="display:none"></div></div></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label>합계</label><div><input type="number" id="a_total" value="0" readonly><div class="error" id="err-a_total" style="display:none"></div></div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <label>파손/특이사항 (A)</label>
+          <div>
+            <textarea name="a_damage_desc" id="a_damage_desc" placeholder="예: 앞 범퍼 긁힘, 트렁크 눌림 등"></textarea>
+            <div class="error" id="err-a_damage_desc" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- A 손상부위 칩 + 단일 도면 -->
+        <div class="row" style="margin-top:8px; align-items:flex-start">
+          <label>A 차량 손상부위</label>
+          <div>
+            <div class="chips" id="a-parts-chips"></div>
+            <p class="note"><b>차량파손부위(부상부위)에 √ 표기해 주세요. 야간·악천후 등으로 현장 확인이 곤란한 경우 가능한 사항만 우선 기재하고,<br>다음 날 재확인 메모를 남겨 주세요.</b></p>
+            <div class="figure big" id="a-figure">
+              <img src="{% static 'images/damage_outline.png' %}" alt="A 차량">
+              <!-- 점(dot)은 JS로 렌더 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- B 차량 -->
+        <h2 style="margin-top:18px">B 차량</h2>
+        <div class="grid-2">
+          <div class="row">
+            <label>차량번호<span class="muted"> (필수)</span></label>
+            <div>
+              <input type="text" name="b_plate" id="b_plate" placeholder="예: 34나5678" required>
+              <div class="error" id="err-b_plate" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>보험사</label>
+            <div>
+              <select name="b_insurer" id="b_insurer"></select>
+              <div class="error" id="err-b_insurer" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>성명<span class="muted"> (필수)</span></label>
+            <div>
+              <input type="text" name="b_name" id="b_name" required>
+              <div class="error" id="err-b_name" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>주민번호</label>
+            <div>
+              <input type="text" name="b_id" id="b_id" placeholder="예: 901111-1234567">
+              <div class="error" id="err-b_id" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>전화번호</label>
+            <div>
+              <input type="text" name="b_phone" id="b_phone">
+              <div class="error" id="err-b_phone" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label>주소</label>
+            <div>
+              <input type="text" name="b_address" id="b_address">
+              <div class="error" id="err-b_address" style="display:none"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:8px">
+          <div class="row"><label>남</label><div><input type="number" name="b_male" id="b_male" value="0" min="0"><div class="error" id="err-b_male" style="display:none"></div></div></div>
+          <div class="row"><label>여</label><div><input type="number" name="b_female" id="b_female" value="0" min="0"><div class="error" id="err-b_female" style="display:none"></div></div></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label>합계</label><div><input type="number" id="b_total" value="0" readonly><div class="error" id="err-b_total" style="display:none"></div></div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <label>파손/특이사항 (B)</label>
+          <div>
+            <textarea name="b_damage_desc" id="b_damage_desc" placeholder="예: 좌측 도어 찌그러짐 등"></textarea>
+            <div class="error" id="err-b_damage_desc" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- B 손상부위 칩 + 단일 도면 -->
+        <div class="row" style="margin-top:8px; align-items:flex-start">
+          <label>B 차량 손상부위</label>
+          <div>
+            <div class="chips" id="b-parts-chips"></div>
+            <p class="note"><b>차량파손부위(부상부위)에 √ 표기해 주세요. 야간·악천후 등으로 현장 확인이 곤란한 경우 가능한 사항만 우선 기재하고,<br>다음 날 재확인 메모를 남겨 주세요.</b></p>
+            <div class="figure big" id="b-figure">
+              <img src="{% static 'images/damage_outline.png' %}" alt="B 차량">
+            </div>
+          </div>
+        </div>
+
+        <!-- 보행자 (선택/그룹 전체 유효성) -->
+        <h2 style="margin-top:18px">보행자(선택)</h2>
+        <div class="grid-2">
+          <div class="row"><label>성명</label><div><input type="text" name="p_name" id="p_name"><div class="error" id="err-p_name" style="display:none"></div></div></div>
+          <div class="row"><label>주민번호</label><div><input type="text" name="p_id" id="p_id"><div class="error" id="err-p_id" style="display:none"></div></div></div>
+          <div class="row"><label>전화번호</label><div><input type="text" name="p_phone" id="p_phone"><div class="error" id="err-p_phone" style="display:none"></div></div></div>
+          <div class="row"><label>주소</label><div><input type="text" name="p_address" id="p_address"><div class="error" id="err-p_address" style="display:none"></div></div></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label>피해/특이사항</label>
+          <div>
+            <textarea name="p_damage_desc" id="p_damage_desc"></textarea>
+            <div class="error" id="err-p_damage_desc" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- 사고 설명 -->
+        <h2 style="margin-top:18px">사고 내용</h2>
+        <div class="row">
+          <label>사고 개요<span class="muted"> (필수)</span></label>
+          <div>
+            <textarea name="accident_description" id="accident_description" required></textarea>
+            <div class="error" id="err-accident_description" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Hidden: 배열/마킹 저장 -->
+        <input type="hidden" name="a_parts_json" id="a_parts_json">
+        <input type="hidden" name="b_parts_json" id="b_parts_json">
+        <input type="hidden" name="a_markers_json" id="a_markers_json">
+        <input type="hidden" name="b_markers_json" id="b_markers_json">
+        <input type="hidden" name="mask_rrn" value="true">
+        <input type="hidden" name="format" value="pdf">
+
+        <div id="form-error" class="error" style="display:none"></div>
+      </fieldset>
+    </div>
+  </form>
+
+  <!-- 미리보기 모달 -->
+  <div id="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);">
+    <div style="background:#fff; max-width:1100px; height:85vh; margin:40px auto; border-radius:14px; overflow:hidden; display:flex; flex-direction:column">
+      <div style="padding:10px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eef2f7">
+        <strong>미리보기</strong>
+        <button id="modal-close" class="btn">닫기</button>
+      </div>
+      <iframe id="preview-frame" style="flex:1; border:0"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ===== 알림/블로커 유틸 ===== */
+  function showBanner(msg, type='error'){
+    const b = document.getElementById('global-banner');
+    if(!b) return;
+    b.className = 'banner ' + (type==='info'?'info':'error');
+    b.textContent = msg; b.style.display = '';
+  }
+  function hideBanner(){ const b = document.getElementById('global-banner'); if(b) b.style.display='none'; }
+  let toastTimer=null;
+  function showToast(msg, ms=1800){
+    const t = document.getElementById('global-toast'); if(!t) return;
+    t.textContent=msg; t.style.display='block';
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.style.display='none';}, ms);
+  }
+  function setBlocked(on){
+    const wrap=document.getElementById('form-blocker'); if(!wrap) return;
+    wrap.classList.toggle('blocked', !!on);
+  }
+  function setFieldError(fieldId, msg){
+    const slot = document.getElementById('err-'+fieldId);
+    const input= document.getElementById(fieldId);
+    if(input) input.classList.toggle('invalid', !!msg);
+    if(slot){ if(msg){slot.textContent=msg; slot.style.display='block';} else {slot.textContent=''; slot.style.display='none';} }
+  }
+  function clearAllFieldErrors(){
+    document.querySelectorAll('.error[id^="err-"]').forEach(el=>{ el.style.display='none'; el.textContent=''; });
+    document.querySelectorAll('.invalid').forEach(el=>el.classList.remove('invalid'));
+  }
+
+  /* ===== 보험사 ===== */
+  const INSURERS = [
+    "삼성화재","현대해상","DB손해보험","KB손해보험","메리츠화재","한화손해보험",
+    "흥국화재","롯데손해보험","MG손해보험","AXA손해보험","캐롯손해보험","에이스손해보험"
+  ];
+  function fillInsurers(sel){
+    sel.innerHTML = '<option value="">보험사 선택</option>' +
+      INSURERS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  }
+  fillInsurers(document.getElementById('a_insurer'));
+  fillInsurers(document.getElementById('b_insurer'));
+
+  /* ===== 안내사항 5/5 → 활성화 ===== */
+  const acks = Array.from(document.querySelectorAll('.ack'));
+  const formBody = document.getElementById('form-body');
+  const ackCounter = document.getElementById('ack-counter');
+  function recomputeAck(){
+    const okCnt = acks.filter(x=>x.checked).length;
+    ackCounter.textContent = `(${okCnt}/5 동의)`;
+    const blocked = okCnt !== 5;
+    formBody.disabled = blocked;
+    setBlocked(blocked);
+    recomputeButtons();
+  }
+  acks.forEach(x=>x.addEventListener('change', recomputeAck));
+  recomputeAck();
+
+  // 동의 전 클릭 가드
+  const blockerWrap = document.getElementById('form-blocker');
+  if(blockerWrap){
+    blockerWrap.addEventListener('click', (e)=>{
+      if(!acks.every(x=>x.checked)){
+        showToast('안내사항 5개 모두 동의 후 작성할 수 있습니다.');
+        showBanner('안내사항 5개 모두 동의 후 작성할 수 있습니다.');
+        e.preventDefault(); e.stopPropagation();
+      }
+    }, true);
+  }
+
+  /* ===== 칩/이미지/선택 ===== */
+  // 날씨
+  const weatherSel = new Set();
+  document.getElementById('weather-chips').addEventListener('click', e=>{
+    const chip=e.target.closest('.chip'); if(!chip) return;
+    const v=chip.dataset.value;
+    if(chip.classList.toggle('active')) weatherSel.add(v); else weatherSel.delete(v);
+  });
+
+  // 사고형태/원인
+  function multiSelect(container){
+    const set = new Set();
+    container.addEventListener('click', e=>{
+      const chip=e.target.closest('.chip'); if(!chip) return;
+      if(chip.dataset.kind){
+        document.querySelectorAll('#accident-kind .chip').forEach(c=>c.classList.remove('active'));
+        chip.classList.add('active');
+        document.getElementById('pane-cc').style.display = chip.dataset.kind==='cc' ? '' : 'none';
+        document.getElementById('pane-cp').style.display = chip.dataset.kind==='cp' ? '' : 'none';
+        return;
+      }
+      chip.classList.toggle('active');
+      chip.classList.contains('active') ? set.add(chip.dataset.value) : set.delete(chip.dataset.value);
+    });
+    return set;
+  }
+  multiSelect(document.getElementById('accident-kind'));
+  const setCC   = multiSelect(document.getElementById('chips-cc'));
+  const setCP   = multiSelect(document.getElementById('chips-cp'));
+  const setCause= multiSelect(document.getElementById('chips-cause'));
+
+  // 손상부위 칩 ↔ 단일 도면 싱크
+  const partAnchors = {{ part_anchors|safe }};
+  const labelColors = {{ label_colors|safe }};
+  function buildPartChips(root){
+    Object.keys(partAnchors).forEach(name=>{
+      const el = document.createElement('span');
+      el.className='chip'; el.textContent=name; el.dataset.value=name;
+      if(labelColors[name]) el.style.boxShadow=`inset 0 0 0 2px ${labelColors[name]}22`;
+      root.appendChild(el);
+    });
+  }
+  buildPartChips(document.getElementById('a-parts-chips'));
+  buildPartChips(document.getElementById('b-parts-chips'));
+
+  const aPartSet = new Set();
+  const bPartSet = new Set();
+
+  function renderFigureMarkers(figureId, partSet){
+    const host = document.getElementById(figureId);
+    host.querySelectorAll('.dot').forEach(d=>d.remove());
+    partSet.forEach(name=>{
+      const pt = partAnchors[name]; if(!pt) return;
+      const dot = document.createElement('span');
+      dot.className='dot';
+      dot.style.left = pt.x + '%';
+      dot.style.top  = pt.y + '%';
+      host.appendChild(dot);
+    });
+  }
+  function bindPartChips(containerId, partSet, figureId){
+    const box = document.getElementById(containerId);
+    box.addEventListener('click', (e)=>{
+      const chip = e.target.closest('.chip'); if(!chip) return;
+      const name = chip.dataset.value;
+      if(chip.classList.toggle('active')) partSet.add(name); else partSet.delete(name);
+      renderFigureMarkers(figureId, partSet);
+    });
+  }
+  function bindFigureClick(figureId, chipsId, partSet){
+    const fig = document.getElementById(figureId);
+    fig.addEventListener('click', (e)=>{
+      const rect = fig.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width * 100;
+      const y = (e.clientY - rect.top)  / rect.height * 100;
+      // 가장 가까운 앵커 라벨 찾기
+      let best=null, bestDist=1e9;
+      for(const [name,pt] of Object.entries(partAnchors)){
+        const dx = pt.x - x, dy = pt.y - y;
+        const d = Math.hypot(dx,dy);
+        if(d < bestDist){ bestDist=d; best=name; }
+      }
+      if(best && bestDist <= 7){
+        const chip = document.querySelector(`#${chipsId} .chip[data-value="${best}"]`);
+        if(chip){ chip.click(); } // 칩 토글이 모든 동작을 수행(점 렌더 포함)
+      }
+    });
+  }
+  bindPartChips('a-parts-chips', aPartSet, 'a-figure');
+  bindPartChips('b-parts-chips', bPartSet, 'b-figure');
+  bindFigureClick('a-figure','a-parts-chips', aPartSet);
+  bindFigureClick('b-figure','b-parts-chips', bPartSet);
+
+  // 인원 합계
+  function bindTotal(m,f,out){
+    const mm=document.getElementById(m), ff=document.getElementById(f), oo=document.getElementById(out);
+    const recalc=()=>{oo.value=(parseInt(mm.value||0)||0)+(parseInt(ff.value||0)||0)};
+    mm.addEventListener('input',recalc); ff.addEventListener('input',recalc); recalc();
+  }
+  bindTotal('a_male','a_female','a_total');
+  bindTotal('b_male','b_female','b_total');
+
+  /* ===== 유효성 ===== */
+  const RE = {
+    plate:/^\d{2,3}[가-힣]\s?\d{4}$/,
+    name:/^[가-힣a-zA-Z\s]{2,20}$/,
+    rrn:/^\d{6}-\d{7}$/,
+    phone:/^(01[0-9]-?\d{3,4}-?\d{4}|0\d{1,2}-?\d{3,4}-?\d{4})$/,
+    address:/^.{5,}$/
+  };
+  function valOK(id, re, allowEmpty=true){
+    const el=document.getElementById(id); if(!el) return true;
+    const v=(el.value||'').trim();
+    const ok=(allowEmpty && v==='')? true : (re?re.test(v): v!=='');
+    el.classList.toggle('invalid', !ok);
+    return ok;
+  }
+  const MSG = {
+    accident_date:'사고 일시를 입력하세요.',
+    a_plate:'A 차량번호 형식이 올바르지 않습니다 (예: 12가1234).',
+    b_plate:'B 차량번호 형식이 올바르지 않습니다 (예: 34나5678).',
+    a_name:'A 운전자 성명은 2~20자(한글/영문)입니다.',
+    b_name:'B 운전자 성명은 2~20자(한글/영문)입니다.',
+    a_id:'A 주민등록번호 형식이 올바릅니다 (예: 901111-1234567).',
+    b_id:'B 주민등록번호 형식이 올바릅니다 (예: 901111-1234567).',
+    a_phone:'A 연락처 형식을 확인하세요 (예: 010-1234-5678).',
+    b_phone:'B 연락처 형식을 확인하세요 (예: 010-1234-5678).',
+    a_address:'A 주소를 5자 이상 입력하세요.',
+    b_address:'B 주소를 5자 이상 입력하세요.',
+    accident_description:'사고 개요를 입력하세요.',
+    p_name:'보행자 성명(선택 항목 작성 시 필수) 형식이 올바르지 않습니다.',
+    p_id:'보행자 주민등록번호 형식이 올바르지 않습니다.',
+    p_phone:'보행자 연락처 형식이 올바르지 않습니다.',
+    p_address:'보행자 주소를 5자 이상 입력하세요.',
+    p_damage_desc:'보행자 피해/특이사항을 입력하세요.'
+  };
+
+  function pedestrianBlockTouched(){
+    return ['p_name','p_id','p_phone','p_address','p_damage_desc'].some(id=>{
+      const el=document.getElementById(id); return el && (el.value||'').trim()!==''; });
+  }
+  function pedestrianBlockValid(){
+    if(!pedestrianBlockTouched()) return true;
+    return (
+      valOK('p_name', RE.name, false) &&
+      valOK('p_id', RE.rrn, false) &&
+      valOK('p_phone', RE.phone, false) &&
+      valOK('p_address', RE.address, false) &&
+      valOK('p_damage_desc', null, false)
+    );
+  }
+  function vehiclesValid(){
+    const a = valOK('a_plate', RE.plate, false) && valOK('a_name', RE.name, false);
+    const b = valOK('b_plate', RE.plate, false) && valOK('b_name', RE.name, false);
+    const others = [
+      ['a_id', RE.rrn, true], ['b_id', RE.rrn, true],
+      ['a_phone', RE.phone, true], ['b_phone', RE.phone, true],
+      ['a_address', RE.address, true], ['b_address', RE.address, true]
+    ].every(([id,re,allowEmpty])=>valOK(id,re,allowEmpty));
+    return a && b && others;
+  }
+  function essentialsValid(){
+    const dateOK = valOK('accident_date', null, false);
+    const vehOK  = vehiclesValid();
+    const descOK = valOK('accident_description', null, false);
+    const pedOK  = pedestrianBlockValid();
+    const ackOK  = acks.every(x=>x.checked);
+    return dateOK && vehOK && descOK && pedOK && ackOK;
+  }
+  const btnPrev=document.getElementById('btn-preview');
+  const btnSub =document.getElementById('btn-submit');
+  const errBox =document.getElementById('form-error');
+
+  function recomputeButtons(){
+    const ok = essentialsValid();
+    btnPrev.disabled = !ok;
+    btnSub .disabled = !ok;
+    errBox.style.display = ok ? 'none' : '';
+    if(!ok){
+      errBox.textContent='필수 항목(사고 일시, 양 차량의 차량번호/성명, 사고 개요)과 안내사항 동의가 필요하며, 보행자 항목은 하나라도 작성 시 전부 입력해야 합니다.';
+    }
+  }
+  document.querySelectorAll('input, textarea, select').forEach(el=>{
+    el.addEventListener('input', recomputeButtons);
+    el.addEventListener('change', recomputeButtons);
+  });
+  recomputeButtons();
+
+  function explainErrors(){
+    clearAllFieldErrors();
+    const errors = [];
+    if(!acks.every(x=>x.checked)){
+      errors.push({id:null, msg:'안내사항 5개 모두 동의 후 진행할 수 있습니다.'});
+    }
+    [['accident_date', null, false],
+     ['a_plate', RE.plate, false], ['a_name', RE.name, false],
+     ['b_plate', RE.plate, false], ['b_name', RE.name, false],
+     ['accident_description', null, false]
+    ].forEach(([id,re,req])=>{
+      const ok = valOK(id, re, !req);
+      if(!ok) errors.push({id, msg: MSG[id] || '값을 확인하세요.'});
+    });
+    [['a_id',RE.rrn,true],['b_id',RE.rrn,true],['a_phone',RE.phone,true],['b_phone',RE.phone,true],['a_address',RE.address,true],['b_address',RE.address,true]]
+      .forEach(([id,re,_])=>{
+        const el=document.getElementById(id); if(!el) return;
+        const v=(el.value||'').trim();
+        if(v!=='' && !valOK(id,re,false)) errors.push({id, msg: MSG[id]});
+      });
+    if(!pedestrianBlockValid()){
+      ['p_name','p_id','p_phone','p_address','p_damage_desc'].forEach(id=>{
+        if(!valOK(id, (id==='p_id'?RE.rrn : id==='p_phone'?RE.phone : id==='p_address'?RE.address : id==='p_name'?RE.name : null), false)){
+          errors.push({id, msg: MSG[id]});
+        }
+      });
+    }
+    if(errors.length){
+      showBanner(`${errors.length}개 항목을 확인하세요.`);
+      const first = errors.find(e=>e.id);
+      if(first && document.getElementById(first.id)){
+        const el = document.getElementById(first.id);
+        setTimeout(()=>{ el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus?.(); }, 80);
+      }
+      errors.forEach(e=>{ if(e.id) setFieldError(e.id, e.msg); });
+      return false;
+    }else{ hideBanner(); return true; }
+  }
+
+  /* ===== 제출/미리보기 ===== */
+  const form = document.getElementById('agreement-form');
+
+  form.addEventListener('submit', e=>{
+    if(!explainErrors()){
+      e.preventDefault();
+      showToast('입력 항목을 확인하세요.');
+      return;
+    }
+    // 날씨
+    weatherSel.forEach(v=>{
+      const i=document.createElement('input'); i.type='hidden'; i.name='weather'; i.value=v; form.appendChild(i);
+    });
+    // 형태/원인
+    setCC.forEach(v=>{ const i=document.createElement('input'); i.type='hidden'; i.name='type_cc'; i.value=v; form.appendChild(i); });
+    setCP.forEach(v=>{ const i=document.createElement('input'); i.type='hidden'; i.name='type_cp'; i.value=v; form.appendChild(i); });
+    setCause.forEach(v=>{ const i=document.createElement('input'); i.type='hidden'; i.name='cause'; i.value=v; form.appendChild(i); });
+    // 손상부위 JSON
+    document.getElementById('a_parts_json').value = JSON.stringify(Array.from(aPartSet));
+    document.getElementById('b_parts_json').value = JSON.stringify(Array.from(bPartSet));
+    // 좌표는 현재 미사용(호환 목적)
+    document.getElementById('a_markers_json').value = '[]';
+    document.getElementById('b_markers_json').value = '[]';
+  });
+
+  document.getElementById('btn-preview').addEventListener('click', ()=>{
+    if(!explainErrors()){ showToast('입력 항목을 확인하세요.'); return; }
+    const data = Object.fromEntries(new FormData(form).entries());
+    data.weather = Array.from(weatherSel);
+    data.type_cc = Array.from(setCC);
+    data.type_cp = Array.from(setCP);
+    data.cause   = Array.from(setCause);
+    data.a_parts_json = JSON.stringify(Array.from(aPartSet));
+    data.b_parts_json = JSON.stringify(Array.from(bPartSet));
+    data.a_markers_json = '[]';
+    data.b_markers_json = '[]';
+
+    localStorage.setItem('print_payload', JSON.stringify(data));
+    const modal = document.getElementById('modal');
+    document.getElementById('preview-frame').src = "{% url 'accident_project:agreement_preview' %}";
+    modal.style.display='block';
+  });
+  document.getElementById('modal-close').onclick = ()=>document.getElementById('modal').style.display='none';
+})();
+</script>
+</body>
+</html>

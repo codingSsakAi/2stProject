@@ -1,0 +1,385 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>교통사고 협의서 - 출력</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  @media print {  html, body { width: 210mm; height: 297mm; } }
+  body{ font-family:'Malgun Gothic','맑은 고딕',Arial,sans-serif; font-size:12px; color:#000; margin:0; background:#fff; }
+  .sheet{ padding:12px; }
+  .h1{ font-weight:800; font-size:18px; text-align:center; margin:8px 0 12px; }
+  .box{ border:1px solid #000; margin:8px 0; }
+  .line{ border-bottom:1px solid #000; padding:6px 8px; display:flex; gap:8px; align-items:baseline; }
+  .line:last-child{ border-bottom:0; }
+  .hdr{ background:#f5f5f5; font-weight:700; }
+  .label{ font-weight:700; min-width:110px; display:inline-block; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .ul{ margin:4px 0 0 0; padding:0 0 0 16px; }
+  .toolbar{ padding:8px; display:flex; gap:12px; align-items:center; justify-content:flex-end; border-bottom:1px dashed #aaa; }
+  .muted{ color:#555; }
+
+  /* ▼ 세로 A4 고정(뷰포트 영향 제거) */
+  .a4-portrait { width: 794px; min-height: 1123px; overflow: visible !important; }
+</style>
+</head>
+<body>
+
+<div class="sheet a4-portrait">
+
+  <!-- 상단 툴바 -->
+  <div class="toolbar no-print">
+    <label><input id="maskToggle" type="checkbox"> 주민번호 뒷자리 마스킹</label>
+    <button type="button" onclick="downloadPDFClient()">PDF 저장(화면그대로)</button>
+    <button type="button" onclick="downloadPNGClient()">PNG 저장(화면그대로)</button>
+  </div>
+
+  <div class="h1">교통사고 신속처리 표준 협의서</div>
+
+  <!-- 사고 정보 -->
+  <div class="box">
+    <div class="line hdr">사고 정보</div>
+    <div class="line"><span class="label">사고일시</span> <span data-bind="accident_date_display">{{ F.accident_date_display|default:F.accident_date|default:'' }}</span></div>
+    <div class="line"><span class="label">사고장소</span> <span data-bind="location">{{ F.location|default:'' }}</span></div>
+    <div class="line">
+      <span class="label">날씨</span>
+      {% if F.weather %}{{ F.weather|join:", " }}{% else %}<span data-join="weather"></span>{% endif %}
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- A 차량 -->
+    <div class="box">
+      <div class="line hdr">A 차량</div>
+      <div class="line"><span class="label">차량번호</span> <span data-bind="a_plate">{{ F.a_plate|default:'' }}</span></div>
+      <div class="line"><span class="label">보험사</span> <span data-bind="a_insurer">{{ F.a_insurer|default:'' }}</span></div>
+      <div class="line"><span class="label">성명</span> <span data-bind="a_name">{{ F.a_name|default:'' }}</span></div>
+      <div class="line"><span class="label">주민번호</span> <span id="a_id">{{ F.a_id_masked|default:F.a_id|default:'' }}</span></div>
+      <div class="line"><span class="label">전화번호</span> <span data-bind="a_phone">{{ F.a_phone|default:'' }}</span></div>
+      <div class="line"><span class="label">주소</span> <span data-bind="a_address">{{ F.a_address|default:'' }}</span></div>
+      <div class="line">
+        <span class="label">탑승인원(남/여, 운전자 제외)</span>
+        <span data-bind="a_total">{{ F.a_total|default:'' }}</span>명
+        ( <span data-bind="a_male">{{ F.a_male|default:'0' }}</span>/<span data-bind="a_female">{{ F.a_female|default:'0' }}</span> )
+      </div>
+      <div class="line"><span class="label">파손/특이사항</span> <span data-bind="a_damage_desc">{{ F.a_damage_desc|default:'' }}</span></div>
+
+      <!-- A 손상 이미지 + 마킹 -->
+      <div style="padding:8px 0">
+        <div style="position:relative; width:320px; max-width:100%; border:1px solid #bbb; border-radius:8px; overflow:hidden;">
+          <img src="{% static 'images/damage_outline.png' %}" alt="A 차량"
+               style="display:block;width:100%;height:auto;" crossorigin="anonymous">
+          <div id="print-a-marks" style="position:absolute;inset:0;"></div>
+        </div>
+      </div>
+
+      <div class="line">
+        <span class="label">손상부위(A)</span>
+        <div id="a_parts_server">
+          {% if F.a_parts %}
+            <ul class="ul">{% for it in F.a_parts %}<li>{{ it }}</li>{% endfor %}</ul>
+          {% else %}
+            <span data-parts="a_parts_json"></span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- B 차량 -->
+    <div class="box">
+      <div class="line hdr">B 차량</div>
+      <div class="line"><span class="label">차량번호</span> <span data-bind="b_plate">{{ F.b_plate|default:'' }}</span></div>
+      <div class="line"><span class="label">보험사</span> <span data-bind="b_insurer">{{ F.b_insurer|default:'' }}</span></div>
+      <div class="line"><span class="label">성명</span> <span data-bind="b_name">{{ F.b_name|default:'' }}</span></div>
+      <div class="line"><span class="label">주민번호</span> <span id="b_id">{{ F.b_id_masked|default:F.b_id|default:'' }}</span></div>
+      <div class="line"><span class="label">전화번호</span> <span data-bind="b_phone">{{ F.b_phone|default:'' }}</span></div>
+      <div class="line"><span class="label">주소</span> <span data-bind="b_address">{{ F.b_address|default:'' }}</span></div>
+      <div class="line">
+        <span class="label">탑승인원(남/여, 운전자 제외)</span>
+        <span data-bind="b_total">{{ F.b_total|default:'' }}</span>명
+        ( <span data-bind="b_male">{{ F.b_male|default:'0' }}</span>/<span data-bind="b_female">{{ F.b_female|default:'0' }}</span> )
+      </div>
+      <div class="line"><span class="label">파손/특이사항</span> <span data-bind="b_damage_desc">{{ F.b_damage_desc|default:'' }}</span></div>
+
+      <!-- B 손상 이미지 + 마킹 -->
+      <div style="padding:8px 0">
+        <div style="position:relative; width:320px; max-width:100%; border:1px solid #bbb; border-radius:8px; overflow:hidden;">
+          <img src="{% static 'images/damage_outline.png' %}" alt="B 차량"
+               style="display:block;width:100%;height:auto;" crossorigin="anonymous">
+          <div id="print-b-marks" style="position:absolute;inset:0;"></div>
+        </div>
+      </div>
+
+      <div class="line">
+        <span class="label">손상부위(B)</span>
+        <div id="b_parts_server">
+          {% if F.b_parts %}
+            <ul class="ul">{% for it in F.b_parts %}<li>{{ it }}</li>{% endfor %}</ul>
+          {% else %}
+            <span data-parts="b_parts_json"></span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 보행자: 값 있을 때만 표시 -->
+  {% if F.p_name or F.p_id or F.p_phone or F.p_address or F.p_damage_desc %}
+  <div id="ped-box" class="box">
+    <div class="line hdr">보행자(선택)</div>
+    <div class="line"><span class="label">성명</span> <span data-bind="p_name">{{ F.p_name|default:'' }}</span></div>
+    <div class="line"><span class="label">주민번호</span> <span id="p_id">{{ F.p_id_masked|default:F.p_id|default:'' }}</span></div>
+    <div class="line"><span class="label">전화번호</span> <span data-bind="p_phone">{{ F.p_phone|default:'' }}</span></div>
+    <div class="line"><span class="label">주소</span> <span data-bind="p_address">{{ F.p_address|default:'' }}</span></div>
+    <div class="line"><span class="label">피해/특이사항</span> <span data-bind="p_damage_desc">{{ F.p_damage_desc|default:'' }}</span></div>
+  </div>
+  {% else %}
+  <div id="ped-box" style="display:none"></div>
+  {% endif %}
+
+  <!-- 사고 내용 -->
+  <div class="box">
+    <div class="line hdr">사고내용</div>
+    <div class="line"><span class="label">사고 개요</span> <span data-bind="accident_description">{{ F.accident_description|default:'' }}</span></div>
+    <div class="line">
+      <span class="label">사고 형태</span>
+      <div>
+        {% if F.type_cc %}
+          <div><b class="muted">자동차대 자동차</b></div>
+          <ul class="ul">{% for it in F.type_cc %}<li>{{ it }}</li>{% endfor %}</ul>
+        {% else %}
+          <div data-list="type_cc"></div>
+        {% endif %}
+        {% if F.type_cp %}
+          <div style="margin-top:6px;"><b class="muted">자동차대 보행자</b></div>
+          <ul class="ul">{% for it in F.type_cp %}<li>{{ it }}</li>{% endfor %}</ul>
+        {% else %}
+          <div data-list="type_cp"></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="line">
+      <span class="label">사고 원인</span>
+      {% if F.cause %}{{ F.cause|join:", " }}{% else %}<span data-join="cause"></span>{% endif %}
+    </div>
+  </div>
+
+  <!-- 서명 칸 -->
+  <div class="box">
+    <div class="line hdr">보험금 청구·확인</div>
+    <div class="line">
+      A 차량: <b data-bind="a_name">{{ F.a_name|default:'' }}</b> (서명) &nbsp;&nbsp;
+      B 차량: <b data-bind="b_name">{{ F.b_name|default:'' }}</b> (서명) &nbsp;&nbsp;
+      {% if F.p_name %}보행자: <b data-bind="p_name">{{ F.p_name|default:'' }}</b> (서명){% endif %}
+    </div>
+  </div>
+
+  <!-- 손상 좌표 사전 -->
+  {{ part_anchors|json_script:"print-part-anchors" }}
+
+</div>
+
+<script>
+  /* ===== 점 그리기: 라벨(부위칩) 기반 ===== */
+  function drawMarksFromLabels(targetId, labels){
+    const elJSON = document.getElementById('print-part-anchors');
+    const anchors = elJSON ? JSON.parse(elJSON.textContent || '{}') : {};
+    const host = document.getElementById(targetId); if(!host) return;
+    host.innerHTML = '';
+    (labels||[]).forEach(lb=>{
+      const pt = anchors[lb]; if(!pt) return;
+      const dot = document.createElement('div');
+      dot.style.cssText = `
+        position:absolute;left:${pt.x}%;top:${pt.y}%;
+        transform:translate(-50%,-50%);
+        width:14px;height:14px;border-radius:50%;
+        background:#e53935;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);
+      `;
+      host.appendChild(dot);
+    });
+  }
+
+  /* ===== 점 그리기: 좌표(a_markers_json/b_markers_json) 기반 ===== */
+  function drawMarksFromCoords(targetId, coords){
+    const host = document.getElementById(targetId); if(!host) return;
+    host.innerHTML = '';
+    (coords||[]).forEach(m=>{
+      if (typeof m.x!=='number' || typeof m.y!=='number') return;
+      const dot = document.createElement('div');
+      dot.style.cssText = `
+        position:absolute;left:${(m.x*100)}%;top:${(m.y*100)}%;
+        transform:translate(-50%,-50%);
+        width:14px;height:14px;border-radius:50%;
+        background:#e53935;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);
+      `;
+      host.appendChild(dot);
+    });
+  }
+
+  /* ===== 미리보기/직접 주입(파라미터 없이도 동작) ===== */
+  (function(){
+    // 미리보기 플래그가 없더라도, localStorage에 payload가 있으면 주입 시도
+    const raw = localStorage.getItem('print_payload');
+    if (!raw) return;
+
+    let F = {}; try { F = JSON.parse(raw); } catch(_){ F = {}; }
+
+    // 표시용 일시
+    if (F.accident_date && !F.accident_date_display){
+      const s = (F.accident_date || '').replace('T',' ');
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?$/);
+      F.accident_date_display = m ? `${m[1]} ${m[2]}` : s;
+    }
+
+    // 단일값/리스트 바인딩
+    document.querySelectorAll('[data-bind]').forEach(el=>{
+      const k = el.getAttribute('data-bind'); if (F[k]!=null) el.textContent = F[k];
+    });
+    document.querySelectorAll('[data-join]').forEach(el=>{
+      const k = el.getAttribute('data-join'); const arr = F[k]; if (Array.isArray(arr)) el.textContent = arr.join(', ');
+    });
+
+    // 사고 형태 리스트 렌더
+    function renderList(key, holderSel){
+      const holder = document.querySelector(holderSel);
+      const arr = F[key]; if (!holder || !Array.isArray(arr) || !arr.length) return;
+      const ul = document.createElement('ul'); ul.className='ul';
+      arr.forEach(t=>{ const li=document.createElement('li'); li.textContent=t; ul.appendChild(li); });
+      holder.replaceWith(ul);
+    }
+    renderList('type_cc', '[data-list="type_cc"]');
+    renderList('type_cp', '[data-list="type_cp"]');
+
+    // 손상부위 목록(JSON → 리스트)
+    function renderParts(key, serverBoxId){
+      const box = document.getElementById(serverBoxId); if(!box) return;
+      let arr = []; try { arr = JSON.parse(F[key] || '[]'); } catch(_){ arr = []; }
+      if (!arr.length) return;
+      const ul = document.createElement('ul'); ul.className='ul';
+      arr.forEach(t=>{ const li=document.createElement('li'); li.textContent=t; ul.appendChild(li); });
+      box.innerHTML=''; box.appendChild(ul);
+    }
+    renderParts('a_parts_json','a_parts_server');
+    renderParts('b_parts_json','b_parts_server');
+
+    // 탑승인원 합계 자동 보정
+    ['a','b'].forEach(k=>{
+      const m = parseInt(F[`${k}_male`]||0,10) || 0;
+      const f = parseInt(F[`${k}_female`]||0,10) || 0;
+      const total = (m+f).toString();
+      const slot = document.querySelector(`[data-bind="${k}_total"]`);
+      if (slot && !slot.textContent.trim()) slot.textContent = total;
+    });
+
+    // 마스킹 토글
+    const maskToggle = document.getElementById('maskToggle');
+    function maskRRN(v){ const m=(v||'').match(/^(\d{6})-(\d)(\d{6})$/); return m ? `${m[1]}-${m[2]}******` : v; }
+    function applyMask(){
+      const on = maskToggle?.checked;
+      ['a_id','b_id','p_id'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        const original = (id==='a_id'?F.a_id:id==='b_id'?F.b_id:F.p_id) || '';
+        el.textContent = on ? maskRRN(original) : original;
+      });
+    }
+    if (maskToggle){ maskToggle.checked=false; maskToggle.addEventListener('change', applyMask); applyMask(); }
+
+    // 보행자 박스 표시/숨김
+    try{
+      const show = (F.p_name||F.p_id||F.p_phone||F.p_address||F.p_damage_desc);
+      const box = document.getElementById('ped-box'); if (box) box.style.display = show ? '' : 'none';
+    }catch(_){}
+
+    // 점 렌더링: 좌표가 있으면 좌표 우선, 없으면 부위라벨 좌표
+    try{
+      let aCoords = []; try { aCoords = JSON.parse(F.a_markers_json || '[]'); } catch(_){}
+      let bCoords = []; try { bCoords = JSON.parse(F.b_markers_json || '[]'); } catch(_){}
+      if (Array.isArray(aCoords) && aCoords.length) {
+        drawMarksFromCoords('print-a-marks', aCoords);
+      } else {
+        let AL = []; try { AL = JSON.parse(F.a_parts_json || '[]'); } catch(_){}
+        if (Array.isArray(AL) && AL.length) drawMarksFromLabels('print-a-marks', AL);
+      }
+      if (Array.isArray(bCoords) && bCoords.length) {
+        drawMarksFromCoords('print-b-marks', bCoords);
+      } else {
+        let BL = []; try { BL = JSON.parse(F.b_parts_json || '[]'); } catch(_){}
+        if (Array.isArray(BL) && BL.length) drawMarksFromLabels('print-b-marks', BL);
+      }
+    }catch(_){}
+  })();
+
+  /* ===== 서버 렌더(저장 후 열람)일 때: 부위 라벨로 점 보이기 ===== */
+  (function(){
+    const Fa = {{ F.a_parts|default:"[]"|safe }};
+    const Fb = {{ F.b_parts|default:"[]"|safe }};
+    if (Array.isArray(Fa) && Fa.length) drawMarksFromLabels('print-a-marks', Fa);
+    if (Array.isArray(Fb) && Fb.length) drawMarksFromLabels('print-b-marks', Fb);
+  })();
+
+  /* ===== 캡처 → PDF/PNG ===== */
+  async function captureSheetCanvas() {
+    const sheet = document.querySelector('.sheet');
+    const toolbar = document.querySelector('.toolbar.no-print');
+    const prev = toolbar ? toolbar.style.display : null;
+    if (toolbar) toolbar.style.display = 'none';
+
+    const canvas = await html2canvas(sheet, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#fff',
+      windowWidth:  sheet.scrollWidth,
+      windowHeight: sheet.scrollHeight
+    });
+
+    if (toolbar) toolbar.style.display = prev ?? '';
+    return canvas;
+  }
+
+  async function downloadPDFClient() {
+    const canvas = await captureSheetCanvas();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const scale = Math.min(pageW / canvas.width, pageH / canvas.height);
+    const imgW = canvas.width * scale;
+    const imgH = canvas.height * scale;
+    const x = (pageW - imgW) / 2;
+    const y = (pageH - imgH) / 2;
+    const imgData = canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', x, y, imgW, imgH);
+    pdf.save('agreement.pdf');
+  }
+
+  async function downloadPNGClient() {
+    const canvas = await captureSheetCanvas();
+    canvas.toBlob((blob)=>{
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'');
+      const base = "{{ F.a_plate|default:'UNKNOWN' }}".trim() || 'UNKNOWN';
+      a.href = URL.createObjectURL(blob);
+      a.download = `agreement_{{ pk|default:'preview' }}_${base}_${ts}.png`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, 'image/png', 1.0);
+  }
+
+  (function(){
+    const q = new URLSearchParams(location.search);
+    const exp = q.get('export');
+    if (exp === 'pdf') {
+      setTimeout(()=> exportPDF('print-root'), 100);
+    } else if (exp === 'jpg') {
+      setTimeout(()=> exportAgreementJpg('print-root'), 100);
+    }
+  })();
+</script>
+
+<!-- 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+</body>
+</html>
