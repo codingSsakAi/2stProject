@@ -200,7 +200,7 @@
           const company = s.company || '?';
           // 회사명 기반 문서 경로 조합
           const docPath = `${encodePath(company)}/${encodePath(company)}.pdf`;
-          const link = page ? `<a href="/documents/${docPath}#page=${page}" target="_blank">해당 페이지</a>` : '';
+          const link = page ? `<a href="/documents/${docPath}#page=${page}" target="_blank">원문 보기</a>` : '';
           return `(${i+1}) ${company}${page?` / p.${page}`:''} ${link}`;
         }).join('<br/>');
 
