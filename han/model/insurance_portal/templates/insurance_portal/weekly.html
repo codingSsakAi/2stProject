@@ -163,50 +163,54 @@
     <i class="fa-solid fa-plus fab-main-icon"></i>
   </button>
   
-  <!-- 서브 액션 버튼들 (초기에 숨김) -->
+  <!-- 서브 액션 버튼들 -->
   <div id="fab-sub-actions" class="fab-sub-container" role="menu" aria-label="기능 메뉴">
     
-    <!-- 보상상식 -->
-    <div class="fab-action-item" data-action="claim-knowledge" role="none">
-      <span class="fab-label">자동차 보상상식</span>
-      <button class="fab-sub-btn fab-reward" 
-              data-target="claim-knowledge" 
-              aria-label="자동차 사고 보상상식 열기"
-              role="menuitem">
-        <i class="fa-solid fa-car-burst"></i>
-      </button>
-    </div>
-    
-    <!-- 사고처리 가이드 -->
-    <div class="fab-action-item" data-action="guide" role="none">
-      <span class="fab-label">사고처리 가이드</span>
-      <button class="fab-sub-btn fab-guide" 
-              data-target="guide" 
-              aria-label="사고처리 가이드 열기"
-              role="menuitem">
-        <i class="fa-solid fa-route"></i>
-      </button>
-    </div>
-    
-    <!-- 보험상식 -->
-    <div class="fab-action-item" data-action="knowhow" role="none">
-      <span class="fab-label">자동차 보험상식</span>
-      <button class="fab-sub-btn fab-knowhow" 
-              data-target="weekly" 
-              aria-label="보험상식 열기"
-              role="menuitem">
-        <i class="fa-solid fa-book-open"></i>
-      </button>
-    </div>
-    
-    <!-- 챗봇 -->
+    <!-- 챗봇 - 12시 방향 -->
     <div class="fab-action-item" data-action="chatbot" role="none">
       <span class="fab-label">과실 문의 챗봇</span>
       <button class="fab-sub-btn fab-chatbot" 
               data-target="chatbot" 
               aria-label="과실 문의 챗봇 열기"
+              aria-pressed="false"
               role="menuitem">
         <i class="fa-solid fa-headset"></i>
+      </button>
+    </div>
+    
+    <!-- 사고처리 가이드 - 7.5시 방향 -->
+    <div class="fab-action-item" data-action="guide" role="none">
+      <span class="fab-label">사고처리 가이드</span>
+      <button class="fab-sub-btn fab-guide" 
+              data-target="guide" 
+              aria-label="사고처리 가이드 열기"
+              aria-pressed="false"
+              role="menuitem">
+        <i class="fa-solid fa-route"></i>
+      </button>
+    </div>
+    
+    <!-- 보험상식 - 10.5시 방향 -->
+    <div class="fab-action-item" data-action="knowhow" role="none">
+      <span class="fab-label">자동차 보험상식</span>
+      <button class="fab-sub-btn fab-knowhow" 
+              data-target="weekly" 
+              aria-label="보험상식 열기"
+              aria-pressed="false"
+              role="menuitem">
+        <i class="fa-solid fa-book-open"></i>
+      </button>
+    </div>
+    
+    <!-- 보상상식 - 6시 방향 -->
+    <div class="fab-action-item" data-action="claim-knowledge" role="none">
+      <span class="fab-label">자동차 보상상식</span>
+      <button class="fab-sub-btn fab-reward" 
+              data-target="claim-knowledge" 
+              aria-label="자동차 사고 보상상식 열기"
+              aria-pressed="false"
+              role="menuitem">
+        <i class="fa-solid fa-car-burst"></i>
       </button>
     </div>
     

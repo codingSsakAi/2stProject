@@ -1,25 +1,48 @@
+<!-- [보상 상식] 이 파일은 해당 기능에 사용됩니다. -->
 <!-- templates/insurance_app/partials/_claim_knowledge.html -->
 <div id="claim-knowledge-modal" role="dialog" aria-modal="true" aria-labelledby="claim-knowledge-title" hidden>
   <div class="ckm-backdrop"></div>
   <div class="ckm-dialog" role="document">
     <div class="ckm-header">
       <div class="ckm-title-wrap">
-        <div class="ckm-subtitle"><h4>사례로 알아보는</h4></div>
+        <h4 class="ckm-subtitle">사례로 알아보는</h4>
         <h2 id="claim-knowledge-title" class="ckm-title">자동차 사고 보상상식</h2>
       </div>
-      <button class="ckm-close" type="button" aria-label="닫기" title="닫기">&times;</button>
+      <button class="ckm-close" type="button" aria-label="닫기" title="닫기">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="ckm-tabs" role="tablist" aria-label="분류 선택">
-      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 차" aria-selected="true">차 vs. 차</button>
-      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 사람" aria-selected="false">차 vs. 사람</button>
-      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 기타" aria-selected="false">차 vs. 기타</button>
+    <div class="ckm-tabs" role="tablist" aria-label="사고 유형별 분류">
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 차" aria-selected="true" aria-controls="ckm-list">
+        <span class="tab-icon">🚗</span>
+        <span>차 vs. 차</span>
+      </button>
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 사람" aria-selected="false" aria-controls="ckm-list">
+        <span class="tab-icon">🚶</span>
+        <span>차 vs. 사람</span>
+      </button>
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 기타" aria-selected="false" aria-controls="ckm-list">
+        <span class="tab-icon">🏍️</span>
+        <span>차 vs. 기타</span>
+      </button>
     </div>
 
     <div class="ckm-body">
-      <div class="ckm-list" id="ckm-list" aria-label="사례 목록" role="listbox"></div>
-      <div class="ckm-detail" id="ckm-detail" aria-live="polite">
-        <div class="ckm-empty">좌측에서 사례를 선택하세요.</div>
+      <div class="ckm-list" id="ckm-list" aria-label="보상 사례 목록" role="listbox" tabindex="0">
+        <div class="ckm-loading">
+          <div class="loading-spinner"></div>
+          <p>사례를 불러오는 중입니다...</p>
+        </div>
+      </div>
+      <div class="ckm-detail" id="ckm-detail" aria-live="polite" role="main">
+        <div class="ckm-empty">
+          <div class="empty-icon">📋</div>
+          <h3>사례를 선택해주세요</h3>
+          <p>좌측 목록에서 궁금한 보상 사례를 선택하시면<br>상세 내용을 확인하실 수 있습니다.</p>
+        </div>
       </div>
     </div>
   </div>
