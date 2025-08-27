@@ -8,7 +8,10 @@ from pathlib import Path
 from typing import List, Dict, Any
 from .pinecone_client import get_index
 
-model = SentenceTransformer('intfloat/multilingual-e5-large')
+try:
+    model = SentenceTransformer('intfloat/multilingual-e5-large', local_files_only=True)
+except Exception:
+    model = None  # 앱은 먼저 뜨고, 최초 호출 시 안내/지연 로딩
 
 class EnhancedPDFProcessor:
     def __init__(self):

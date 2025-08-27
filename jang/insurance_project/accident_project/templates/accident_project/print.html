@@ -1,0 +1,264 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>교통사고 협의서 출력</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#1d2a39; --muted:#6b7688; --line:#e7edf3;
+      --primary:#2b78c5; --primary-2:#245f99; --radius:14px; --shadow:0 10px 26px rgba(0,0,0,.06);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
+      font-family:system-ui,-apple-system,"Segoe UI","Noto Sans KR",Arial,sans-serif}
+    .wrap{max-width:980px; margin:24px auto 48px; padding:0 16px}
+    .doc{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--line)}
+    .head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 18px 14px; border-bottom:1px solid var(--line)}
+    .title{font-size:20px; font-weight:900; margin:0}
+    .meta{color:var(--muted); font-size:13px}
+    .toolbar{display:flex; gap:8px; flex-wrap:wrap}
+    .btn{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+      background:#eef2f7; color:#243043; text-decoration:none; border:1px solid #e5e9f2; font-weight:700; font-size:14px}
+    .btn-primary{background:var(--primary); color:#fff; border-color:transparent}
+    .btn-primary:hover{background:var(--primary-2)}
+    .body{padding:16px}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+    .card{background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px}
+    .card h3{margin:0 0 10px; font-size:16px; font-weight:900}
+    .row{display:grid; grid-template-columns:140px 1fr; gap:10px; padding:6px 0; border-bottom:1px dashed #edf2f7}
+    .row:last-child{border-bottom:0}
+    .label{color:#4a5a70; font-weight:700}
+    .v{white-space:pre-wrap}
+    .badges{display:flex; flex-wrap:wrap; gap:8px}
+    .badge{display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;
+      border:1px solid #e7edf3; color:#406080; background:#f5f9ff}
+    .muted{color:var(--muted)}
+    @media print{
+      html,body{background:#fff}
+      .head .toolbar{display:none}
+      .doc{box-shadow:none; border:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="doc">
+      <div class="head">
+        <div>
+          <h1 class="title">교통사고 협의서</h1>
+          <div class="meta">
+            문서번호: {% if pk %}#{{ pk }}{% else %}-{% endif %}
+            · 출력시각: {% now "Y-m-d H:i" %}
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <!-- 팝업이면 '창 닫기', 팝업이 아니면 '목록으로' -->
+          <a class="btn" id="btn-back" href="{% url 'accident_project:mypage_agreements' %}" style="display:none">← 목록으로</a>
+          <button type="button" class="btn" id="btn-close" style="display:none">창 닫기</button>
+
+          {% if pk and not in_preview %}
+            <a class="btn" href="{% url 'accident_project:agreement_pdf' pk=pk %}" target="_blank" rel="noopener">PDF 저장</a>
+            <a class="btn" href="{% url 'accident_project:agreement_image' pk=pk %}">텍스트 내보내기</a>
+          {% endif %}
+          <a class="btn btn-primary" href="javascript:window.print()">인쇄</a>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="grid">
+          <section class="card">
+            <h3>사고 기본</h3>
+            <div class="row"><div class="label">사고일시</div><div class="v" id="v-accident-date"></div></div>
+            <div class="row"><div class="label">사고장소</div><div class="v" id="v-location"></div></div>
+            <div class="row"><div class="label">기상</div><div class="v" id="v-weather"></div></div>
+            <div class="row"><div class="label">충돌유형</div><div class="v" id="v-type-cc"></div></div>
+            <div class="row"><div class="label">보행자상황</div><div class="v" id="v-type-cp"></div></div>
+            <div class="row"><div class="label">주요원인</div><div class="v" id="v-cause"></div></div>
+          </section>
+
+          <section class="card">
+            <h3>개요</h3>
+            <div class="row"><div class="label">사고 개요</div><div class="v" id="v-desc"></div></div>
+            <div class="row"><div class="label">담당보험</div>
+              <div class="v">
+                A: <span id="v-a-insurer"></span> &nbsp;·&nbsp;
+                B: <span id="v-b-insurer"></span>
+              </div>
+            </div>
+            <div class="row"><div class="label">인원(남/여)</div>
+              <div class="v">
+                A: <span id="v-a-male"></span>/<span id="v-a-female"></span>
+                (합계 <span id="v-a-total"></span>) &nbsp;·&nbsp;
+                B: <span id="v-b-male"></span>/<span id="v-b-female"></span>
+                (합계 <span id="v-b-total"></span>)
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="grid" style="margin-top:16px">
+          <section class="card">
+            <h3>A 차량</h3>
+            <div class="row"><div class="label">운전자</div><div class="v" id="v-a-name"></div></div>
+            <div class="row"><div class="label">주민등록번호</div><div class="v" id="v-a-id"></div></div>
+            <div class="row"><div class="label">연락처</div><div class="v" id="v-a-phone"></div></div>
+            <div class="row"><div class="label">주소</div><div class="v" id="v-a-address"></div></div>
+            <div class="row"><div class="label">차량번호</div><div class="v" id="v-a-plate"></div></div>
+            <div class="row"><div class="label">상해/파손</div><div class="v" id="v-a-damage"></div></div>
+          </section>
+
+          <section class="card">
+            <h3>B 차량</h3>
+            <div class="row"><div class="label">운전자</div><div class="v" id="v-b-name"></div></div>
+            <div class="row"><div class="label">주민등록번호</div><div class="v" id="v-b-id"></div></div>
+            <div class="row"><div class="label">연락처</div><div class="v" id="v-b-phone"></div></div>
+            <div class="row"><div class="label">주소</div><div class="v" id="v-b-address"></div></div>
+            <div class="row"><div class="label">차량번호</div><div class="v" id="v-b-plate"></div></div>
+            <div class="row"><div class="label">상해/파손</div><div class="v" id="v-b-damage"></div></div>
+          </section>
+        </div>
+
+        <section class="card" style="margin-top:16px">
+          <h3>보행자</h3>
+          <div class="row"><div class="label">이름</div><div class="v" id="v-p-name"></div></div>
+          <div class="row"><div class="label">주민등록번호</div><div class="v" id="v-p-id"></div></div>
+          <div class="row"><div class="label">연락처</div><div class="v" id="v-p-phone"></div></div>
+          <div class="row"><div class="label">주소</div><div class="v" id="v-p-address"></div></div>
+          <div class="row"><div class="label">상해/파손</div><div class="v" id="v-p-damage"></div></div>
+        </section>
+
+        <section class="card" style="margin-top:16px">
+          <h3>태그</h3>
+          <div class="badges" id="v-badges"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 데이터 안전 주입 (XSS-safe) -->
+  {{ F|json_script:"agreement-data" }}
+
+  <script>
+  (function(){
+    // 팝업/단독 판별 → 버튼 토글
+    const hasOpener = !!(window.opener && !window.opener.closed);
+    const btnClose = document.getElementById('btn-close');
+    const btnBack  = document.getElementById('btn-back');
+    if (hasOpener) {
+      btnClose.style.display = 'inline-flex';
+      btnClose.onclick = ()=> window.close();
+    } else {
+      btnBack.style.display = 'inline-flex';
+    }
+
+    // ---------- 안전 파싱 ----------
+    let F = {};
+    try {
+      const el = document.getElementById('agreement-data');
+      F = JSON.parse(el.textContent || '{}') || {};
+    } catch (e) {
+      console.error('agreement-data JSON parse failed:', e);
+      F = {};
+    }
+
+    // ---------- 헬퍼 ----------
+    const byId = (id)=>document.getElementById(id);
+    const set = (id, v='')=>{
+      const el = byId(id); if(!el) return;
+      el.textContent = (v ?? '').toString();
+    };
+    const safeArr = (x)=>{
+      if (Array.isArray(x)) return x;
+      if (typeof x === 'string'){
+        const s = x.trim();
+        if (s.startsWith('[') && s.endsWith(']')){
+          try { return JSON.parse(s); } catch(e){ return []; }
+        }
+        if (s.length) return [s];
+      }
+      return [];
+    };
+    const sum2 = (a,b)=> (parseInt(a||'0',10) || 0) + (parseInt(b||'0',10) || 0);
+
+    // ---------- 마스킹 여부(서버 계산 값 우선) ----------
+    const mask = {{ mask_rrn|yesno:"true,false" }};
+
+    // ---------- 표시용 값 ----------
+    const accidentDateDisplay = F.accident_date_display || F.accident_date || '';
+    set('v-accident-date', accidentDateDisplay);
+    set('v-location', F.location);
+
+    set('v-a-name', F.a_name);
+    set('v-b-name', F.b_name);
+
+    set('v-a-id', mask ? (F.a_id_masked || '') : (F.a_id || ''));
+    set('v-b-id', mask ? (F.b_id_masked || '') : (F.b_id || ''));
+    set('v-p-id', mask ? (F.p_id_masked || '') : (F.p_id || ''));
+
+    set('v-a-phone', F.a_phone);
+    set('v-b-phone', F.b_phone);
+    set('v-p-phone', F.p_phone);
+
+    set('v-a-address', F.a_address);
+    set('v-b-address', F.b_address);
+    set('v-p-address', F.p_address);
+
+    set('v-a-plate', F.a_plate);
+    set('v-b-plate', F.b_plate);
+
+    set('v-a-insurer', F.a_insurer);
+    set('v-b-insurer', F.b_insurer);
+
+    set('v-a-damage', F.a_damage_desc);
+    set('v-b-damage', F.b_damage_desc);
+    set('v-p-damage', F.p_damage_desc);
+
+    set('v-a-male', F.a_male || '0');
+    set('v-a-female', F.a_female || '0');
+    set('v-b-male', F.b_male || '0');
+    set('v-b-female', F.b_female || '0');
+
+    set('v-a-total', F.a_total || String(sum2(F.a_male, F.a_female)));
+    set('v-b-total', F.b_total || String(sum2(F.b_male, F.b_female)));
+
+    const weather = safeArr(F.weather).join(', ');
+    const typeCC  = safeArr(F.type_cc).join(', ');
+    const typeCP  = safeArr(F.type_cp).join(', ');
+    const cause   = safeArr(F.cause).join(', ');
+    set('v-weather', weather);
+    set('v-type-cc', typeCC);
+    set('v-type-cp', typeCP);
+    set('v-cause', cause);
+
+    set('v-desc', F.accident_description || '');
+
+    const badges = document.getElementById('v-badges');
+    const tagList = [
+      ...safeArr(F.weather),
+      ...safeArr(F.type_cc),
+      ...safeArr(F.type_cp),
+      ...safeArr(F.cause)
+    ].filter(Boolean);
+
+    if (badges){
+      badges.innerHTML = '';
+      tagList.forEach(t=>{
+        const s = document.createElement('span');
+        s.className = 'badge';
+        s.textContent = t;
+        badges.appendChild(s);
+      });
+      if (!tagList.length){
+        const m = document.createElement('span');
+        m.className = 'muted';
+        m.textContent = '표시할 태그가 없습니다.';
+        badges.appendChild(m);
+      }
+    }
+  })();
+  </script>
+</body>
+</html>

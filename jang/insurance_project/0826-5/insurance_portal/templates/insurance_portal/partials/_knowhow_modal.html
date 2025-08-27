@@ -1,0 +1,34 @@
+<!-- Feature: 보험 상식 | Purpose: 파일 용도 주석 추가 | Notes: 해당 파일은 보험 상식 기능에 사용됩니다. -->
+<!-- 보험상식 모달 (전문적 스타일 적용) -->
+<div id="knowhow-modal" role="dialog" aria-modal="true" aria-labelledby="knowhow-title" hidden>
+  <div class="kh-backdrop"></div>
+  <div class="kh-dialog" role="document">
+    <div class="kh-header">
+      <div class="kh-title-wrap">
+        <h4 class="kh-subtitle">생활에 도움되는</h4>
+        <h2 id="knowhow-title" class="kh-main-title">보험상식</h2>
+      </div>
+      <button class="kh-close" type="button" aria-label="닫기" title="닫기">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="kh-body">
+      <div class="kh-list" id="kh-list" aria-label="보험상식 목록" role="listbox" tabindex="0">
+        <div class="kh-loading">
+          <div class="loading-spinner"></div>
+          <p>보험상식을 불러오는 중입니다...</p>
+        </div>
+      </div>
+      <div class="kh-detail" id="kh-detail" aria-live="polite" role="main">
+        <div class="kh-empty">
+          <div class="empty-icon">📚</div>
+          <h3>보험상식을 선택해주세요</h3>
+          <p>좌측 목록에서 관심있는 보험상식을 선택하시면<br>유용한 정보를 확인하실 수 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

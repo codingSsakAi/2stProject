@@ -1,0 +1,148 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>마이페이지</title>
+<style>
+  :root{ --bg:#eef2ff; --border:#e5e7eb; --ink:#111827; --muted:#6b7280; --white:#fff; }
+  html,body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,'Malgun Gothic'}
+  .wrap{max-width:960px;margin:24px auto 40px;padding:0 16px}
+  .title{margin:8px 0 16px;font-size:28px;font-weight:900;color:var(--ink)}
+  .card{background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 25px rgba(0,0,0,.05)}
+  .section{padding:18px}
+  .muted{color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;text-decoration:none}
+  .btn:hover{background:#f9fafb}
+  .btn-primary{border-color:#6366f1;background:#6366f1;color:#fff}
+
+  /* 좌상단 홈 */
+  .topbar{position:sticky;top:0;padding:10px 0 0;margin-bottom:6px}
+  .home-link{display:inline-flex;gap:8px;align-items:center;text-decoration:none;color:#374151;font-weight:700}
+  .home-link:hover{text-decoration:underline}
+
+  /* 프로필 카드 */
+  .profile-card{position:relative; overflow:hidden}
+  .profile-header{display:flex; align-items:center; gap:16px; margin-bottom:14px}
+  .avatar{
+    width:64px; height:64px; border-radius:50%;
+    display:grid; place-items:center; font-weight:800; color:#fff;
+    background: linear-gradient(135deg,#6366f1 0%, #8b5cf6 100%);
+    box-shadow: 0 8px 20px rgba(99,102,241,.25);
+    font-size:22px;
+  }
+  .profile-title{display:flex; flex-direction:column; gap:6px}
+  .profile-title .name{font-size:20px; font-weight:900; color:#111827}
+  .profile-title .email{color:#6b7280; font-size:13px}
+  .badges{display:flex; gap:8px; flex-wrap:wrap}
+  .badge{
+    padding:4px 10px; font-size:12px; border-radius:999px;
+    background:#eef2ff; color:#4f46e5; border:1px solid #e5e7eb;
+  }
+  .badge.gray{background:#f3f4f6;color:#374151}
+
+  .info-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .info-item{background:#fafafa; border:1px solid #eee; border-radius:12px; padding:10px}
+  .info-item .label{font-size:11px; color:#6b7280; font-weight:700}
+  .info-item .value{font-size:15px; font-weight:800; color:#111827; margin-top:3px}
+  @media (max-width:640px){ .info-grid{grid-template-columns:1fr} }
+
+  /* 사고 카드 */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .acc{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .acc h4{margin:0;font-size:16px}
+  .pager{display:flex;justify-content:center;gap:6px;margin-top:16px}
+  .empty{padding:24px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 좌상단 홈 버튼 -->
+  <div class="topbar">
+    {% if user.is_authenticated %}
+      {# 루트 URL name이 다르면 href="/" 로 바꿔도 됩니다 #}
+      <a class="home-link" href="{% url 'home' %}">&#8592; 홈으로</a>
+    {% else %}
+      <a class="home-link" href="/">&#8592; 홈으로</a>
+    {% endif %}
+  </div>
+
+  <h1 class="title">마이페이지</h1>
+
+  <!-- 내 회원 정보 -->
+  <div class="card section profile-card" style="margin-bottom:18px">
+    <div class="profile-header">
+      <div class="avatar">{{ request.user.username|default:"U"|first|upper }}</div>
+      <div class="profile-title">
+        <div class="name">{{ request.user.username }}</div>
+        <div class="email">{{ request.user.email|default:"이메일 미등록" }}</div>
+        <div class="badges">
+          <span class="badge">
+            {% if request.user.gender == "M" %}남성
+            {% elif request.user.gender == "F" %}여성
+            {% else %}성별 미선택{% endif %}
+          </span>
+          <span class="badge gray">면허 {{ request.user.has_license|yesno:"소지,미소지" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="label">생년월일</div>
+        <div class="value">{% if request.user.birth_date %}{{ request.user.birth_date|date:"Y-m-d" }}{% else %}-{% endif %}</div>
+      </div>
+      <div class="info-item">
+        <div class="label">가입일</div>
+        <div class="value">{{ request.user.date_joined|date:"Y-m-d" }}</div>
+      </div>
+      <div class="info-item">
+        <div class="label">아이디</div>
+        <div class="value">{{ request.user.username }}</div>
+      </div>
+      <div class="info-item">
+        <div class="label">이메일</div>
+        <div class="value">{{ request.user.email|default:"-" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사고 내역 -->
+  <div class="card section">
+    <h2 style="margin:0 0 10px;font-size:20px;font-weight:800">나의 사고 내역</h2>
+
+    {% if agreements.object_list %}
+      <div class="cards">
+        {% for ag in agreements.object_list %}
+          <div class="acc">
+            <h4>#{{ ag.pk }} — {{ ag.accident_date|date:"Y-m-d H:i" }}</h4>
+            <div class="muted">장소: {{ ag.location|default:"-" }}</div>
+            <div class="muted">A: {{ ag.a_plate|default:"-" }} / B: {{ ag.b_plate|default:"-" }}</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <a class="btn-primary" href="{% url 'record_detail' ag.pk %}">세부보기</a>
+              <a class="btn" target="_blank" href="{% url 'record_print' ag.pk %}?export=pdf">다운로드(PDF)</a>
+              <a class="btn" target="_blank" href="{% url 'record_print' ag.pk %}?export=jpg">다운로드(JPG)</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="pager">
+        {% if agreements.has_previous %}
+          <a class="btn" href="?page={{ agreements.previous_page_number }}">이전</a>
+        {% endif %}
+        <div class="btn muted">페이지 {{ agreements.number }} / {{ agreements.paginator.num_pages }}</div>
+        {% if agreements.has_next %}
+          <a class="btn" href="?page={{ agreements.next_page_number }}">다음</a>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="empty">등록된 사고 내역이 없습니다.</div>
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

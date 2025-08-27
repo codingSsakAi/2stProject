@@ -1,0 +1,20 @@
+{% load static %}
+<!-- portal body bundle -->
+<div id="portal-root" data-version="v1" aria-hidden="false">
+  <!--
+    여기는 전역 주입 포털의 루트입니다.
+    필요한 위젯(예: 지식베이스, 챗봇, 퀵메뉴 등)은 JS에서 동적으로 mount 됩니다.
+    기존 페이지 DOM과 충돌하지 않도록 id 스코프(#portal-root ...)만 스타일을 적용합니다.
+  -->
+  <div class="portal-sr-only" id="portal-a11y-desc">보험 포털 전역 위젯 컨테이너</div>
+</div>
+
+<script id="portal-bundle-js"
+        src="{% static 'insurance_portal/js/portal.bundle.js' %}"
+        defer
+        data-portal="1"></script>
+
+<noscript>
+  <!-- JS 비활성화 시 최소 안내 -->
+  <style>#portal-root{display:none !important}</style>
+</noscript>

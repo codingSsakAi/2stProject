@@ -1,0 +1,38 @@
+<!-- Feature: 사고 가이드 | Purpose: 파일 용도 주석 추가 | Notes: 해당 파일은 사고 가이드 기능에 사용됩니다. -->
+<!-- templates/insurance_app/partials/_guide_modal.html -->
+<div class="modal fade" id="guideModal" tabindex="-1" aria-labelledby="guideModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-subtitle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="me-2">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            체계적이고 안전한
+          </div>
+          <h2 id="guideModalLabel" class="modal-title">사고처리 가이드</h2>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+      <div class="modal-body">
+        <div id="guideBody">
+          <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>사고처리 가이드를 불러오는 중입니다...</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="footer-content">
+          <div class="disclaimer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="me-1">
+              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>본 가이드는 일반적인 사고처리 절차를 안내하며, 실제 상황과 다를 수 있습니다.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

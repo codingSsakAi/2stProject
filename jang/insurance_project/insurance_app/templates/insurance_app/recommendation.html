@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -99,7 +100,8 @@
   </div>
 
   <script>
-    const MEDIA_BASE = "{{ MEDIA_URL|default:'/documents/' }}";  // settings.MEDIA_URL 전달됨
+    // MEDIA_URL 컨텍스트가 없는 환경 대비
+    const MEDIA_BASE = "{{ MEDIA_URL|default:'/media/' }}";
 
     function getCookie(name){
       let v=null;
@@ -147,14 +149,44 @@
       sendChat();
     }
 
-    function clamp01(x){ return Math.max(0,Math.min(0.999,Number(x)||0)); }
+    // ---------- 경로 유틸 ----------
+    const enc = s => String(s||'').split('/').map(encodeURIComponent).join('/');
 
-    // 경로 컴포넌트 안전 인코딩 (한글/공백 대응)
-    function encodePath(p){
-      return String(p||'').split('/').map(encodeURIComponent).join('/');
+    // HEAD로 존재 확인(405 등 예외시 Range GET으로 재시도)
+    async function exists(url){
+      try{
+        const h = await fetch(url, { method:'HEAD' });
+        if (h.ok) return true;
+        if (h.status === 405) {
+          // 일부 서버가 HEAD 미지원일 수 있음 → 최소 바이트 GET
+          const g = await fetch(url, { method:'GET', headers:{'Range':'bytes=0-0'} });
+          return g.ok;
+        }
+        return false;
+      }catch(_){ return false; }
     }
 
-    // 간단 키워드 하이라이트
+    // 회사명만으로 가능한 URL 후보를 시도 → 첫 성공 URL 반환
+    async function resolveDocUrl(company){
+      const c = enc(company);
+      if (!c) return "";
+
+      const candidates = [
+        `/documents/${c}/${c}.pdf`, // 권장 규칙
+        `/documents/${c}.pdf`,
+        `${MEDIA_BASE}documents/${c}.pdf`,
+        `${MEDIA_BASE}${c}.pdf`,
+        `/static/documents/${c}.pdf`,
+        `/static/${c}.pdf`,
+      ];
+
+      for (const u of candidates){
+        if (await exists(u)) return u;
+      }
+      return "";
+    }
+
+    // 간단 하이라이트
     function highlight(text, query){
       try{
         const terms = (query||'').split(/\s+/).filter(t=>t.length>=2);
@@ -166,6 +198,22 @@
         });
         return out;
       }catch(e){ return text; }
+    }
+
+    // 참고 링크 HTML 비동기 생성 (doc_url/pdf_link 우선, 없으면 회사명으로 탐색)
+    async function renderReferences(refs){
+      const items = await Promise.all((refs||[]).map(async (ref, i)=>{
+        const page = ref.page || ref.page_number || '';
+        let href = ref.doc_url || ref.pdf_link || '';
+        if (!href){
+          const co = ref.company || ref.insurer || '';
+          href = await resolveDocUrl(co);
+        }
+        const label = (ref.company || ref.insurer || '약관') + (page?` / p.${page}`:'');
+        const link = href ? `<a href="${href}${page?`#page=${page}`:''}" target="_blank" rel="noopener">원문 보기</a>` : '';
+        return `(${i+1}) ${label} ${link}`;
+      }));
+      return items.join('<br/>');
     }
 
     async function sendChat(){
@@ -193,20 +241,11 @@
         }
 
         const answerHtml = highlight((data.answer||'').replace(/\n/g,'\n'), q);
-
-        /* ▼ 근거 표시: "회사 / p.N · 해당 페이지" + /documents/<회사>/<회사>.pdf#page=N */
-        const refs=(data.references||[]).map((s,i)=>{
-          const page = s.page || '';
-          const company = s.company || '?';
-          // 회사명 기반 문서 경로 조합
-          const docPath = `${encodePath(company)}/${encodePath(company)}.pdf`;
-          const link = page ? `<a href="/documents/${docPath}#page=${page}" target="_blank">원문 보기</a>` : '';
-          return `(${i+1}) ${company}${page?` / p.${page}`:''} ${link}`;
-        }).join('<br/>');
+        const refsHtml = await renderReferences(data.references || []);
 
         const html = `
           <div style="white-space:pre-wrap">${answerHtml}</div>
-          ${refs? `<div class="meta">근거<br/>${refs}</div>`:''}
+          ${refsHtml ? `<div class="meta">근거<br/>${refsHtml}</div>` : ''}
         `;
         replaceBubble(pendingId, html);
       }catch(e){

@@ -1,0 +1,700 @@
+/* ===========================
+ * 3D 플로팅 액션 버튼 시스템
+ * 3D Transform + 글로우 + 아이콘 3D 효과
+ * =========================== */
+
+:root {
+  --fab-size: 56px;
+  --fab-sub-size: 60px;
+  --fab-spacing: 16px;
+  --fab-primary: #2563eb;
+  --fab-reward: #dc2626;
+  --fab-guide: #059669;
+  --fab-knowhow: #7c3aed;
+  --fab-chatbot: #1f2937;
+  --animation-speed: 0.3s;
+  --animation-fast: 0.2s;
+  --label-bg: rgba(0, 0, 0, 0.8);
+  --fab-backdrop: rgba(0, 0, 0, 0.1);
+}
+
+.floating-fab-container {
+  position: fixed;
+  right: 24px;
+  z-index: 1050;
+  transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, top;
+}
+
+/* 확장 시 반투명 배경 (선택적) */
+.floating-fab-container.expanded::before {
+  content: none !important; 
+  display: none !important;
+}
+/* FAB 확장 시, body에 전체화면 백드롭을 띄움 */
+body.fab-backdrop-active::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--fab-backdrop); /* rgba(0,0,0,0.1) */
+  z-index: 1049; /* FAB 컨테이너(1050~)보다 낮게 */
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--animation-speed) ease;
+}
+
+/* 메인 3D 버튼 */
+.fab-main-btn {
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(145deg, #3b82f6, var(--fab-primary), #1e40af);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 10;
+  outline: none;
+  
+  /* 3D Transform + 글로우 효과 */
+  transform: perspective(500px) rotateX(15deg) rotateY(-5deg) translateZ(20px);
+  box-shadow: 
+    0 8px 20px rgba(37, 99, 235, 0.4),
+    0 0 30px rgba(37, 99, 235, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fab-main-btn:hover {
+  transform: perspective(500px) rotateX(5deg) rotateY(5deg) translateZ(40px) scale(1.1);
+  box-shadow: 
+    0 15px 35px rgba(37, 99, 235, 0.5),
+    0 0 40px rgba(37, 99, 235, 0.4),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(145deg, #60a5fa, #3b82f6, #2563eb);
+}
+
+.fab-main-btn:active {
+  transform: perspective(500px) rotateX(25deg) rotateY(-10deg) translateZ(10px) scale(0.95);
+  box-shadow: 
+    0 5px 15px rgba(37, 99, 235, 0.3),
+    0 0 20px rgba(37, 99, 235, 0.2),
+    inset 0 1px 3px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 메인 아이콘 3D 효과 */
+.fab-main-icon {
+  font-size: 24px;
+  transition: all var(--animation-speed) cubic-bezier(0.4, 0, 0.2, 1);
+  text-shadow: 
+    0 1px 0 #1e40af,
+    0 2px 0 #1e3a8a,
+    0 3px 6px rgba(0, 0, 0, 0.3);
+  transform: perspective(100px) rotateX(8deg);
+  display: inline-block;
+}
+
+.floating-fab-container.expanded .fab-main-icon {
+  transform: perspective(100px) rotateX(8deg) rotate(45deg);
+}
+
+/* 서브 액션 컨테이너 */
+.fab-sub-container {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.floating-fab-container.expanded .fab-sub-container {
+  pointer-events: auto;
+}
+
+/* 개별 액션 아이템 */
+.fab-action-item {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: scale(0) translateY(0);
+  opacity: 0;
+  transition: all var(--animation-speed) cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+
+/* 반원 배치 - 기본 확장 스타일 */
+.floating-fab-container.expanded .fab-action-item:nth-child(1) {
+  transform: scale(1) translate(0, -100px);
+  opacity: 1;
+  transition-delay: 0.1s;
+}
+.floating-fab-container.expanded .fab-action-item:nth-child(2) {
+  transform: scale(1) translate(-70px, 38px);
+  opacity: 1;
+  transition-delay: 0.15s;
+}
+.floating-fab-container.expanded .fab-action-item:nth-child(3) {
+  transform: scale(1) translate(-70px, -38px);
+  opacity: 1;
+  transition-delay: 0.2s;
+}
+.floating-fab-container.expanded .fab-action-item:nth-child(4) {
+  transform: scale(1) translate(0, 90px);
+  opacity: 1;
+  transition-delay: 0.25s;
+}
+
+.floating-fab-container:not(.expanded) .fab-action-item {
+  transition-delay: 0s;
+  transition-duration: var(--animation-fast);
+}
+
+/* 서브 3D 버튼 공통 스타일 */
+.fab-sub-btn {
+  width: var(--fab-sub-size);
+  height: var(--fab-sub-size);
+  border-radius: 50%;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--animation-fast) cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 26px;
+  outline: none;
+  transform: perspective(400px) rotateX(12deg) rotateY(-3deg) translateZ(15px);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 0, 0, 0.1),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+.fab-sub-btn:hover {
+  transform: perspective(400px) rotateX(5deg) rotateY(5deg) translateZ(30px) scale(1.15);
+  box-shadow: 
+    0 12px 28px rgba(0, 0, 0, 0.25),
+    0 0 35px rgba(0, 0, 0, 0.15),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
+.fab-sub-btn:active {
+  transform: perspective(400px) rotateX(20deg) rotateY(-8deg) translateZ(8px) scale(0.9);
+}
+.fab-sub-btn i {
+  text-shadow: 
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.3),
+    0 3px 4px rgba(0, 0, 0, 0.2);
+  transform: perspective(80px) rotateX(8deg);
+  display: inline-block;
+  transition: transform var(--animation-fast) ease;
+}
+
+/* 개별 버튼 색상 + 글로우 */
+.fab-reward { 
+  background: linear-gradient(145deg, #f87171, var(--fab-reward), #b91c1c);
+}
+.fab-reward:hover { 
+  background: linear-gradient(145deg, #fca5a5, #f87171, var(--fab-reward));
+  box-shadow: 
+    0 12px 28px rgba(220, 38, 38, 0.4),
+    0 0 35px rgba(220, 38, 38, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.fab-guide { 
+  background: linear-gradient(145deg, #34d399, var(--fab-guide), #047857);
+}
+.fab-guide:hover { 
+  background: linear-gradient(145deg, #6ee7b7, #34d399, var(--fab-guide));
+  box-shadow: 
+    0 12px 28px rgba(5, 150, 105, 0.4),
+    0 0 35px rgba(5, 150, 105, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.fab-knowhow { 
+  background: linear-gradient(145deg, #a78bfa, var(--fab-knowhow), #6d28d9);
+}
+.fab-knowhow:hover { 
+  background: linear-gradient(145deg, #c4b5fd, #a78bfa, var(--fab-knowhow));
+  box-shadow: 
+    0 12px 28px rgba(124, 58, 237, 0.4),
+    0 0 35px rgba(124, 58, 237, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.fab-chatbot { 
+  background: linear-gradient(145deg, #4b5563, var(--fab-chatbot), #111827);
+}
+.fab-chatbot:hover { 
+  background: linear-gradient(145deg, #6b7280, #4b5563, var(--fab-chatbot));
+  box-shadow: 
+    0 12px 28px rgba(31, 41, 55, 0.4),
+    0 0 35px rgba(31, 41, 55, 0.3),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* 활성화 상태 3D 효과 */
+.fab-action-item.active .fab-sub-btn {
+  transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateZ(40px) scale(1.2);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.3),
+    0 0 50px currentColor,
+    inset 0 4px 8px rgba(255, 255, 255, 0.3);
+  animation: pulse-active-3d 2s infinite;
+}
+
+@keyframes pulse-active-3d {
+  0% { 
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.3),
+      0 0 40px currentColor,
+      inset 0 4px 8px rgba(255, 255, 255, 0.3);
+    transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateZ(40px) scale(1.2);
+  }
+  50% { 
+    box-shadow: 
+      0 20px 45px rgba(0, 0, 0, 0.4),
+      0 0 60px currentColor,
+      inset 0 6px 12px rgba(255, 255, 255, 0.4);
+    transform: perspective(400px) rotateX(-5deg) rotateY(5deg) translateZ(50px) scale(1.25);
+  }
+  100% { 
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.3),
+      0 0 40px currentColor,
+      inset 0 4px 8px rgba(255, 255, 255, 0.3);
+    transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateZ(40px) scale(1.2);
+  }
+}
+
+/* 라벨 스타일 */
+.fab-label {
+  background: var(--label-bg);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all var(--animation-fast) cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  user-select: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  
+  /* 라벨도 약간의 3D 효과 */
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.fab-action-item:hover .fab-label {
+  opacity: 1;
+  transform: translateX(0) perspective(200px) rotateY(5deg);
+  pointer-events: auto;
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.25),
+    inset 0 2px 4px rgba(255, 255, 255, 0.15);
+}
+
+/* 라벨 화살표 */
+.fab-label::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid var(--label-bg);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+/* 라벨 위치 조정 - 반원 배치용 */
+.floating-fab-container.expanded .fab-action-item:nth-child(1) .fab-label{
+  transform: translateX(-10%) translateY(-35%);
+  margin-bottom: 5px;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(4) .fab-label {
+  transform: translateX(-10%) translateY(35%);
+  margin-bottom: 5px;
+}
+
+.floating-fab-container.expanded .fab-action-item:nth-child(2) .fab-label,
+.floating-fab-container.expanded .fab-action-item:nth-child(3) .fab-label {
+  transform: translateY(-10%);
+  margin-right: 10px;
+}
+
+/* 스크롤 시 부드러운 이동 */
+.floating-fab-container.scrolling {
+  transition: all 0.1s ease-out;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  :root {
+    --fab-size: 48px;
+    --fab-sub-size: 40px;
+    --fab-spacing: 12px;
+  }
+  
+  .floating-fab-container {
+    right: 16px;
+  }
+  
+  .fab-label {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .fab-main-icon {
+    font-size: 20px;
+  }
+  
+  .fab-sub-btn {
+    font-size: 16px;
+  }
+  
+  /* 모바일에서는 3D 효과 약간 줄임 */
+  .fab-main-btn {
+    transform: perspective(400px) rotateX(10deg) rotateY(-3deg) translateZ(15px);
+  }
+  
+  .fab-sub-btn {
+    transform: perspective(300px) rotateX(8deg) rotateY(-2deg) translateZ(10px);
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .fab-main-btn:hover,
+  .fab-sub-btn:hover {
+    transform: perspective(400px) rotateX(10deg) rotateY(-3deg) translateZ(20px);
+  }
+  
+  .fab-label {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  
+  .fab-action-item {
+    gap: 8px;
+  }
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .fab-main-btn,
+  .fab-sub-btn {
+    border: 2px solid white;
+  }
+  
+  .fab-label {
+    border: 1px solid white;
+  }
+}
+
+/* 모션 감소 설정 준수 */
+@media (prefers-reduced-motion: reduce) {
+  .floating-fab-container,
+  .fab-action-item,
+  .fab-main-icon,
+  .fab-sub-btn,
+  .fab-label {
+    transition: none;
+    animation: none;
+    transform: none;
+  }
+  
+  .fab-action-item.active .fab-sub-btn {
+    animation: none;
+  }
+  
+  /* 모션 감소 시에는 평면 스타일로 폴백 */
+  .fab-main-btn,
+  .fab-sub-btn {
+    appearance: none;
+    -webkit-appearance: none;
+  }
+}
+
+/* 기존 시스템과의 호환성 */
+.fab-wrap:not(.floating-fab-container),
+.side-actions:not(.floating-fab-container) {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  left: -9999px;
+}
+
+.floating-fab-container {
+  z-index: 1050;
+}
+.floating-fab-container.expanded {
+  z-index: 1051;
+}
+
+/* 포커스 아웃라인 완전 제거 */
+.fab-main-btn:focus,
+.fab-main-btn:focus-visible,
+.fab-sub-btn:focus,
+.fab-sub-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* === 추가 패치: 네이티브 박스 제거 === */
+.floating-fab-container,
+.floating-fab-container * {
+  -webkit-tap-highlight-color: transparent;
+}
+.fab-main-btn,
+.fab-sub-btn {
+  appearance: none;
+  -webkit-appearance: none;
+}
+.fab-main-btn:focus,
+.fab-main-btn:focus-visible,
+.fab-sub-btn:focus,
+.fab-sub-btn:focus-visible,
+.fab-main-btn:active,
+.fab-sub-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.fab-main-btn::-moz-focus-inner,
+.fab-sub-btn::-moz-focus-inner {
+  border: 0 !important;
+}
+.fab-main-btn:-moz-focusring,
+.fab-sub-btn:-moz-focusring {
+  outline: none !important;
+}
+@media (forced-colors: active) {
+  .fab-main-btn,
+  .fab-sub-btn {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ===========================
+ * Fault Answer Components (기존 유지)
+ * 과실비율 답변 카드 스타일
+ * =========================== */
+
+#fa-ratio-summary {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+#fa-table table {
+  margin-bottom: 0;
+}
+
+#fa-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+}
+
+#fa-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+#fa-factors-plus ul, #fa-factors-minus ul {
+  margin-bottom: 0;
+  padding-left: 1rem;
+}
+
+#fa-factors-plus li, #fa-factors-minus li {
+  margin-bottom: 0.25rem;
+}
+
+.example-btn {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: #e9ecef;
+  border: 1px solid #dee2e6;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.example-btn:hover {
+  background-color: #6c757d;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.example-btn:active {
+  transform: translateY(0);
+}
+
+.question-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.option-btn {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.option-btn:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+}
+
+.option-btn:active {
+  transform: translateY(0);
+}
+
+#fault-answer .card {
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+}
+
+#fault-answer .card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transform: translateY(-1px);
+}
+
+#fault-answer .card-header {
+  border-bottom: 2px solid #f8f9fa;
+  font-weight: 600;
+}
+
+#fault-answer .card-header h5, 
+#fault-answer .card-header h6 {
+  margin-bottom: 0;
+  font-size: 1rem;
+}
+
+#fault-answer .fas, 
+#fault-answer .far {
+  width: 16px;
+  text-align: center;
+}
+
+#fa-factors-card .card-body {
+  padding: 0.75rem;
+}
+
+#fa-factors-card .col-md-6 .card {
+  height: 100%;
+}
+
+#fa-factors-card .card-header {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+#fa-factors-card .card-body {
+  padding: 0.75rem;
+}
+
+#fault-answer .btn-link {
+  color: #495057;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+#fault-answer .btn-link:hover {
+  color: #007bff;
+}
+
+#fault-answer .btn-link .fas {
+  transition: transform 0.2s ease;
+}
+
+#fault-answer .btn-link[aria-expanded="true"] .fa-chevron-down {
+  transform: rotate(180deg);
+}
+
+#fa-disclaimer {
+  border-left: 4px solid #17a2b8;
+  background-color: #f0f9ff;
+  border-color: #17a2b8;
+}
+
+@media (max-width: 768px) {
+  #fa-factors-card .col-md-6 {
+    margin-bottom: 1rem;
+  }
+  
+  #fa-ratio-summary {
+    font-size: 1.25rem;
+  }
+  
+  .example-btn, .option-btn {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+  }
+  
+  #fault-answer .card-body {
+    padding: 0.75rem;
+  }
+  
+  #fa-table {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .question-options {
+    flex-direction: column;
+  }
+  
+  .option-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  #fa-ratio-summary {
+    font-size: 1.1rem;
+  }
+}

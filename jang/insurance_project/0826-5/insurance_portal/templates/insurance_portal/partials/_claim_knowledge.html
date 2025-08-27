@@ -1,0 +1,60 @@
+<!-- Feature: 사고 가이드 | Purpose: 파일 용도 주석 추가 | Notes: 해당 파일은 사고 가이드 기능에 사용됩니다. -->
+{% load static %}
+<!-- [보상 상식] accident_data.json 전용 (모달 내부 렌더링) -->
+<div id="claim-knowledge-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="claim-knowledge-title"
+     hidden
+     data-src="{% static 'insurance_portal/json/accident_data.json' %}">
+
+  <div class="ckm-backdrop"></div>
+  <div class="ckm-dialog" role="document">
+    <div class="ckm-header">
+      <div class="ckm-title-wrap">
+        <h4 class="ckm-subtitle">사례로 알아보는</h4>
+        <h2 id="claim-knowledge-title" class="ckm-title">자동차 사고 보상상식</h2>
+      </div>
+      <button class="ckm-close" type="button" aria-label="닫기" title="닫기">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z"/>
+          </svg>
+      </button>
+    </div>
+
+    <!-- 상단 카테고리 탭 -->
+    <div class="ckm-tabs" role="tablist" aria-label="사고 유형별 분류">
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 차" aria-selected="true" aria-controls="ckm-list"><span>차 vs. 차</span></button>
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 사람" aria-selected="false" aria-controls="ckm-list"><span>차 vs. 사람</span></button>
+      <button class="ckm-tab" type="button" role="tab" data-cat="차 vs. 기타" aria-selected="false" aria-controls="ckm-list"><span>차 vs. 기타</span></button>
+    </div>
+
+    <div class="ckm-body">
+      <!-- 좌측: 대타이틀만 리스트(검색 제거) -->
+      <div class="ckm-list" id="ckm-list" aria-label="보상 사례 목록" role="listbox" tabindex="0">
+        <div class="ckm-loading">
+          <div class="loading-spinner" aria-hidden="true"></div>
+          <p>사례를 불러오는 중입니다...</p>
+        </div>
+      </div>
+
+      <!-- 우측 상세 -->
+      <div class="ckm-detail" id="ckm-detail" aria-live="polite" role="main">
+        <div id="ckm-detail-body">
+          <div class="ckm-empty">
+            <h3>사례를 선택해주세요</h3>
+            <p>좌측 목록에서 궁금한 보상 사례를 선택하시면 상세 내용을 확인하실 수 있습니다.</p>
+          </div>
+        </div>
+
+        <!-- 표준 스키마로 매핑되지 않은 추가 정보: 기본 접힘 -->
+        <details id="ckm-extras" class="ckm-collapsible" hidden>
+          <summary>추가 정보</summary>
+          <div class="ckm-extras-body"></div>
+        </details>
+
+        <!-- 원문 JSON 보기는 요구사항에 따라 제거됨 -->
+      </div>
+    </div>
+  </div>
+</div>

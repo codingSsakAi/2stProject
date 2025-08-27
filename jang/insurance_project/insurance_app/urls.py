@@ -2,6 +2,8 @@
 from django.urls import path
 from . import views
 
+app_name = "insurance_app"  # ★ 추가
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('signup/', views.signup, name='signup'),
