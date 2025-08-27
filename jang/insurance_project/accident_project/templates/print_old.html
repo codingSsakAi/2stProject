@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>교통사고 신속처리 표준 협의서</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* ===== 공통 (form.html과 동일) ===== */
+    :root { --line:1px; --pad:8px; --font:14px; }
+    *{ box-sizing:border-box; }
+    body{ font-family:'Malgun Gothic','맑은 고딕',NanumGothic,Arial,sans-serif; margin:0; padding:16px; font-size:var(--font); }
+    h2{ margin:0 0 8px 0; text-align:center; }
+
+    /* 출력용 입력 필드 스타일 */
+    input, textarea, select{ 
+      width:100%; 
+      padding:5px; 
+      font-size:var(--font); 
+      border: none;
+      background: transparent;
+      color: #000;
+    }
+    
+    .box{ border:var(--line) solid #000; background:#fff; margin-bottom:8px; }
+    .grid{ display:grid; }
+    .row{ display:flex; }
+    .cell{ padding:var(--pad); border-bottom:var(--line) solid #000; border-right:var(--line) solid #000; }
+    .cell:last-child{ border-right:0; }
+    .no-bb{ border-bottom:0 !important; }
+    .no-br{ border-right:0 !important; }
+    .hdr{ background:#f7f7f7; font-weight:700; }
+    .tight{ padding:6px; }
+    .label{ font-weight:700; white-space:nowrap; }
+
+    /* 상단 메타 */
+    table.meta{ width:100%; border-collapse:collapse; margin-bottom:8px; }
+    table.meta th, table.meta td{ border:var(--line) solid #000; padding:6px 8px; text-align:left; vertical-align:middle; }
+    
+    /* 체크박스 출력용 스타일 */
+    .weather-row{ display:flex; gap:12px; align-items:center; white-space:nowrap; flex-wrap:wrap; }
+    .weather-row label{ display:inline-flex; align-items:center; gap:6px; }
+    .checkbox-display {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 1px solid #000;
+      margin-right: 4px;
+      text-align: center;
+      line-height: 10px;
+      font-size: 10px;
+    }
+    .checkbox-display.checked {
+      background-color: #000;
+      color: white;
+    }
+    .checkbox-display.checked::after {
+      content: '✓';
+    }
+
+    /* 좌측 세로 라벨 */
+    .title-v{ writing-mode:vertical-rl; text-align:center; font-weight:700; padding:8px 4px; border-right:var(--line) solid #000; }
+
+    /* 3단 비율 */
+    .cols-3{ grid-template-columns:37.5% 37.5% 25%; }
+    .two-col{ grid-template-columns:22% 78%; }
+
+    /* 파손부위 도면 + 마킹 */
+    .damage-wrap{ padding:6px 8px; }
+    .damage-head{ font-weight:700; margin-bottom:6px; }
+    .damage-img-box{
+      border:var(--line) solid #000; height:200px; display:flex;
+      align-items:center; justify-content:center; background:#fff; position:relative; overflow:hidden;
+    }
+    .damage-img-box img{ max-width:95%; max-height:95%; object-fit:contain; }
+    .mark{ 
+      position:absolute; width:18px; height:18px; border:2px solid #d00; border-radius:50%;
+      transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:900; color:#d00; background:rgba(255,255,255,0.85); 
+    }
+
+    .desc-area{ height:70px; border:var(--line) solid #000; padding: 5px; }
+
+    /* 사고내용 표 */
+    table.acc { width:100%; border-collapse:collapse; }
+    table.acc th, table.acc td { border:var(--line) solid #000; padding:6px 8px; vertical-align:top; }
+
+    /* '사고내용/약도' 2열 */
+    .acc-wrap{ display:grid; grid-template-columns:65% 35%; }
+    .acc-left{ border-right:var(--line) solid #000; }
+    .acc-right{ position:relative; background:#fff; min-height:180px; }
+    .acc-right .tag{ position:absolute; top:6px; left:8px; font-weight:700; }
+
+    /* 보험청구 서명 */
+    .sign-table{ width:100%; border-collapse:collapse; }
+    .sign-table td{ border:var(--line) solid #000; padding:12px; text-align:center; }
+
+    /* 섹션 타이틀 */
+    .section-title{ font-weight:800; margin:6px 0; }
+
+    /* 출력용 - 컨트롤 버튼 숨김 */
+    .damage-controls, .btns { display: none; }
+
+    /* ---- 반응형 (모바일) ---- */
+    @media (max-width: 900px){
+      :root { --font: 13px; }
+      body { padding: 10px; }
+      .cols-3{ grid-template-columns: 1fr; }
+      .acc-wrap{ grid-template-columns: 1fr; }
+      .title-v{
+        writing-mode: initial;
+        border-right: 0; border-bottom: var(--line) solid #000;
+        padding: 6px 8px; text-align: left;
+      }
+      .damage-img-box{ height: 180px; }
+      table.meta th, table.meta td{ padding: 6px; }
+      .two-col{ grid-template-columns: 28% 72%; }
+    }
+
+    /* ===== 인쇄용 스타일 ===== */
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+      
+      body {
+        background: white !important;
+        padding: 5mm;
+      }
+      
+      .damage-controls, .btns {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>교통사고 신속처리 표준 협의서</h2>
+
+  <!-- 상단 메타 정보 -->
+  <table class="meta">
+    <tr>
+      <th style="width:12%">사고일시</th>
+      <td style="width:28%">{{ accident_date|default:'' }}</td>
+      <th style="width:10%">사고장소</th>
+      <td style="width:25%">{{ location|default:'' }}</td>
+      <th style="width:7%">날씨</th>
+      <td>
+        <div class="weather-row">
+          <span class="checkbox-display {% if '맑음' in weather %}checked{% endif %}"></span>맑음
+          <span class="checkbox-display {% if '흐림' in weather %}checked{% endif %}"></span>흐림
+          <span class="checkbox-display {% if '비' in weather %}checked{% endif %}"></span>비
+          <span class="checkbox-display {% if '눈' in weather %}checked{% endif %}"></span>눈
+          <span class="checkbox-display {% if '안개' in weather %}checked{% endif %}"></span>안개
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- 사고 관계자 정보 및 피해상태 -->
+  <div class="box">
+    <div class="row" style="border-bottom:var(--line) solid #000; align-items:stretch;">
+      <div class="title-v">사고 관계자 정보 및 피해상태</div>
+      <div style="flex:1;">
+        <div class="grid cols-3">
+
+          <!-- A 차량 -->
+          <div style="border-right:var(--line) solid #000;">
+            <div class="section-title">A 차량</div>
+            <div class="grid two-col">
+              <div class="cell hdr">차량번호</div>
+              <div class="cell">{{ a_plate|default:'' }}</div>
+              <div class="cell hdr">보험사</div>
+              <div class="cell">{{ a_insurer|default:'' }}</div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">운전자<br/>정보</div><div class="cell tight"></div>
+              <div class="cell hdr">성 명</div>
+              <div class="cell">{{ a_name|default:'' }}</div>
+              <div class="cell hdr">주민번호</div>
+              <div class="cell">{{ a_id|default:'' }}</div>
+              <div class="cell hdr">전화번호<br/><small>(휴대폰번호)</small></div>
+              <div class="cell">{{ a_phone|default:'' }}</div>
+              <div class="cell hdr">주 소</div>
+              <div class="cell">{{ a_address|default:'' }}</div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">탑승인원<br/><span style="font-weight:400;">(운전자제외)</span></div>
+              <div class="cell">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  남 {{ a_male|default:'0' }}명 여 {{ a_female|default:'0' }}명
+                  <span style="flex:1"></span><b>합계 {{ a_total|default:'0' }}명</b>
+                </div>
+              </div>
+            </div>
+
+            <div class="damage-wrap">
+              <div class="damage-head">[파손부위] : 해당 부위에 V 표시</div>
+
+              <div class="damage-img-box">
+                {% if car_image %}
+                  <img src="data:image/png;base64,{{ car_image }}" alt="A차량 파손부위 도면" />
+                {% else %}
+                  <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0;">A차량 이미지</div>
+                {% endif %}
+                
+                <!-- 저장된 좌표로 마킹 표시 -->
+                {% for i in "12345" %}
+                  {% with x_key="a_x_"|add:i y_key="a_y_"|add:i %}
+                    {% if x_key in data and y_key in data %}
+                      {% with x_val=data|lookup:x_key y_val=data|lookup:y_key %}
+                        {% if x_val and y_val %}
+                          <div class="mark" style="left: {{ x_val }}%; top: {{ y_val }}%;">V</div>
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  {% endwith %}
+                {% endfor %}
+              </div>
+
+              <div style="border-top:var(--line) solid #000;">
+                <div class="cell hdr" style="border-bottom:0;">[구체적 파손정도 및 특이사항 기술]</div>
+                <div class="desc-area">{{ a_damage_desc|default:'' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- B 차량 -->
+          <div style="border-right:var(--line) solid #000;">
+            <div class="section-title">B 차량</div>
+            <div class="grid two-col">
+              <div class="cell hdr">차량번호</div>
+              <div class="cell">{{ b_plate|default:'' }}</div>
+              <div class="cell hdr">보험사</div>
+              <div class="cell">{{ b_insurer|default:'' }}</div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">운전자<br/>정보</div><div class="cell tight"></div>
+              <div class="cell hdr">성 명</div>
+              <div class="cell">{{ b_name|default:'' }}</div>
+              <div class="cell hdr">주민번호</div>
+              <div class="cell">{{ b_id|default:'' }}</div>
+              <div class="cell hdr">전화번호<br/><small>(휴대폰번호)</small></div>
+              <div class="cell">{{ b_phone|default:'' }}</div>
+              <div class="cell hdr">주 소</div>
+              <div class="cell">{{ b_address|default:'' }}</div>
+            </div>
+            <div class="grid two-col">
+              <div class="cell hdr">탑승인원<br/><span style="font-weight:400;">(운전자제외)</span></div>
+              <div class="cell">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  남 {{ b_male|default:'0' }}명 여 {{ b_female|default:'0' }}명
+                  <span style="flex:1"></span><b>합계 {{ b_total|default:'0' }}명</b>
+                </div>
+              </div>
+            </div>
+
+            <div class="damage-wrap">
+              <div class="damage-head">[파손부위] : 해당 부위에 V 표시</div>
+
+              <div class="damage-img-box">
+                {% if car_image %}
+                  <img src="data:image/png;base64,{{ car_image }}" alt="B차량 파손부위 도면" />
+                {% else %}
+                  <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0;">B차량 이미지</div>
+                {% endif %}
+                
+                <!-- B차량 마킹 표시 -->
+                {% for i in "12345" %}
+                  {% with x_key="b_x_"|add:i y_key="b_y_"|add:i %}
+                    {% if x_key in data and y_key in data %}
+                      {% with x_val=data|lookup:x_key y_val=data|lookup:y_key %}
+                        {% if x_val and y_val %}
+                          <div class="mark" style="left: {{ x_val }}%; top: {{ y_val }}%;">V</div>
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  {% endwith %}
+                {% endfor %}
+              </div>
+
+              <div style="border-top:var(--line) solid #000;">
+                <div class="cell hdr" style="border-bottom:0;">[구체적 파손정도 및 특이사항 기술]</div>
+                <div class="desc-area">{{ b_damage_desc|default:'' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 보행자 -->
+          <div>
+            <div class="section-title">보행자</div>
+            <div class="grid two-col">
+              <div class="cell hdr">성명:</div>
+              <div class="cell">{{ p_name|default:'' }}</div>
+              <div class="cell hdr">주민번호:</div>
+              <div class="cell">{{ p_id|default:'' }}</div>
+              <div class="cell hdr">전화번호:</div>
+              <div class="cell">{{ p_phone|default:'' }}</div>
+              <div class="cell hdr">주소:</div>
+              <div class="cell">{{ p_address|default:'' }}</div>
+            </div>
+            <div style="border-top:var(--line) solid #000;">
+              <div class="cell hdr" style="border-bottom:0;">[구체적 피해정도 및 특이사항 기술]</div>
+              <div class="desc-area" style="height:392px;">{{ p_damage_desc|default:'' }}</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사고내용/사고약도 -->
+  <div class="box" style="border-top:0;">
+    <div class="row" style="align-items:stretch;">
+      <div class="title-v">사고내용</div>
+      <div style="flex:1;" class="acc-wrap">
+        <!-- 좌: 내용(표) -->
+        <div class="acc-left">
+          <table class="acc">
+            <!-- 사고형태 -->
+            <tr>
+              <th style="width:110px;">사고형태</th>
+              <td>
+                <div class="label">자동차대 자동차</div>
+                <div class="weather-row" style="margin:4px 0;">
+                  <span class="checkbox-display {% if '정면충돌' in type_cc %}checked{% endif %}"></span>정면충돌
+                  <span class="checkbox-display {% if '후미추돌(진행중)' in type_cc %}checked{% endif %}"></span>후미추돌(진행중)
+                  <span class="checkbox-display {% if '후미추돌(주정차중)' in type_cc %}checked{% endif %}"></span>후미추돌(주정차중)
+                  <span class="checkbox-display {% if '측면충돌' in type_cc %}checked{% endif %}"></span>측면충돌
+                  <span class="checkbox-display {% if '후진사고' in type_cc %}checked{% endif %}"></span>후진사고
+                </div>
+                <div class="label" style="margin-top:4px;">자동차대 보행자</div>
+                <div class="weather-row" style="margin:4px 0;">
+                  <span class="checkbox-display {% if '횡단보도 통행중' in type_cp %}checked{% endif %}"></span>횡단보도 통행중
+                  <span class="checkbox-display {% if '무단횡단중' in type_cp %}checked{% endif %}"></span>무단횡단중
+                  <span class="checkbox-display {% if '차도가장자리 통행중' in type_cp %}checked{% endif %}"></span>차도가장자리 통행중
+                  <span class="checkbox-display {% if '보도 통행중' in type_cp %}checked{% endif %}"></span>보도 통행중
+                </div>
+              </td>
+            </tr>
+            <!-- 사고원인 -->
+            <tr>
+              <th>사고원인</th>
+              <td>
+                <div class="weather-row">
+                  <span class="checkbox-display {% if '음주/주취운전' in cause %}checked{% endif %}"></span>음주·주취운전
+                  <span class="checkbox-display {% if '신호위반' in cause %}checked{% endif %}"></span>신호위반
+                  <span class="checkbox-display {% if '중앙선침범' in cause %}checked{% endif %}"></span>중앙선침범
+                  <span class="checkbox-display {% if '속도위반' in cause %}checked{% endif %}"></span>속도위반
+                  <span class="checkbox-display {% if '횡단보도위반' in cause %}checked{% endif %}"></span>횡단보도위반
+                  <span class="checkbox-display {% if '기타' in cause %}checked{% endif %}"></span>기타
+                </div>
+              </td>
+            </tr>
+            <!-- 상세기술 -->
+            <tr>
+              <th>[구체적 사고 개요 및 특이사항]</th>
+              <td>{{ accident_description|default:'' }}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- 우: 사고약도(빈칸) -->
+        <div class="acc-right">
+          <div class="tag">[사고약도]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 보험청구 -->
+  <div class="box" style="border-top:0;">
+    <div class="row">
+      <div class="title-v">보험청구</div>
+      <div style="flex:1; padding:8px;">
+        위 기재사항이 사실과 다름이 없음을 확인하고, 신속한 사고처리 및 보험금 청구를 위하여 상호 서명날인합니다.
+        <table class="sign-table" style="margin-top:8px;">
+          <tr>
+            <td>A 차량 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(서명)</td>
+            <td>B 차량 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(서명)</td>
+            <td>보행자 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(서명)</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

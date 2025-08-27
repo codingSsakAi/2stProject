@@ -1,125 +1,59 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>보험 추천 시스템</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            background: white;
-            padding: 50px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 600px;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-        }
-        .btn {
-            display: inline-block;
-            padding: 15px 30px;
-            margin: 10px;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            transition: all 0.3s ease;
-            font-weight: bold;
-        }
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.3);
-        }
-        .btn-secondary {
-            background: linear-gradient(135deg, #27ae60, #2ecc71);
-        }
-        .btn-secondary:hover {
-            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
-        }
-        /* 새로 추가: 약관 사전 버튼 스타일 */
-        .btn-tertiary {
-            background: linear-gradient(135deg, #8e44ad, #9b59b6);
-        }
-        .btn-tertiary:hover {
-            box-shadow: 0 10px 25px rgba(155, 89, 182, 0.3);
-        }
-
-        .nav-bar {
-            margin-top: 18px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        .nav-btn {
-            display: inline-block;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-size: 1em;
-            font-weight: 500;
-            text-decoration: none;
-            transition: background 0.2s, transform 0.2s;
-        }
-        .nav-btn:hover {
-            background: linear-gradient(135deg, #2980b9, #3498db);
-            transform: translateY(-2px) scale(1.04);
-        }
-        .logout-btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-        }
-        .logout-btn:hover {
-            background: linear-gradient(135deg, #c0392b, #e74c3c);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>보험 추천 시스템</title>
+  <style>
+    body{font-family:system-ui,-apple-system,"Segoe UI","Noto Sans KR",Arial,sans-serif;margin:0;padding:0;
+         background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .container{background:white;padding:50px;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center;max-width:680px}
+    h1{color:#2c3e50;margin-bottom:10px;font-size:2.2em}
+    p.sub{color:#4a5a70;margin:0 0 18px}
+    .btn{display:inline-block;padding:14px 24px;margin:8px;background:linear-gradient(135deg,#3498db,#2980b9);
+         color:white;text-decoration:none;border-radius:999px;transition:.2s;font-weight:800}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 10px 25px rgba(52,152,219,.25)}
+    .btn.sec{background:linear-gradient(135deg,#27ae60,#2ecc71)}
+    .btn.ter{background:linear-gradient(135deg,#8e44ad,#9b59b6)}
+    .nav{margin-top:18px;display:flex;gap:10px;justify-content:center}
+    .nav a, .nav button{padding:8px 16px;border-radius:999px;border:1px solid #e5e9f2;background:#eef2f7;color:#243043;
+                        text-decoration:none;font-weight:700;cursor:pointer}
+    .logout{background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border-color:transparent}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🏥 보험 추천 시스템</h1>
-        <p>AI 기반 맞춤형 보험 상품 추천 및 약관 검색 서비스</p>
-        <br>
-        
-        <a href="{% url 'insurance_recommendation' %}" class="btn">
-            🔍 AI 약관 검색
-        </a>
-        
-        <a href="{% url 'recommend_insurance' %}" class="btn btn-secondary">
-            📊 보험 추천
-        </a>
+  <div class="container">
+    <h1>🏥 보험 추천 시스템</h1>
+    <p class="sub">AI 기반 맞춤형 보험 상품 추천 및 약관 검색 서비스</p>
 
-        <!-- 여기 변경: 스타일 적용 -->
-        <a href="{% url 'glossary' %}" class="btn btn-tertiary">
-            📘 약관 용어 사전
-        </a>
-
-        <br><br>
-        
-        {% if user.is_authenticated %}
-            <p>안녕하세요, {{ user.username }}님!</p>
-            <a href="{% url 'mypage' %}" class="nav-btn" style="margin-right: 10px;">
-                👤 마이페이지
-            </a>
-            <form action="{% url 'logout' %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="nav-btn logout-btn">로그아웃</button>
-            </form>
-        {% else %}
-            <a href="{% url 'signup' %}" class="btn">회원가입</a>
-            <a href="{% url 'login' %}" class="btn">로그인</a>
-        {% endif %}
+    <div>
+      <a class="btn ter" href="{% url 'insurance_app:glossary' %}">📘 약관 용어 사전</a>
+      <a class="btn" href="{% url 'insurance_app:insurance_recommendation' %}">🔍 AI 약관 검색</a>
+      <a class="btn sec" href="{% url 'insurance_app:recommend_insurance' %}">📊 보험 추천</a>
     </div>
+
+    <div style="margin-top:8px">
+      <a class="btn sec" href="{% url 'accident_project:agreement_new' %}">✍️ 협의서 작성</a>
+      <a class="btn" href="{% url 'accident_project:mypage_agreements' %}">📂 내 협의서</a>
+    </div>
+
+    <div class="nav">
+      {% if user.is_authenticated %}
+        <a href="{% url 'insurance_app:mypage' %}">👤 마이페이지</a>
+        <form action="{% url 'insurance_app:logout' %}" method="post" style="display:inline">
+          {% csrf_token %}<button class="logout" type="submit">로그아웃</button>
+        </form>
+      {% else %}
+        <a href="{% url 'insurance_app:signup' %}">회원가입</a>
+        <a href="{% url 'insurance_app:login' %}">로그인</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ✅ 아카이브에서 제공된 토글/FAB UI + 관련 스크립트/모달 일체 삽입 -->
+  {% include "insurance_portal/partials/_portal_inject.html" %}
+
+  <!-- ⚠️ 이전에 시도했던 loader.js/loader_strict.js, window.PORTAL_MENU 등의 임시 스크립트는 모두 제거하세요 -->
 </body>
 </html>

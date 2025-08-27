@@ -1,0 +1,95 @@
+/* ============================================================================
+ * insurance_portal / portal.bundle.css
+ * - 전역 주입 CSS. #portal-root 범위만 사용하여 충돌 최소화.
+ * - 사이드 토글 버튼(.portal-toggle)과 셸(.portal-shell) 스타일 포함.
+ * ========================================================================== */
+
+#portal-root {
+  all: initial;
+  display: block;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+  position: relative;
+  z-index: 2147483000;
+}
+
+/* 접근성 숨김 */
+#portal-root .portal-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+/* 포털 셸(패널) */
+#portal-root .portal-shell {
+  all: unset;
+  position: fixed;
+  right: 52px;                /* 토글 버튼 옆에 붙도록 약간 띄움 */
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(420px, calc(100vw - 96px));
+  max-height: calc(100vh - 48px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.16);
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,.06);
+  overflow: hidden;
+}
+
+/* 상단 바 */
+#portal-root .portal-shell .portal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  font-weight: 600; font-size: 14px;
+}
+
+/* 내용 영역 */
+#portal-root .portal-shell .portal-content {
+  padding: 12px 14px;
+  overflow: auto;
+  max-height: calc(100vh - 48px - 46px);
+}
+
+/* 버튼 공통 */
+#portal-root .btn {
+  all: unset;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  cursor: pointer; user-select: none;
+}
+#portal-root .btn:focus { outline: 2px solid #4f46e5; outline-offset: 2px; }
+#portal-root .btn-primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+
+/* 사이드 토글 버튼(원래 형태) */
+#portal-root .portal-toggle {
+  all: unset;
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #4f46e5;
+  color: #fff;
+  border-radius: 8px 0 0 8px;
+  padding: 10px 6px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  user-select: none;
+}
+#portal-root .portal-toggle:hover { filter: brightness(1.05); }
+
+/* 모바일 안전 범위 */
+@media (max-width: 480px) {
+  #portal-root .portal-shell {
+    right: 48px;
+    width: calc(100vw - 72px);
+  }
+  #portal-root .portal-toggle {
+    padding: 8px 4px;
+  }
+}

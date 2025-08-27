@@ -1,0 +1,22 @@
+<section aria-label="빠른 연결" style="display:grid;gap:16px">
+  <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+    <a href="{% url 'recommend_insurance' %}" style="display:block;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;text-decoration:none;color:inherit">
+      <strong>보험 추천</strong><br><small>개인 맞춤 추천 실행</small>
+    </a>
+    <a href="{% url 'insurance_recommendation' %}" style="display:block;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;text-decoration:none;color:inherit">
+      <strong>챗봇</strong><br><small>대화형 RAG 상담</small>
+    </a>
+    <a href="{% url 'glossary' %}" style="display:block;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;text-decoration:none;color:inherit">
+      <strong>용어 사전</strong><br><small>보험/보상 용어 정리</small>
+    </a>
+    <a href="{% url 'accident_project:agreement_form' %}" style="display:block;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;text-decoration:none;color:inherit">
+      <strong>교통사고 협의서</strong><br><small>새 협의서 작성</small>
+    </a>
+    <a href="{% url 'accident_project:index' %}" style="display:block;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;text-decoration:none;color:inherit">
+      <strong>사고 모듈 홈</strong><br><small>목록/관리</small>
+    </a>
+    <a href="{% url 'insurance_portal:home' %}" style="display:block;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;text-decoration:none;color:inherit">
+      <strong>포털(지식/도구)</strong><br><small>개별 페이지 진입</small>
+    </a>
+  </div>
+</section>

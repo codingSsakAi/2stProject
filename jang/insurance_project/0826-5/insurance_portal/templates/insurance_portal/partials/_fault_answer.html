@@ -1,0 +1,156 @@
+<!-- Feature: 보험 상식 | Purpose: 파일 용도 주석 추가 | Notes: 해당 파일은 보험 상식 기능에 사용됩니다. -->
+<div id="fault-answer" class="mt-3">
+  <!-- 재질문 카드 -->
+  <div class="card mb-3 d-none border-info" id="fa-clarify-card">
+    <div class="card-header bg-info text-white">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-question-circle me-2"></i>
+        추가 정보가 필요해요
+      </h5>
+    </div>
+    <div class="card-body">
+      <p id="fa-clarify-message" class="mb-3 text-muted"></p>
+
+      <!-- 질문 섹션 -->
+      <div id="fa-clarify-questions" class="mb-3"></div>
+
+      <!-- 예시 질문 섹션 -->
+      <div class="mt-3">
+        <div class="small text-muted mb-2">
+          <i class="fas fa-lightbulb me-1"></i>
+          이런 식으로 물어보세요
+        </div>
+        <div id="fa-clarify-examples" class="d-flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 과실비율 요약 카드 -->
+  <div class="card mb-3 d-none border-success" id="fa-summary-card">
+    <div class="card-header bg-success text-white">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-bullseye me-2"></i>
+        과실비율 요약
+      </h5>
+    </div>
+    <div class="card-body">
+      <div id="fa-ratio-summary" class="h4 text-center text-success mb-3"></div>
+      <div id="fa-ratio-description" class="text-muted text-center"></div>
+    </div>
+  </div>
+
+  <!-- 상세 과실비율표 카드 -->
+  <div class="card mb-3 d-none" id="fa-table-card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-table me-2"></i>
+        상황별 과실비율표
+      </h5>
+    </div>
+    <div class="card-body">
+      <div id="fa-table" class="table-responsive"></div>
+    </div>
+  </div>
+
+  <!-- 조정요소 카드 -->
+  <div class="card mb-3 d-none" id="fa-factors-card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-balance-scale me-2"></i>
+        과실비율 조정요소
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <!-- 증가 요소 -->
+        <div class="col-md-6 mb-3">
+          <div class="card border-danger">
+            <div class="card-header bg-danger text-white py-2">
+              <h6 class="mb-0">
+                <i class="fas fa-arrow-up me-1"></i>
+                과실 증가 요소 (+)
+              </h6>
+            </div>
+            <div class="card-body py-2">
+              <div id="fa-factors-plus"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 감소 요소 -->
+        <div class="col-md-6 mb-3">
+          <div class="card border-primary">
+            <div class="card-header bg-primary text-white py-2">
+              <h6 class="mb-0">
+                <i class="fas fa-arrow-down me-1"></i>
+                과실 감소 요소 (-)
+              </h6>
+            </div>
+            <div class="card-body py-2">
+              <div id="fa-factors-minus"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 법령 및 판례 카드 (접이식) -->
+  <div class="card mb-3 d-none" id="fa-legal-card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <button class="btn btn-link p-0 text-decoration-none" type="button" 
+                data-bs-toggle="collapse" data-bs-target="#fa-legal-content"
+                aria-expanded="false" aria-controls="fa-legal-content">
+          <i class="fas fa-gavel me-2"></i>
+          관련 법령 및 판례
+          <i class="fas fa-chevron-down ms-2"></i>
+        </button>
+      </h5>
+    </div>
+    <div class="collapse" id="fa-legal-content">
+      <div class="card-body">
+        <div id="fa-legal-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주의사항 카드 -->
+  <div class="card mb-3 d-none border-warning" id="fa-notice-card">
+    <div class="card-header bg-warning text-dark">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        실무상 주의사항
+      </h5>
+    </div>
+    <div class="card-body">
+      <div id="fa-notice-text"></div>
+    </div>
+  </div>
+
+  <!-- 참고자료 -->
+  <div class="card mb-3 d-none" id="fa-citations-card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-book me-2"></i>
+        참고자료
+      </h5>
+    </div>
+    <div class="card-body">
+      <div id="fa-citations" class="small text-muted"></div>
+    </div>
+  </div>
+
+  <!-- 법률 자문 안내 -->
+  <div class="alert alert-info d-none" id="fa-disclaimer">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>안내:</strong> 본 답변은 일반적인 기준을 제시한 것으로 법률 자문이 아니며, 
+    개별 사정에 따라 달라질 수 있습니다. 정확한 판단이 필요한 경우 전문가와 상담하시기 바랍니다.
+  </div>
+
+  <!-- 에러 -->
+  <div class="alert alert-danger d-none" id="fa-error">
+    <i class="fas fa-exclamation-circle me-2"></i>
+    <span id="fa-error-text"></span>
+  </div>
+</div>
