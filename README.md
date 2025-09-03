@@ -16,7 +16,7 @@
 [1. 주제선정 및 배경](#1-주제선정-및-배경)</br>
 [2. 목적 및 필요성](#2-목적-및-필요성)</br>
 [3. 칸트 차트](#3-칸트-차트)</br>
-[4. 웹 서비스 구현](#4-웹-서비스-구)</br>
+[4. 웹 서비스 구현](#4-웹-서비스-구현)</br>
 
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8b4e8355-6bfc-4c80-b446-1c3311944251" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/82a2dc7e-6d78-492f-a57b-f409282c3b7c" />
