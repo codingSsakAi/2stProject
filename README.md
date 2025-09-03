@@ -13,9 +13,9 @@
 
 ## 목차
 
-[1. 주세선정 및 배경](https://github.com/user-attachments/assets/62ceeb5f-d4fb-4f44-aa18-8d8069cdf173)</br>
-[2. 목적 및 필요성](https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e)</br>
-[3. 칸트 차트](https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36)</br>
+[1. 주제선정 및 배경](#1-주제선정-및-배경)</br>
+[2. 목적 및 필요성](#2-목적-및-필요성)</br>
+[3. 칸트 차트](#3-칸트-차트)</br>
 
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8b4e8355-6bfc-4c80-b446-1c3311944251" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/82a2dc7e-6d78-492f-a57b-f409282c3b7c" />
