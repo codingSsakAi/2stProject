@@ -2,7 +2,7 @@
 
 > 2st Team Project
 
-- 프로젝트 명 : 2st Team Project — 데이터 전처리와 기본 모델을 Django 기반 웹에서 검증
+- 프로젝트 명 : RAG-insure-bot — 데이터 전처리와 기본 모델을 Django 기반 웹에서 검증
 - 인원 : 5명
 - 기간 : 2025.07.28 ~ 2025.08.28
 - 언어 : Python 3.10.9
