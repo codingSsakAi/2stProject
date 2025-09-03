@@ -17,26 +17,22 @@
 [2. 목적 및 필요성](https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e)</br>
 [3. 칸트 차트](https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36)</br>
 
-## 1. 주제선정 및 배경
-
-![Image](https://github.com/user-attachments/assets/62ceeb5f-d4fb-4f44-aa18-8d8069cdf173)
-
-## 2. 목적 및 필요성
-
-![Image](https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e)
-
-
-
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8b4e8355-6bfc-4c80-b446-1c3311944251" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/82a2dc7e-6d78-492f-a57b-f409282c3b7c" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/df83788a-2a3a-4a99-9528-e4357ba53cd0" />
+
+## 1. 주제선정 및 배경
+
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/62ceeb5f-d4fb-4f44-aa18-8d8069cdf173" />
+
+## 2. 목적 및 필요성
+
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/fa1c0d86-d54a-48a9-8c69-4cd82a0e6563" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/379fd3b4-6fd5-49a3-a354-8e9ec3ce4ac9" />
+
 ## 3. 칸트 차트
 
-# ![Image](https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36)
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8c45088d-6270-40fb-a8ef-e8c47888c64d" />
 <img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/596ce4e2-7aff-4809-a2bd-82a1c734f3a2" />
