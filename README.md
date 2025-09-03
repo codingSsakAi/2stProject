@@ -13,18 +13,49 @@
 
 ## 목차
 
-[1. 주세선정 및 배경](https://private-user-images.githubusercontent.com/150890931/484963378-62ceeb5f-d4fb-4f44-aa18-8d8069cdf173.PNG?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTY4ODI2MDEsIm5iZiI6MTc1Njg4MjMwMSwicGF0aCI6Ii8xNTA4OTA5MzEvNDg0OTYzMzc4LTYyY2VlYjVmLWQ0ZmItNGY0NC1hYTE4LThkODA2OWNkZjE3My5QTkc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkwM1QwNjUxNDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0xMDkxMzViNjM3ZmJmZGZjZjc3ODVlZGZkYTM3YzkxNTQ5ODg0Y2RmMTg3MGE2ODc1MDljODFiZGNjZmE3ZWU2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.Ax90RBxaMmiRsBZ4TH3SBcP-jUUp9CO_Kqd9bXvWRBQ)</br>
-[2. 목적 및 필요성](https://private-user-images.githubusercontent.com/150890931/484963367-8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e.PNG?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTY4ODI2MDEsIm5iZiI6MTc1Njg4MjMwMSwicGF0aCI6Ii8xNTA4OTA5MzEvNDg0OTYzMzY3LThiZGMyNDQ3LTQ0YmEtNGQ5MC04NWU3LTFkNmJiODVjY2M3ZS5QTkc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkwM1QwNjUxNDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1hZGUyMGYxMzI0NGY0YTliYjQ0MzY3NGE3NjRlMTJkN2Q1MDNhMjI2ZDkwOTFhNDQ0OGU2NGU0YzhjYTViNjBiJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.X4UFqEChVABGg1HZ4XJzCTLG9KS3nWADMfhq78r2TSY)</br>
-[3. 칸트 차트](https://private-user-images.githubusercontent.com/150890931/484963368-c13c5d7e-710c-4d82-a71f-42939c91cd36.PNG?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTY4ODI2MDEsIm5iZiI6MTc1Njg4MjMwMSwicGF0aCI6Ii8xNTA4OTA5MzEvNDg0OTYzMzY4LWMxM2M1ZDdlLTcxMGMtNGQ4Mi1hNzFmLTQyOTM5YzkxY2QzNi5QTkc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkwM1QwNjUxNDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0xODMwMDViOWU1NGZiOTUxODM2YjkzYjRhMzQyODcwOTA0ZjEwZjc2NjJmOGRkZWJhZWQ3MGFhZWJhYmJiMzA2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.SQ6dvO6XD3unh3Xqqaq0p1_ApEtpHBuDyJs2hBILuoU)</br>
+[1. 주세선정 및 배경](https://github.com/user-attachments/assets/62ceeb5f-d4fb-4f44-aa18-8d8069cdf173)</br>
+[2. 목적 및 필요성](https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e)</br>
+[3. 칸트 차트](https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36)</br>
 
 ## 1. 주제선정 및 배경
 
-![Image]([https://github.com/user-attachments/assets/dcc8cff8-0cc3-432a-be1e-6cb05e9fbddb](https://private-user-images.githubusercontent.com/150890931/484963378-62ceeb5f-d4fb-4f44-aa18-8d8069cdf173.PNG?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTY4ODI2MDEsIm5iZiI6MTc1Njg4MjMwMSwicGF0aCI6Ii8xNTA4OTA5MzEvNDg0OTYzMzc4LTYyY2VlYjVmLWQ0ZmItNGY0NC1hYTE4LThkODA2OWNkZjE3My5QTkc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkwM1QwNjUxNDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0xMDkxMzViNjM3ZmJmZGZjZjc3ODVlZGZkYTM3YzkxNTQ5ODg0Y2RmMTg3MGE2ODc1MDljODFiZGNjZmE3ZWU2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.Ax90RBxaMmiRsBZ4TH3SBcP-jUUp9CO_Kqd9bXvWRBQ))
+![Image](https://github.com/user-attachments/assets/62ceeb5f-d4fb-4f44-aa18-8d8069cdf173)
 
 ## 2. 목적 및 필요성
 
-![Image]([https://github.com/user-attachments/assets/59b4edbf-c920-4235-92ec-0d032902167d](https://private-user-images.githubusercontent.com/150890931/484963367-8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e.PNG?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTY4ODI2MDEsIm5iZiI6MTc1Njg4MjMwMSwicGF0aCI6Ii8xNTA4OTA5MzEvNDg0OTYzMzY3LThiZGMyNDQ3LTQ0YmEtNGQ5MC04NWU3LTFkNmJiODVjY2M3ZS5QTkc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkwM1QwNjUxNDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1hZGUyMGYxMzI0NGY0YTliYjQ0MzY3NGE3NjRlMTJkN2Q1MDNhMjI2ZDkwOTFhNDQ0OGU2NGU0YzhjYTViNjBiJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.X4UFqEChVABGg1HZ4XJzCTLG9KS3nWADMfhq78r2TSY))
+![Image](https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e)
 
 ## 3. 칸트 차트
 
-![Image]([https://github.com/user-attachments/assets/9bc3cade-e790-4bed-84c5-8f07f2cdaeb2](https://private-user-images.githubusercontent.com/150890931/484963368-c13c5d7e-710c-4d82-a71f-42939c91cd36.PNG?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTY4ODI2MDEsIm5iZiI6MTc1Njg4MjMwMSwicGF0aCI6Ii8xNTA4OTA5MzEvNDg0OTYzMzY4LWMxM2M1ZDdlLTcxMGMtNGQ4Mi1hNzFmLTQyOTM5YzkxY2QzNi5QTkc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwOTAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDkwM1QwNjUxNDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0xODMwMDViOWU1NGZiOTUxODM2YjkzYjRhMzQyODcwOTA0ZjEwZjc2NjJmOGRkZWJhZWQ3MGFhZWJhYmJiMzA2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.SQ6dvO6XD3unh3Xqqaq0p1_ApEtpHBuDyJs2hBILuoU))
+![Image](https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36)
+
+
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8b4e8355-6bfc-4c80-b446-1c3311944251" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/82a2dc7e-6d78-492f-a57b-f409282c3b7c" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/df83788a-2a3a-4a99-9528-e4357ba53cd0" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/62ceeb5f-d4fb-4f44-aa18-8d8069cdf173" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8bdc2447-44ba-4d90-85e7-1d6bb85ccc7e" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/fa1c0d86-d54a-48a9-8c69-4cd82a0e6563" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/379fd3b4-6fd5-49a3-a354-8e9ec3ce4ac9" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/c13c5d7e-710c-4d82-a71f-42939c91cd36" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8c45088d-6270-40fb-a8ef-e8c47888c64d" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/596ce4e2-7aff-4809-a2bd-82a1c734f3a2" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/024e1f41-89c8-407f-94ca-46abab663297" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/86f16bb3-efd6-4176-b4ce-83651221c2d8" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/0000f0ca-fd81-4b9e-abd1-2428a43ae4fd" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/ac8e96b8-dc3d-4918-a0e1-49e7be67bc38" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/9095303e-1ad2-4c97-a168-c92b7943134d" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/210df640-ed0c-45b6-add0-41ca74897ddb" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/952ea583-a69d-4ccb-a158-d738bce5ce06" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/2e63d319-e67f-4158-a11c-dd9dace9f00e" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/0982f529-8088-47e9-bbba-9fddc0d5146b" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/2c3c1737-a24d-427c-b2c2-2ea6debf734d" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/8258524f-3e14-4b6f-98ae-e0693c45f7e3" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/633acb3e-d6fe-4288-a9bf-6714e9cea485" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/ed030a99-222a-4829-aed0-e60444a09068" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/28e9b69e-bb7c-4f3a-a190-24f52fd377a2" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/b2c216ae-5980-43de-8e6c-26dfd36816c1" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/3e1797ad-d027-4424-9f9c-e142f2e98a36" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/bb92b5e4-bc7d-4a85-9970-db9f0c34bf75" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/216b387f-d4d8-45b7-8890-6f32f2de713e" />
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/2c7a53d4-46fb-4a06-acd5-a7baded13658" />
